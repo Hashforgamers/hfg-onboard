@@ -1,0 +1,39 @@
+# docker-compose.yml
+
+version: '3.8'
+
+services:
+  web:
+    build: .
+    command: python run.py
+    volumes:
+      - .:/code
+      - ./credentials:/code/credentials  # Mount credentials directory
+    ports:
+      - "5052:5052"
+    environment:
+      - DATABASE_URI=postgresql://neondb_owner:Od9UnVJ2Wvfr@ep-rapid-lake-a8yqbhfk.eastus2.azure.neon.tech/neondb?sslmode=require
+      - MAIL_SERVER=smtp.gmail.com
+      - MAIL_PORT=587
+      - MAIL_USERNAME=support@hashforgamers.co.in
+      - MAIL_PASSWORD=h3b:@yasDm
+      - MAIL_DEFAULT_SENDER=support@hashforgamers.co.in
+      - SECRET_KEY=your_secret_key
+      - GOOGLE_DRIVE_FOLDER_ID=16muxbG0nfp6PEjdJ-u1lwrZASpoW82b3
+      - GOOGLE_APPLICATION_CREDENTIALS=/code/credentials/google_service_account.json  # Updated path
+      - DEBUG_MODE=true
+
+  # db:
+  #   image: postgres:latest
+  #   restart: always
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: vendor_db
+  #   ports:
+  #     - "5433:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+
+# volumes:
+#   postgres_data:
