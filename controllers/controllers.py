@@ -4,6 +4,7 @@ from flask import Blueprint, request, jsonify, current_app
 from services.services import VendorService
 from werkzeug.utils import secure_filename
 import json
+from models.document import Document
 
 vendor_bp = Blueprint('vendor', __name__)
 
@@ -96,7 +97,7 @@ def onboard_vendor():
         current_app.logger.debug("Calling VendorService.onboard_vendor(data, files)")
         vendor = VendorService.onboard_vendor(data, files)
 
-        current_app.logger.debug("VendorService.handle_documents(data['document_submitted'], files, drive_service, vendor.id)")
+        current_app.logger.debug("VendorService.handle_documents({data['document_submitted']}, files={files}, drive_service={drive_service}, vendor.id={vendor.id})")
         VendorService.handle_documents(data['document_submitted'], files, drive_service, vendor.id)
 
         current_app.logger.debug("VendorService.generate_credentials_and_notify(vendor)")
@@ -107,3 +108,45 @@ def onboard_vendor():
     except Exception as e:
         current_app.logger.error(f"Onboarding error: {e}")
         return jsonify({'message': 'An error occurred during onboarding', 'error': str(e)}), 500
+
+
+
+@vendor_bp.route('/vendor/<int:vendor_id>/documents', methods=['GET'])
+def get_unverified_documents(vendor_id):
+    """API endpoint to get all unverified document file paths for a given vendor."""
+    # Call the VendorService to get unverified documents
+    response, status_code = VendorService.get_unverified_documents(vendor_id)
+    return jsonify(response), status_code
+
+@vendor_bp.route('/vendor/document/<int:document_id>/verify', methods=['POST'])
+def verify_document(document_id):
+    """API endpoint to mark a document as verified and update vendor status if applicable."""
+    response, status_code = VendorService.verify_document(document_id)
+    return jsonify(response), status_code
+
+@vendor_bp.route('/vendor/documents/verify', methods=['POST'])
+def verify_documents():
+    """
+    API to verify specified documents and update vendor status if all documents are verified.
+    """
+    data = request.get_json()
+    if not data or 'document_ids' not in data:
+        return jsonify({'message': 'Missing required field: document_ids'}), 400
+    
+    document_ids = data['document_ids']
+    
+    # Call the VendorService to update documents' status and check vendor status
+    response, status_code = VendorService.verify_documents_and_update_vendor(document_ids)
+    return jsonify(response), status_code
+
+@vendor_bp.route('/vendor/dashboard', methods=['GET'])
+def get_vendor_dashboard():
+    """
+    API to retrieve all vendors with their statuses and relevant information for the salesperson dashboard.
+    """
+    try:
+        response_data = VendorService.get_all_vendors_with_status()
+        return jsonify(response_data), 200
+    except Exception as e:
+        current_app.logger.error(f"Error fetching vendor dashboard: {e}")
+        return jsonify({'message': 'An error occurred while fetching vendor data', 'error': str(e)}), 500
