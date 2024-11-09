@@ -6,6 +6,8 @@ from werkzeug.utils import secure_filename
 import json
 from models.document import Document
 
+from services.utils import process_files
+
 vendor_bp = Blueprint('vendor', __name__)
 
 ALLOWED_EXTENSIONS = {'pdf'}
@@ -19,22 +21,22 @@ def validate_json(data, required_fields):
     missing_fields = [field for field in required_fields if field not in data]
     return missing_fields
 
-def process_files(request, document_types):
-    """Process uploaded files and ensure they meet requirements."""
-    files = {}
-    for doc_type in document_types:
-        if doc_type in request.files:
-            file = request.files[doc_type]
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                files[doc_type] = file
-            else:
-                return None, f'Invalid file for {doc_type}. Only PDF allowed.'
-        else:
-            # Check if the document is marked as submitted but no file is provided
-            if data.get('document_submitted', {}).get(doc_type, False):
-                return None, f'Missing file for {doc_type}'
-    return files, None
+# def process_files(request, document_types):
+#     """Process uploaded files and ensure they meet requirements."""
+#     files = {}
+#     for doc_type in document_types:
+#         if doc_type in request.files:
+#             file = request.files[doc_type]
+#             if file and allowed_file(file.filename):
+#                 filename = secure_filename(file.filename)
+#                 files[doc_type] = file
+#             else:
+#                 return None, f'Invalid file for {doc_type}. Only PDF allowed.'
+#         else:
+#             # Check if the document is marked as submitted but no file is provided
+#             if data.get('document_submitted', {}).get(doc_type, False):
+#                 return None, f'Missing file for {doc_type}'
+#     return files, None
 
 @vendor_bp.route('/health', methods=['GET'])
 def health_check():
@@ -73,7 +75,6 @@ def onboard_vendor():
         current_app.logger.warning(f"Missing fields: {missing_fields}")
         return jsonify({'message': f'Missing fields: {", ".join(missing_fields)}'}), 400
 
-
     # Process files
     current_app.logger.debug("Started Processing File")
     document_types = [
@@ -81,8 +82,7 @@ def onboard_vendor():
         'tax_identification_number', 'bank_acc_details'
     ]
 
-
-    files, error_message = process_files(request, document_types)
+    files, error_message = process_files(request, data, document_types)
     if error_message:
         current_app.logger.error(f"File processing error: {error_message}")
         return jsonify({'message': error_message}), 400
@@ -108,7 +108,6 @@ def onboard_vendor():
     except Exception as e:
         current_app.logger.error(f"Onboarding error: {e}")
         return jsonify({'message': 'An error occurred during onboarding', 'error': str(e)}), 500
-
 
 
 @vendor_bp.route('/vendor/<int:vendor_id>/documents', methods=['GET'])
