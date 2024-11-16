@@ -35,6 +35,7 @@ class Vendor(db.Model):
     amenities = relationship("Amenity", back_populates="vendors", cascade="all, delete-orphan")
     documents_submitted = relationship('DocumentSubmitted', back_populates='vendor', cascade="all, delete-orphan")
     available_games = relationship('AvailableGame', back_populates='vendor', cascade="all, delete-orphan")
+    images = relationship('Image', back_populates='vendor', cascade="all, delete-orphan")  # New relationship
 
     # One-to-One relationship with VendorCredential
     credential = relationship('VendorCredential', uselist=False, back_populates='vendor', cascade="all, delete")

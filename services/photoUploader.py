@@ -4,8 +4,23 @@ from googleapiclient.http import MediaIoBaseUpload
 from google.oauth2 import service_account
 from werkzeug.utils import secure_filename
 from flask import current_app
+from models import Image
+from db.extensions import db
 
 class PhotoUploader:
+
+    @staticmethod
+    def save_image_to_db(vendor_id, image_type, file_path, status='unverified'):
+        """Save image metadata to the database."""
+        image = Image(
+            vendor_id=vendor_id,
+            image_type=image_type,
+            file_path=file_path,
+            status=status
+        )
+        db.session.add(image)
+        db.session.commit()
+        return image
 
     @staticmethod
     def get_drive_service():
@@ -37,6 +52,13 @@ class PhotoUploader:
                 fields='id, webViewLink'
             ).execute()
             current_app.logger.info(f"Photo uploaded to Google Drive: {uploaded_file.get('webViewLink')}")
+            # Save photo metadata in the database
+            PhotoUploader.save_image_to_db(
+                vendor_id=vendor_id,
+                image_type='gallery',  # Replace with actual type if needed
+                file_path=link,
+                status='unverified'
+            )
             return uploaded_file.get('webViewLink')
         except Exception as e:
             current_app.logger.error(f"Google Drive upload error for {photo.filename}: {e}")
