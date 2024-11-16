@@ -9,3 +9,5 @@ class Document(db.Model):
     document_type = db.Column(db.String(100), nullable=False)
     file_path = db.Column(db.String(255), nullable=False)  # Can store Google Drive URL or File ID
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    status = db.Column(db.String(20), default='unverified')  # New field for verification status
