@@ -8,6 +8,9 @@ from models.document import Document
 
 from services.utils import process_files
 from services.photoUploader import PhotoUploader
+from models.vendor import Vendor
+from models.image import Image
+
 
 vendor_bp = Blueprint('vendor', __name__)
 
@@ -180,4 +183,37 @@ def upload_photos(vendor_id):
         }), 200
     except Exception as e:
         current_app.logger.error(f"Error uploading photos: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@vendor_bp.route('/vendor/<int:vendor_id>/photos', methods=['GET'])
+def get_vendor_photos(vendor_id):
+    """
+    API endpoint to retrieve all photos for a given vendor ID.
+    
+    Args:
+        vendor_id (int): The ID of the vendor for which we are fetching photos.
+    
+    Returns:
+        JSON: A list of photos associated with the vendor, including image ID and path.
+    """
+    try:
+        # Query the database for images associated with the vendor ID
+        images = Image.query.filter_by(vendor_id=vendor_id).all()
+        
+        if not images:
+            return jsonify({"message": "No photos found for this vendor."}), 404
+
+        # Prepare a list of image details
+        photo_data = []
+        for image in images:
+            photo_data.append({
+                "image_id": image.image_id,
+                "path": image.path
+            })
+
+        # Return the photo data as a JSON response
+        return jsonify({"photos": photo_data}), 200
+
+    except Exception as e:
+        # Handle unexpected errors
         return jsonify({"error": str(e)}), 500

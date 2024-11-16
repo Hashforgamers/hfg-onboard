@@ -1,11 +1,12 @@
 import io
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
 from google.oauth2 import service_account
 from werkzeug.utils import secure_filename
 from flask import current_app
-from models import Image
+from models.image import Image
 from db.extensions import db
+from googleapiclient.http import MediaIoBaseUpload
+
 
 class PhotoUploader:
 
@@ -43,30 +44,37 @@ class PhotoUploader:
         return service
 
     @staticmethod
-    def upload_photo_to_drive(service, photo, vendor_id):
+    def upload_photo_to_drive(service, photo, vendor_id, cnt):
         """Upload a single photo to Google Drive and return the file link."""
         photo_content = photo.read()
-        filename = f"{vendor_id}_{secure_filename(photo.filename)}"
+        filename = f"{vendor_id}_{secure_filename(photo.filename)}_{cnt}"
         file_metadata = {
             'name': filename,
             'parents': [current_app.config['GOOGLE_DRIVE_FOLDER_ID']],
             'mimeType': photo.mimetype
         }
-        media = MediaIoBaseUpload(io.BytesIO(photo_content), mimetype=photo.mimetype)
         
+        # Ensure MediaIoBaseUpload is correctly instantiated
+        media = MediaIoBaseUpload(io.BytesIO(photo_content), mimetype=photo.mimetype)
+
         try:
             uploaded_file = service.files().create(
                 body=file_metadata,
                 media_body=media,
                 fields='id, webViewLink'
             ).execute()
+            
+            # Log the entire response to check if 'id' is present
+            current_app.logger.debug(f"Uploaded file response: {uploaded_file}")
             current_app.logger.info(f"Photo uploaded to Google Drive: {uploaded_file.get('webViewLink')}")
+            
             # Save photo metadata in the database
             PhotoUploader.save_image_to_db(
                 vendor_id=vendor_id,
-                image_id=file_id,  # This is the Google Drive file ID returned after upload
+                image_id=uploaded_file.get('id'),
                 path=uploaded_file.get('webViewLink')
             )
+            current_app.logger.debug(f"Upload Completed: {uploaded_file}")
             return uploaded_file.get('webViewLink')
         except Exception as e:
             current_app.logger.error(f"Google Drive upload error for {photo.filename}: {e}")
@@ -76,7 +84,9 @@ class PhotoUploader:
     def upload_photos_to_drive(service, photos, vendor_id):
         """Upload multiple photos to Google Drive and return their file links."""
         photo_links = []
+        cnt=0
         for photo in photos:
-            link = PhotoUploader.upload_photo_to_drive(service, photo, vendor_id)
+            link = PhotoUploader.upload_photo_to_drive(service, photo, vendor_id, cnt)
+            cnt=cnt+1
             photo_links.append(link)
         return photo_links
