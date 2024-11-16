@@ -14,6 +14,7 @@ from models.openingDay import OpeningDay
 from models.vendorCredentials import VendorCredential
 from models.vendorStatus import VendorStatus
 from models.uploadedImage import Image
+from models.slots import Slot
 
 from db.extensions import db
 from .utils import send_email, generate_credentials
@@ -21,7 +22,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from google.oauth2 import service_account
 import io
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import case, func
 
@@ -127,6 +128,55 @@ class VendorService:
             db.session.add_all(opening_days_instances)
             db.session.commit()
             current_app.logger.info(f"OpeningDay instances created: {opening_days_instances}")
+
+            # Create Slot instances with available game details
+            current_app.logger.debug("Creating slots for the vendor.")
+            try:
+                # Parse opening and closing times from input data
+                opening_time = datetime.strptime(data['timing']['opening_time'], '%I:%M %p').time()
+                closing_time = datetime.strptime(data['timing']['closing_time'], '%I:%M %p').time()
+
+                slot_data = []
+                game_slots = {
+                    game_name.lower(): details["total_slot"] for game_name, details in data["available_games"].items()
+                }
+                game_ids = {game.game_name.lower(): game.id for game in available_games_instances}
+
+                # Initialize current time for slot generation
+                current_time = datetime.combine(datetime.today(), opening_time)
+                closing_datetime = datetime.combine(datetime.today(), closing_time)
+
+                while current_time < closing_datetime:
+                    end_time = current_time + timedelta(minutes=30)
+                    if end_time > closing_datetime:
+                        break
+
+                    # Create slots for each available game
+                    for game_name, total_slots in game_slots.items():
+                        game_id = game_ids.get(game_name)
+                        if not game_id:
+                            current_app.logger.warning(f"Game '{game_name}' not found in available games.")
+                            continue
+
+                        slot = Slot(
+                            gaming_type_id=game_id,
+                            start_time=current_time.time(),
+                            end_time=end_time.time(),
+                            available_slot=total_slots,  # Set available_slot based on total_slot
+                            is_available=True  # Default to True
+                        )
+                        slot_data.append(slot)
+
+                    current_time = end_time
+
+                # Add all generated slots to the database
+                db.session.add_all(slot_data)
+                db.session.commit()
+                current_app.logger.info(f"{len(slot_data)} slots created for vendor.")
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Error creating slots for vendor: {e}")
+                raise
 
             return vendor
         

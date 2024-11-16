@@ -12,3 +12,6 @@ class AvailableGame(db.Model):
     single_slot_price = Column(Integer, nullable=False)
 
     vendor = relationship('Vendor', back_populates='available_games')
+
+    # Relationship with Slot (one-to-many)
+    slots = relationship('Slot', back_populates='available_game', cascade="all, delete-orphan")
