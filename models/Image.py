@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from db.extensions import db
+from sqlalchemy.orm import relationship
 from datetime import datetime
 
 class Image(db.Model):
