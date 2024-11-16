@@ -156,7 +156,7 @@ def upload_photos():
     """API endpoint to upload photos to Google Drive."""
     try:
         # Validate vendor
-        vendor = Vendor.query.get(vendor_id)
+        vendor_id = Vendor.query.get(vendor_id)
         if not vendor:
             return jsonify({"error": "Vendor not found"}), 404
 
