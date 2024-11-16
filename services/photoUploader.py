@@ -10,17 +10,25 @@ from db.extensions import db
 class PhotoUploader:
 
     @staticmethod
-    def save_image_to_db(vendor_id, image_type, file_path, status='unverified'):
-        """Save image metadata to the database."""
+    def save_image_to_db(vendor_id, image_id):
+        """
+        Save image metadata to the database.
+        
+        Args:
+            vendor_id (int): ID of the vendor associated with the image.
+            image_id (str): Google Drive file ID of the uploaded image.
+        
+        Returns:
+            Image: The saved Image object.
+        """
         image = Image(
             vendor_id=vendor_id,
-            image_type=image_type,
-            file_path=file_path,
-            status=status
+            image_id=image_id
         )
         db.session.add(image)
         db.session.commit()
         return image
+
 
     @staticmethod
     def get_drive_service():
@@ -55,9 +63,7 @@ class PhotoUploader:
             # Save photo metadata in the database
             PhotoUploader.save_image_to_db(
                 vendor_id=vendor_id,
-                image_type='gallery',  # Replace with actual type if needed
-                file_path=link,
-                status='unverified'
+                image_id=file_id  # This is the Google Drive file ID returned after upload
             )
             return uploaded_file.get('webViewLink')
         except Exception as e:
