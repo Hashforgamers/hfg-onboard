@@ -9,7 +9,7 @@ from models.document import Document
 from services.utils import process_files
 
 from models.vendor import Vendor
-from models.image import Image
+from models.uploadedImage import Image
 
 
 vendor_bp = Blueprint('vendor', __name__)

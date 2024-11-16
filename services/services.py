@@ -13,7 +13,7 @@ from models.amenity import Amenity
 from models.openingDay import OpeningDay
 from models.vendorCredentials import VendorCredential
 from models.vendorStatus import VendorStatus
-from models.image import Image
+from models.uploadedImage import Image
 
 from db.extensions import db
 from .utils import send_email, generate_credentials
