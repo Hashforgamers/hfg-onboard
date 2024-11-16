@@ -150,3 +150,28 @@ def get_vendor_dashboard():
     except Exception as e:
         current_app.logger.error(f"Error fetching vendor dashboard: {e}")
         return jsonify({'message': 'An error occurred while fetching vendor data', 'error': str(e)}), 500
+
+@vendor_bp.route('/upload-photos', methods=['POST'])
+def upload_photos():
+    """API endpoint to upload photos to Google Drive."""
+    try:
+        # Get the vendor_id and files from the request
+        vendor_id = request.form.get('vendor_id')
+        photos = request.files.getlist('photos')  # Accept multiple files
+
+        if not vendor_id or not photos:
+            return jsonify({"error": "Missing vendor_id or photos"}), 400
+
+        # Initialize Google Drive service
+        service = PhotoUploader.get_drive_service()
+
+        # Upload photos and get links
+        photo_links = PhotoUploader.upload_photos_to_drive(service, photos, vendor_id)
+
+        return jsonify({
+            "message": "Photos uploaded successfully",
+            "photo_links": photo_links
+        }), 200
+    except Exception as e:
+        current_app.logger.error(f"Error uploading photos: {e}")
+        return jsonify({"error": str(e)}), 500
