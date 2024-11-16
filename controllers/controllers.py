@@ -7,7 +7,7 @@ import json
 from models.document import Document
 
 from services.utils import process_files
-from services.photoUploader import PhotoUploader
+
 from models.vendor import Vendor
 from models.image import Image
 
@@ -172,10 +172,10 @@ def upload_photos(vendor_id):
             return jsonify({"error": "No photos selected"}), 400
 
         # Initialize Google Drive service
-        service = PhotoUploader.get_drive_service()
+        service = VendorService.get_drive_service()
 
         # Upload photos and get links
-        photo_links = PhotoUploader.upload_photos_to_drive(service, photos, vendor_id)
+        photo_links = VendorService.upload_photos_to_drive(service, photos, vendor_id)
 
         return jsonify({
             "message": "Photos uploaded successfully",

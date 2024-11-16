@@ -13,3 +13,4 @@ class Image(db.Model):
 
     # Relationship
     vendor = relationship('Vendor', back_populates='images')
+    

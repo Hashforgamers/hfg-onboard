@@ -13,6 +13,7 @@ from models.amenity import Amenity
 from models.openingDay import OpeningDay
 from models.vendorCredentials import VendorCredential
 from models.vendorStatus import VendorStatus
+from models.image import Image
 
 from db.extensions import db
 from .utils import send_email, generate_credentials
@@ -380,3 +381,85 @@ class VendorService:
         except Exception as e:
             current_app.logger.error(f"Error in get_all_vendors_with_status: {e}")
             raise
+
+
+    @staticmethod
+    def save_image_to_db(vendor_id, image_id, path):
+        """
+        Save image metadata to the database.
+        
+        Args:
+            vendor_id (int): ID of the vendor associated with the image.
+            image_id (str): Google Drive file ID of the uploaded image.
+            path (str): Google Drive link path 
+        Returns:
+            Image: The saved Image object.
+        """
+        image = Image(
+            vendor_id=vendor_id,
+            image_id=image_id,
+            path=path
+        )
+        db.session.add(image)
+        db.session.commit()
+        return image
+
+
+    @staticmethod
+    def get_drive_service():
+        """Initialize and return the Google Drive service."""
+        credentials = service_account.Credentials.from_service_account_file(
+            current_app.config['GOOGLE_APPLICATION_CREDENTIALS'],
+            scopes=['https://www.googleapis.com/auth/drive']
+        )
+        service = build('drive', 'v3', credentials=credentials)
+        current_app.logger.debug("Google Drive service initialized.")
+        return service
+
+    @staticmethod
+    def upload_photo_to_drive(service, photo, vendor_id, cnt):
+        """Upload a single photo to Google Drive and return the file link."""
+        photo_content = photo.read()
+        filename = f"{vendor_id}_{secure_filename(photo.filename)}_{cnt}"
+        file_metadata = {
+            'name': filename,
+            'parents': [current_app.config['GOOGLE_DRIVE_FOLDER_ID']],
+            'mimeType': photo.mimetype
+        }
+        
+        # Ensure MediaIoBaseUpload is correctly instantiated
+        media = MediaIoBaseUpload(io.BytesIO(photo_content), mimetype=photo.mimetype)
+
+        try:
+            uploaded_file = service.files().create(
+                body=file_metadata,
+                media_body=media,
+                fields='id, webViewLink'
+            ).execute()
+            
+            # Log the entire response to check if 'id' is present
+            current_app.logger.debug(f"Uploaded file response: {uploaded_file}")
+            current_app.logger.info(f"Photo uploaded to Google Drive: {uploaded_file.get('webViewLink')}")
+            
+            # Save photo metadata in the database
+            VendorService.save_image_to_db(
+                vendor_id=vendor_id,
+                image_id=uploaded_file.get('id'),
+                path=uploaded_file.get('webViewLink')
+            )
+            current_app.logger.debug(f"Upload Completed: {uploaded_file}")
+            return uploaded_file.get('webViewLink')
+        except Exception as e:
+            current_app.logger.error(f"Google Drive upload error for {photo.filename}: {e}")
+            raise Exception(f"Failed to upload photo {photo.filename} to Google Drive.")
+
+    @staticmethod
+    def upload_photos_to_drive(service, photos, vendor_id):
+        """Upload multiple photos to Google Drive and return their file links."""
+        photo_links = []
+        cnt=0
+        for photo in photos:
+            link = VendorService.upload_photo_to_drive(service, photo, vendor_id, cnt)
+            cnt=cnt+1
+            photo_links.append(link)
+        return photo_links
