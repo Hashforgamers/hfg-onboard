@@ -20,9 +20,8 @@ class PhysicalAddress(db.Model):
     parent_type = Column(String(50), nullable=False)
 
     # Polymorphic relationships
-    user = relationship("User", primaryjoin="and_(PhysicalAddress.parent_id==User.id, "
-                                            "PhysicalAddress.parent_type=='user')", back_populates="physical_address")
-
+    vendor = relationship("Vendor", primaryjoin="and_(PhysicalAddress.parent_id==Vendor.id, "
+                                                "PhysicalAddress.parent_type=='vendor')", back_populates="physical_address")
     __mapper_args__ = {
         'polymorphic_identity': 'physical_address',
         'polymorphic_on': parent_type
