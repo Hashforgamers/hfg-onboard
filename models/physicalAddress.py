@@ -15,10 +15,13 @@ class PhysicalAddress(db.Model):
     is_active = Column(Boolean, default=True)
     latitude = Column(String(20))
     longitude = Column(String(20))
-
     # Polymorphic fields
-    parent_id = Column(Integer, ForeignKey('vendors.id'), nullable=False)
+    parent_id = Column(Integer, nullable=False)
     parent_type = Column(String(50), nullable=False)
+
+    # Polymorphic relationships
+    user = relationship("User", primaryjoin="and_(PhysicalAddress.parent_id==User.id, "
+                                            "PhysicalAddress.parent_type=='user')", back_populates="physical_address")
 
     __mapper_args__ = {
         'polymorphic_identity': 'physical_address',

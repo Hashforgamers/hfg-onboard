@@ -23,14 +23,16 @@ class Vendor(db.Model):
         primaryjoin="and_(PhysicalAddress.parent_id==Vendor.id, "
                     "PhysicalAddress.parent_type=='vendor')",
         uselist=False,
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        back_populates="vendor"
     )
     contact_info = relationship(
         'ContactInfo',
         primaryjoin="and_(ContactInfo.parent_id==Vendor.id, "
                     "ContactInfo.parent_type=='vendor')",
         uselist=False,
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        back_populates="vendor"
     )
 
     business_registration_id = Column(Integer, ForeignKey('business_registration.id'), nullable=False)
