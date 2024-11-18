@@ -17,8 +17,22 @@ class Vendor(db.Model):
     owner_name = Column(String(255), nullable=False)
     description = Column(String(255), nullable=True)
 
-    contact_info_id = Column(Integer, ForeignKey('contact_info.id'), nullable=False)
-    physical_address_id = Column(Integer, ForeignKey('physical_address.id'), nullable=False)
+    # Relationships
+    physical_address = relationship(
+        'PhysicalAddress',
+        primaryjoin="and_(PhysicalAddress.parent_id==Vendor.id, "
+                    "PhysicalAddress.parent_type=='vendor')",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+    contact_info = relationship(
+        'ContactInfo',
+        primaryjoin="and_(ContactInfo.parent_id==Vendor.id, "
+                    "ContactInfo.parent_type=='vendor')",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+
     business_registration_id = Column(Integer, ForeignKey('business_registration.id'), nullable=False)
     timing_id = Column(Integer, ForeignKey('timing.id'), nullable=False)
 
