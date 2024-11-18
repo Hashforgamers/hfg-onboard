@@ -7,6 +7,9 @@ from models.openingDay import OpeningDay
 from models.availableGame import AvailableGame
 from models.vendorCredentials import VendorCredential
 from models.vendorStatus import VendorStatus
+from models.physicalAddress import PhysicalAddress
+from models.contactInfo import ContactInfo
+
 from datetime import datetime
 
 class Vendor(db.Model):

@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from db.extensions import db
+from models.vendor import Vendor
 
 class PhysicalAddress(db.Model):
     __tablename__ = 'physical_address'

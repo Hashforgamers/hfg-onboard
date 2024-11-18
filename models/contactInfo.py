@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from db.extensions import db
+from models.vendor import Vendor
 
 class ContactInfo(db.Model):
     __tablename__ = 'contact_info'
