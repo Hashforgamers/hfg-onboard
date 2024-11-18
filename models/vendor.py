@@ -20,16 +20,16 @@ class Vendor(db.Model):
     # Relationships
     physical_address = relationship(
         'PhysicalAddress',
-        primaryjoin="and_(PhysicalAddress.parent_id==Vendor.id, "
-                    "PhysicalAddress.parent_type=='vendor')",
+        primaryjoin="and_(PhysicalAddress.parent_id == Vendor.id, "
+                    "PhysicalAddress.parent_type == 'vendor')",
         uselist=False,
         cascade="all, delete-orphan",
         back_populates="vendor"
     )
     contact_info = relationship(
         'ContactInfo',
-        primaryjoin="and_(ContactInfo.parent_id==Vendor.id, "
-                    "ContactInfo.parent_type=='vendor')",
+        primaryjoin="and_(ContactInfo.parent_id == Vendor.id, "
+                    "ContactInfo.parent_type == 'vendor')",
         uselist=False,
         cascade="all, delete-orphan",
         back_populates="vendor"

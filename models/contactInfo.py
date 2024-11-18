@@ -14,9 +14,8 @@ class ContactInfo(db.Model):
     parent_type = Column(String(50), nullable=False)
 
     # Polymorphic relationships
+    vendor = relationship("Vendor", back_populates="contact_info", foreign_keys=[parent_id])
 
-    vendor = relationship("Vendor", primaryjoin="and_(ContactInfo.parent_id==Vendor.id, "
-                                                "ContactInfo.parent_type=='vendor')", back_populates="contact_info")
     __mapper_args__ = {
         'polymorphic_identity': 'contact_info',
         'polymorphic_on': parent_type
