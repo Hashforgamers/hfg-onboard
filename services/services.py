@@ -38,7 +38,9 @@ class VendorService:
             # Create ContactInfo
             contact_info = ContactInfo(
                 email=data['contact_info']['email'],
-                phone=data['contact_info']['phone']
+                phone=data['contact_info']['phone'],
+                parent_id=1,
+                parent_type="vendor"
             )
             db.session.add(contact_info)
             db.session.commit()
@@ -53,7 +55,9 @@ class VendorService:
                 state=data['physicalAddress']['state'],
                 country=data['physicalAddress']['country'],
                 latitude=data['physicalAddress'].get('latitude'),
-                longitude=data['physicalAddress'].get('longitude')
+                longitude=data['physicalAddress'].get('longitude'),
+                parent_id=1,
+                parent_type="vendor"
             )
             db.session.add(physical_address)
             db.session.commit()
@@ -88,14 +92,18 @@ class VendorService:
                 cafe_name=data.get('cafe_name'),
                 owner_name=data.get('owner_name'),
                 description=data.get('description', ''),
-                contact_info_id=contact_info.id,
-                physical_address_id=physical_address.id,
+                # contact_info_id=contact_info.id,
+                # physical_address_id=physical_address.id,
                 business_registration_id=business_registration.id,
                 timing_id=timing.id,
             )
             db.session.add(vendor)
             db.session.commit()
             current_app.logger.info(f"Vendor created with ID: {vendor.id}")
+
+            # Update the parent_id of ContactInfo to the Vendor's id
+            contact_info.parent_id = vendor.id  # Update parent_id to Vendor's id
+            db.session.commit()  # Commit the update to the database
 
             # Create Amenity instances with vendor_id
             amenities_data = data.get('amenities', [])
