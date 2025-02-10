@@ -384,7 +384,7 @@ class VendorService:
         """Generate credentials for the vendor and send them via email."""
         username, password = generate_credentials()
         credential_username = username
-        credential_password = generate_password_hash(password)
+        credential_password = password
         
         # Vendor Credntial storing in DB
         password_manager = PasswordManager(
