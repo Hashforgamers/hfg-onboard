@@ -16,8 +16,5 @@ class VendorStatus(db.Model):
     # Link to Vendor model
     vendor = relationship('Vendor', back_populates='statuses')
 
-    def __str__(self):
-        return f"VendorCredential(id={self.id}, vendor_id='{self.vendor_id}', status={self.status}, updated_at='{self.updated_at}')"
-
     def __repr__(self):
         return self.__str__()    

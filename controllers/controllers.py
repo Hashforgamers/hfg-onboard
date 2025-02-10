@@ -98,7 +98,7 @@ def onboard_vendor():
         current_app.logger.debug("Calling VendorService.get_drive_service()")
         drive_service = VendorService.get_drive_service()
 
-        current_app.logger.debug("Calling VendorService.onboard_vendor(data, files)")
+        current_app.logger.debug("Calling VendorService.onboard_vendor(data, files)") 
         vendor = VendorService.onboard_vendor(data, files)
 
         current_app.logger.debug("VendorService.handle_documents({data['document_submitted']}, files={files}, drive_service={drive_service}, vendor.id={vendor.id})")

@@ -6,7 +6,7 @@ from models.amenity import Amenity
 from models.documentSubmitted import DocumentSubmitted
 from models.openingDay import OpeningDay
 from models.availableGame import AvailableGame
-from models.vendorCredentials import VendorCredential
+from models.passwordManager import PasswordManager
 from models.vendorStatus import VendorStatus
 from models.physicalAddress import PhysicalAddress
 from models.contactInfo import ContactInfo
@@ -22,7 +22,7 @@ class Vendor(db.Model):
     description = Column(String(255), nullable=True)
 
     # Foreign Key to BusinessRegistration
-    business_registration_id = Column(Integer, ForeignKey('business_registration.id'), nullable=False)
+    business_registration_id = Column(Integer, ForeignKey('business_registration.id'), nullable=True)
     # Foreign Key to Timing
     timing_id = Column(Integer, ForeignKey('timing.id'), nullable=False)
 
@@ -39,11 +39,14 @@ class Vendor(db.Model):
     )
 
     # Relationship to ContactInfo
+    # contact_info = relationship("ContactInfo", back_populates="vendor", uselist=False)
+    # Relationship to ContactInfo
+    # Relationship to ContactInfo
     contact_info = relationship(
-        'ContactInfo',
-        back_populates='vendor',
-        uselist=False,  # One-to-one relationship
-        cascade="all, delete-orphan"
+        "ContactInfo",
+        back_populates="vendor",  # Ensure this matches the relationship in ContactInfo
+        uselist=False,
+        cascade="all, delete"
     )
 
     __mapper_args__ = {
@@ -91,13 +94,18 @@ class Vendor(db.Model):
         cascade="all, delete-orphan"
     )
 
-    # One-to-One relationship with VendorCredential
-    credential = relationship(
-        'VendorCredential',
-        uselist=False,
+       # One-to-One relationship with VendorCredential
+    credential = None
+
+    # PasswordManager relationship
+    password = relationship(
+        'PasswordManager',
+        primaryjoin="and_(foreign(PasswordManager.parent_id) == Vendor.id, PasswordManager.parent_type == 'vendor')",
         back_populates='vendor',
-        cascade="all, delete"
+        uselist=False,
+        cascade="all, delete-orphan"
     )
+
 
     # One-to-Many relationship with VendorStatus
     statuses = relationship(
