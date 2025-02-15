@@ -30,173 +30,6 @@ from sqlalchemy import text
 
 
 class VendorService:
-    # @staticmethod
-    # def onboard_vendor(data, files):
-    #     current_app.logger.debug("Onboard Vendor Started.")
-    #     current_app.logger.debug(f"Received data: {data}")
-    #     current_app.logger.debug(f"Received files: {files}")
-    #     current_app.logger.info(f"Logging Started")
-    #     try:
-    #         current_app.logger.info(f"Logging Started for Contact Info")
-    #         # Create ContactInfo
-    #         contact_info = ContactInfo(
-    #             email=data['contact_info']['email'],
-    #             phone=data['contact_info']['phone'],
-    #             parent_id=1,
-    #             parent_type="vendor"
-    #         )
-    #         current_app.logger.info(f"Logging Started for Contact Info 1")
-    #         db.session.add(contact_info)
-    #         current_app.logger.info(f"Logging Started for Contact Info 2")
-    #         db.session.commit()
-    #         current_app.logger.info(f"ContactInfo created with ID: {contact_info.id}")
-
-    #         # Create PhysicalAddress
-    #         physical_address = PhysicalAddress(
-    #             address_type=data['physicalAddress']['address_type'],
-    #             addressLine1=data['physicalAddress']['addressLine1'],
-    #             addressLine2=data['physicalAddress']['addressLine2'],
-    #             pincode=data['physicalAddress']['pincode'],
-    #             state=data['physicalAddress']['state'],
-    #             country=data['physicalAddress']['country'],
-    #             latitude=data['physicalAddress'].get('latitude'),
-    #             longitude=data['physicalAddress'].get('longitude'),
-    #             parent_id=1,
-    #             parent_type="vendor"
-    #         )
-    #         db.session.add(physical_address)
-    #         db.session.commit()
-    #         current_app.logger.info(f"PhysicalAddress created with ID: {physical_address.id}")
-
-    #         # Create BusinessRegistration
-    #         business_registration = BusinessRegistration(
-    #             registration_number=data['business_registration_details']['registration_number'],
-    #             registration_date=datetime.strptime(
-    #                 data['business_registration_details']['registration_date'], '%Y-%m-%d'
-    #             ).date()
-    #         )
-    #         db.session.add(business_registration)
-    #         db.session.commit()
-    #         current_app.logger.info(f"BusinessRegistration created with ID: {business_registration.id}")
-
-    #         # Create Timing
-    #         timing = Timing(
-    #             opening_time=datetime.strptime(data['timing']['opening_time'], '%I:%M %p').time(),
-    #             closing_time=datetime.strptime(data['timing']['closing_time'], '%I:%M %p').time(),
-    #         )
-    #         db.session.add(timing)
-    #         db.session.commit()
-    #         current_app.logger.info(f"Timing created with ID: {timing.id}")
-
-    #         # Extract opening days
-    #         opening_days_data = [day for day, is_open in data['opening_day'].items() if is_open]
-    #         current_app.logger.debug(f"Extracted opening days: {opening_days_data}")
-
-    #         # Create Vendor instance
-    #         vendor = Vendor(
-    #             cafe_name=data.get('cafe_name'),
-    #             owner_name=data.get('owner_name'),
-    #             description=data.get('description', ''),
-    #             # contact_info_id=contact_info.id,
-    #             # physical_address_id=physical_address.id,
-    #             business_registration_id=business_registration.id,
-    #             timing_id=timing.id,
-    #         )
-    #         db.session.add(vendor)
-    #         db.session.commit()
-    #         current_app.logger.info(f"Vendor created with ID: {vendor.id}")
-
-    #         # Update the parent_id of ContactInfo to the Vendor's id
-    #         contact_info.parent_id = vendor.id  # Update parent_id to Vendor's id
-    #         db.session.commit()  # Commit the update to the database
-
-    #         # Create Amenity instances with vendor_id
-    #         amenities_data = data.get('amenities', [])
-    #         amenities_instances = [Amenity(name=amenity, vendor_id=vendor.id) for amenity in amenities_data]
-    #         current_app.logger.debug(f"Amenity instances created: {amenities_instances}")
-
-    #         # Create AvailableGame instances with vendor_id
-    #         available_games_data = data.get('available_games', {})
-    #         available_games_instances = [
-    #             AvailableGame(
-    #                 game_name=game_key,
-    #                 total_slot=game_data['total_slot'],
-    #                 single_slot_price=game_data['single_slot_price'],
-    #                 vendor_id=vendor.id  # Assign vendor_id
-    #             ) for game_key, game_data in available_games_data.items()
-    #         ]
-    #         current_app.logger.debug(f"AvailableGame instances created: {available_games_instances}")
-
-    #         # Batch add amenities and available games
-    #         db.session.add_all(amenities_instances)
-    #         db.session.add_all(available_games_instances)
-    #         db.session.commit()
-    #         current_app.logger.info("Amenities and available games added successfully.")
-
-    #         # Create OpeningDay instances with vendor_id
-    #         opening_days_instances = [
-    #             OpeningDay(day=day, is_open=True, vendor_id=vendor.id)
-    #             for day in opening_days_data
-    #         ]
-    #         db.session.add_all(opening_days_instances)
-    #         db.session.commit()
-    #         current_app.logger.info(f"OpeningDay instances created: {opening_days_instances}")
-
-    #         # Create Slot instances with available game details
-    #         current_app.logger.debug("Creating slots for the vendor.")
-    #         try:
-    #             # Parse opening and closing times from input data
-    #             opening_time = datetime.strptime(data['timing']['opening_time'], '%I:%M %p').time()
-    #             closing_time = datetime.strptime(data['timing']['closing_time'], '%I:%M %p').time()
-
-    #             slot_data = []
-    #             game_slots = {
-    #                 game_name.lower(): details["total_slot"] for game_name, details in data["available_games"].items()
-    #             }
-    #             game_ids = {game.game_name.lower(): game.id for game in available_games_instances}
-
-    #             # Initialize current time for slot generation
-    #             current_time = datetime.combine(datetime.today(), opening_time)
-    #             closing_datetime = datetime.combine(datetime.today(), closing_time)
-
-    #             while current_time < closing_datetime:
-    #                 end_time = current_time + timedelta(minutes=30)
-    #                 if end_time > closing_datetime:
-    #                     break
-
-    #                 # Create slots for each available game
-    #                 for game_name, total_slots in game_slots.items():
-    #                     game_id = game_ids.get(game_name)
-    #                     if not game_id:
-    #                         current_app.logger.warning(f"Game '{game_name}' not found in available games.")
-    #                         continue
-
-    #                     slot = Slot(
-    #                         gaming_type_id=game_id,
-    #                         start_time=current_time.time(),
-    #                         end_time=end_time.time(),
-    #                         available_slot=total_slots,  # Set available_slot based on total_slot
-    #                         is_available=True  # Default to True
-    #                     )
-    #                     slot_data.append(slot)
-
-    #                 current_time = end_time
-
-    #             # Add all generated slots to the database
-    #             db.session.add_all(slot_data)
-    #             db.session.commit()
-    #             current_app.logger.info(f"{len(slot_data)} slots created for vendor.")
-    #         except Exception as e:
-    #             db.session.rollback()
-    #             current_app.logger.error(f"Error creating slots for vendor: {e}")
-    #             raise
-
-    #         return vendor
-        
-    #     except Exception as e:
-    #         db.session.rollback()
-    #         current_app.logger.error(f"Error onboarding vendor: {e}")
-    #         raise
 
     @staticmethod
     def onboard_vendor(data, files):
@@ -349,8 +182,11 @@ class VendorService:
 
             db.session.commit()
 
-            # Create the vendor-specific slot view
+            # Create the vendor-specific slot table
             VendorService.create_vendor_slot_table(vendor.id)
+
+            # Create the vendor-specific console availbility 
+            VendorService.create_vendor_console_availability_table(vendor.id)
 
             return vendor
 
@@ -691,106 +527,6 @@ class VendorService:
             photo_links.append(link)
         return photo_links
     
-    # @staticmethod
-    # def create_vendor_slot_view(vendor_id):
-    #     """Creates a SQL materialized view for tracking daily slot availability for a vendor."""
-    #     view_name = f"VENDOR_{vendor_id}_SLOT"
-
-    #     # Drop the materialized view if it already exists
-    #     db.session.execute(text(f"DROP MATERIALIZED VIEW IF EXISTS {view_name}"))
-
-    #     # Generate yearly date range
-    #     start_date = datetime.utcnow().date()
-    #     end_date = start_date + timedelta(days=365)
-
-    #     # SQL for creating materialized view
-    #     sql = text(f"""
-    #     CREATE MATERIALIZED VIEW {view_name} AS
-    #     SELECT 
-    #         {vendor_id} AS vendor_id,
-    #         gs.date,
-    #         s.id AS slot_id,
-    #         s.is_available  -- Availability flag for the slot
-    #     FROM 
-    #         (SELECT generate_series(:start_date, :end_date, '1 day'::INTERVAL) AS date) gs
-    #     CROSS JOIN slots s  -- Cross join with all slots for the vendor
-    #     WHERE s.is_available = TRUE  -- Only include available slots
-    #     AND s.gaming_type_id IN (SELECT id FROM available_games WHERE vendor_id = :vendor_id)  -- Ensure the slot belongs to the given vendor
-    #     ORDER BY gs.date, s.id;  -- Ordering by date and slot_id
-    #     """)
-
-    #     # Log the generated SQL for debugging
-    #     current_app.logger.info(f"SQL Query to Create View: {sql}")
-
-    #     # Execute SQL with the date range and vendor id
-    #     db.session.execute(sql, {
-    #         "start_date": start_date, 
-    #         "end_date": end_date, 
-    #         "vendor_id": vendor_id
-    #     })
-    #     db.session.commit()
-
-    #     # Check if the materialized view has entries
-    #     result = db.session.execute(text(f"SELECT COUNT(*) FROM {view_name}")).fetchone()
-    #     current_app.logger.info(f"Entries in View {view_name}: {result[0]}")
-
-    #     current_app.logger.info(f"Materialized View {view_name} created successfully.")
-
-    #     # Refresh the materialized view after updates to keep it up to date
-    #     db.session.execute(text(f"REFRESH MATERIALIZED VIEW {view_name}"))
-    #     db.session.commit()
-
-    # @staticmethod
-    # def create_vendor_slot_view(vendor_id):
-    #     """Creates a SQL materialized view for tracking daily slot availability for a vendor."""
-    #     view_name = f"VENDOR_{vendor_id}_SLOT"
-
-    #     # Drop the materialized view if it already exists
-    #     db.session.execute(text(f"DROP MATERIALIZED VIEW IF EXISTS {view_name}"))
-
-    #     # Generate yearly date range
-    #     start_date = datetime.utcnow().date()
-    #     end_date = start_date + timedelta(days=365)
-
-    #     # SQL for creating materialized view with available_slot column
-    #     sql = text(f"""
-    #     CREATE MATERIALIZED VIEW {view_name} AS
-    #     SELECT 
-    #         {vendor_id} AS vendor_id,
-    #         gs.date,
-    #         s.id AS slot_id,
-    #         s.is_available,  -- Availability flag for the slot
-    #         s.available_slot -- Number of available slots
-    #     FROM 
-    #         (SELECT generate_series(:start_date, :end_date, '1 day'::INTERVAL) AS date) gs
-    #     CROSS JOIN slots s  -- Cross join with all slots for the vendor
-    #     WHERE s.is_available = TRUE  -- Only include available slots
-    #     AND s.gaming_type_id IN (SELECT id FROM available_games WHERE vendor_id = :vendor_id)  -- Ensure the slot belongs to the given vendor
-    #     ORDER BY gs.date, s.id;  -- Ordering by date and slot_id
-    #     """)
-
-    #     # Log the generated SQL for debugging
-    #     current_app.logger.info(f"SQL Query to Create View: {sql}")
-
-    #     # Execute SQL with the date range and vendor id
-    #     db.session.execute(sql, {
-    #         "start_date": start_date, 
-    #         "end_date": end_date, 
-    #         "vendor_id": vendor_id
-    #     })
-    #     db.session.commit()
-
-    #     # Check if the materialized view has entries
-    #     result = db.session.execute(text(f"SELECT COUNT(*) FROM {view_name}")).fetchone()
-    #     current_app.logger.info(f"Entries in View {view_name}: {result[0]}")
-
-    #     current_app.logger.info(f"Materialized View {view_name} created successfully.")
-
-    #     # Refresh the materialized view after updates to keep it up to date
-    #     db.session.execute(text(f"REFRESH MATERIALIZED VIEW {view_name}"))
-    #     db.session.commit()
-
-
     @staticmethod
     def create_vendor_slot_table(vendor_id):
         """Creates a table for tracking daily slot availability for a vendor."""
@@ -831,6 +567,31 @@ class VendorService:
         """)
 
         db.session.execute(sql_insert, {"start_date": start_date, "end_date": end_date, "vendor_id": vendor_id})
+        db.session.commit()
+
+        current_app.logger.info(f"Table {table_name} created and populated successfully.")
+
+    @staticmethod
+    def create_vendor_console_availability_table(vendor_id):
+        """Creates a table for tracking console availability for a vendor."""
+        table_name = f"VENDOR_{vendor_id}_CONSOLE_AVAILABILITY"
+
+        # Drop the table if it already exists
+        db.session.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
+
+        # Create the table
+        sql_create = text(f"""
+        CREATE TABLE {table_name} (
+            vendor_id INT NOT NULL,
+            console_id INT NOT NULL,
+            game_id INT NOT NULL,
+            is_available BOOLEAN NOT NULL,
+            total_available INT NOT NULL,
+            PRIMARY KEY (vendor_id, console_id)
+        )
+        """)
+
+        db.session.execute(sql_create)
         db.session.commit()
 
         current_app.logger.info(f"Table {table_name} created and populated successfully.")
