@@ -586,7 +586,6 @@ class VendorService:
             console_id INT NOT NULL,
             game_id INT NOT NULL,
             is_available BOOLEAN NOT NULL,
-            total_available INT NOT NULL,
             PRIMARY KEY (vendor_id, console_id)
         )
         """)
