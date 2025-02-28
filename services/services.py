@@ -188,6 +188,9 @@ class VendorService:
             # Create the vendor-specific console availbility 
             VendorService.create_vendor_console_availability_table(vendor.id)
 
+            # Create the vendor-dashboard dynamic table 
+            VendorService.create_vendor_dashboard_table(vendor.id)
+
             return vendor
 
         except Exception as e:
@@ -594,3 +597,37 @@ class VendorService:
         db.session.commit()
 
         current_app.logger.info(f"Table {table_name} created and populated successfully.")
+
+    
+    @staticmethod
+    def create_vendor_dashboard_table(vendor_id):
+        """Creates a table for tracking vendor dashboard details."""
+        table_name = f"VENDOR_{vendor_id}_DASHBOARD"
+
+        # Drop the table if it already exists
+        db.session.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
+
+        # Create the table
+        sql_create = text(f"""
+            CREATE TABLE {table_name} (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(255) NOT NULL,
+                user_id INT NOT NULL,
+                start_time TIME NOT NULL,
+                end_time TIME NOT NULL,
+                date DATE NOT NULL,
+                book_id INT NOT NULL,
+                extra_played_time INTERVAL DEFAULT '00:00:00',
+                game_id INT NOT NULL,
+                game_name VARCHAR(255) NOT NULL,
+                console_id INT NOT NULL,
+                extra_pay_status BOOLEAN DEFAULT FALSE,
+                extra_pay_trans_id VARCHAR(255) NULL,
+                status BOOLEAN DEFAULT TRUE
+            )
+        """)
+
+        db.session.execute(sql_create)
+        db.session.commit()
+
+        current_app.logger.info(f"Table {table_name} created successfully.")
