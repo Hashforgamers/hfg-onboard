@@ -623,7 +623,8 @@ class VendorService:
                 console_id INT NOT NULL,
                 extra_pay_status BOOLEAN DEFAULT FALSE,
                 extra_pay_trans_id VARCHAR(255) NULL,
-                status BOOLEAN DEFAULT TRUE
+                status BOOLEAN DEFAULT TRUE,
+                book_status VARCHAR(255) NULL
             )
         """)
 
