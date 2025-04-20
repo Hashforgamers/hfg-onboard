@@ -191,6 +191,9 @@ class VendorService:
             # Create the vendor-dashboard dynamic table 
             VendorService.create_vendor_dashboard_table(vendor.id)
 
+            #Promo Table for Dynamic Discount for Vendor
+            VendorService.create_vendor_promo_table(vendor.id)
+        
             return vendor
 
         except Exception as e:
@@ -631,4 +634,29 @@ class VendorService:
         db.session.execute(sql_create)
         db.session.commit()
 
+        current_app.logger.info(f"Table {table_name} created successfully.")
+
+    @staticmethod
+    def create_vendor_promo_table(vendor_id: int):
+        """Creates a vendor-specific promo detail table."""
+        table_name = f"VENDOR_{vendor_id}_PROMO_DETAIL"
+
+        # Drop the table if it already exists (optional)
+        db.session.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
+
+        # Create the table with relevant fields
+        sql_create = text(f"""
+            CREATE TABLE {table_name} (
+                id SERIAL PRIMARY KEY,
+                booking_id INT NOT NULL,
+                transaction_id INT NOT NULL,
+                promo_code VARCHAR(50),
+                discount_applied FLOAT,
+                actual_price FLOAT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        db.session.execute(sql_create)
+        db.session.commit()
         current_app.logger.info(f"Table {table_name} created successfully.")
