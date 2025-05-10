@@ -22,13 +22,17 @@ def generate_credentials(length=8):
     password = ''.join(random.choice(letters + digits) for i in range(length))
     return username, password
 
-def send_email(subject, recipients, body):
+def send_email(subject, recipients, body, html=None):
     msg = Message(subject, recipients=recipients)
     msg.body = body
+    if html:
+        msg.html = html
     current_app.logger.info(f"msg: {msg}")
-    mail.send(msg)
-    current_app.logger.info(f"Mail Sent Succussfully")
-    
+    try:
+        mail.send(msg)
+        current_app.logger.info("Mail Sent Successfully")
+    except Exception as e:
+        current_app.logger.error(f"Failed to send email: {e}")
 
 def format_filename(vendor_name, document_name):
     """Format the filename as YYYYMMDD_<Vendor_name>_<document_name_without_space_and_in_lower_case>."""
