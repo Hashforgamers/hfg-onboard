@@ -251,12 +251,61 @@ class VendorService:
 
         current_app.logger.info(f"Generated credentials for vendor: {vendor.owner_name}.")
         
-        # Send Credentials via Email
+        # # Send Credentials via Email
+        # send_email(
+        #     subject='Your Vendor Account Credentials',
+        #     recipients=[vendor.contact_info.email],
+        #     body=f"Hello {vendor.owner_name},\n\nYour account has been created.\nUsername: {username}\nPassword: {password}\n\n With Profile status as {vendor_status.status}"
+        # )
         send_email(
-            subject='Your Vendor Account Credentials',
+            subject=f"""Welcome to Hash, {vendor.owner_name} – Your Gaming Dashboard is Ready!""",
             recipients=[vendor.contact_info.email],
-            body=f"Hello {vendor.owner_name},\n\nYour account has been created.\nUsername: {username}\nPassword: {password}\n\n With Profile status as {vendor_status.status}"
+            body="",  # Optional: can keep plain-text fallback
+            html=f"""<!DOCTYPE html>
+            <html lang="en">
+            <head>
+            <meta charset="UTF-8">
+            <title>Welcome to Hash</title>
+            </head>
+            <body style="font-family: 'Segoe UI', sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
+            <div style="max-width: 640px; margin: auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); overflow: hidden;">
+
+                <div style="background: linear-gradient(to right, #000000, #550000); color: #fff; text-align: center; padding: 30px 20px;">
+                <h1 style="margin: 0; font-size: 24px;">Welcome to Hash</h1>
+                <div style="font-size: 14px; color: #ccc; margin-top: 10px;">Your gaming café, streamlined.</div>
+                </div>
+
+                <div style="padding: 30px; color: #333;">
+                <p>Hi {vendor.owner_name},</p>
+                <p>We’re thrilled 🎉 to welcome <strong>{vendor.cafe_name}</strong> to the Hash platform. Your account has been successfully onboarded and is now active.</p>
+
+                <p>Here are your login credentials:</p>
+                <div style="background-color: #f9f9f9; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 20px;">
+                    <p style="margin: 0;"><strong>Email:</strong> {vendor.contact_info.email}</p>
+                    <p style="margin: 0;"><strong>Password:</strong> {password}</p>
+                    <p style="margin: 10px 0 0;">
+                    <a href="https://v0-hash-landing-page-hythuqlxsue.vercel.app/login" target="_blank" style="color: #550000; text-decoration: underline;">
+                        Log In to Your Dashboard
+                    </a>
+                    </p>
+                </div>
+
+                <p>Profile status: <strong>{vendor_status.status}</strong></p>
+
+                <p>🔧 You can now manage bookings, consoles, track statistics, and host tournaments—all from one place.</p>
+                <p>If you have any questions or need help getting started, our team is here for you!</p>
+                <p style="margin-top: 30px;">Happy gaming,<br><strong>The Hash Team</strong></p>
+                </div>
+
+                <div style="text-align: center; padding: 20px; font-size: 12px; color: #888; background-color: #fafafa;">
+                &copy; 2025 Hash Platform. All rights reserved.
+                </div>
+
+            </div>
+            </body>
+            </html>"""
         )
+
 
     @staticmethod
     def get_drive_service():
