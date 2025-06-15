@@ -32,6 +32,7 @@ from sqlalchemy import and_
 
 
 
+
 class VendorService:
 
     @staticmethod
@@ -455,36 +456,59 @@ class VendorService:
             current_app.logger.error(f"Error verifying documents: {e}")
             return {'message': 'An error occurred while verifying documents', 'error': str(e)}, 500
 
-
     # @staticmethod
     # def get_all_vendors_with_status():
     #     """
     #     Retrieve all vendors with their statuses and relevant information for the salesperson dashboard.
-        
+
     #     :return: List of dictionaries containing vendor information and statuses.
     #     """
     #     try:
     #         vendors_data = []
-            
-    #         # Updated query to use 'cafe_name' instead of 'name'
+
     #         results = db.session.query(
     #             Vendor.id.label('vendor_id'),
-    #             Vendor.cafe_name.label('cafe_name'),
-    #             Vendor.owner_name.label('owner_name'),
-    #             VendorStatus.status.label('status'),
-    #             Vendor.created_at.label('created_at'),
-    #             Vendor.updated_at.label('updated_at'),
+    #             Vendor.cafe_name,
+    #             Vendor.owner_name,
+    #             VendorStatus.status,
+    #             Vendor.created_at,
+    #             Vendor.updated_at,
+    #             ContactInfo.email,
+    #             ContactInfo.phone,
+    #             PhysicalAddress.addressLine1,
+    #             PhysicalAddress.addressLine2,
+    #             PhysicalAddress.pincode,
+    #             PhysicalAddress.state,
+    #             PhysicalAddress.country,
+    #             PhysicalAddress.latitude,
+    #             PhysicalAddress.longitude,
     #             func.count(Document.id).label('total_documents'),
     #             func.sum(case((Document.status == 'verified', 1), else_=0)).label('verified_documents')
     #         ).join(
     #             VendorStatus, VendorStatus.vendor_id == Vendor.id
     #         ).outerjoin(
     #             Document, Document.vendor_id == Vendor.id
+    #         ).outerjoin(
+    #             ContactInfo,
+    #             and_(
+    #                 ContactInfo.parent_id == Vendor.id,
+    #                 ContactInfo.parent_type == 'vendor'
+    #             )
+    #         ).outerjoin(
+    #             PhysicalAddress,
+    #             and_(
+    #                 PhysicalAddress.parent_id == Vendor.id,
+    #                 PhysicalAddress.parent_type == 'vendor',
+    #                 PhysicalAddress.is_active == True
+    #             )
     #         ).group_by(
-    #             Vendor.id, VendorStatus.status
+    #             Vendor.id, Vendor.cafe_name, Vendor.owner_name,
+    #             VendorStatus.status, Vendor.created_at, Vendor.updated_at,
+    #             ContactInfo.email, ContactInfo.phone,
+    #             PhysicalAddress.addressLine1, PhysicalAddress.addressLine2,
+    #             PhysicalAddress.pincode, PhysicalAddress.state, PhysicalAddress.country, PhysicalAddress.latitude, PhysicalAddress.longitude
     #         ).all()
 
-    #         # Construct response data
     #         for result in results:
     #             vendors_data.append({
     #                 "vendor_id": result.vendor_id,
@@ -493,6 +517,17 @@ class VendorService:
     #                 "status": result.status,
     #                 "created_at": result.created_at,
     #                 "updated_at": result.updated_at,
+    #                 "email": result.email,
+    #                 "phone": result.phone,
+    #                 "address": {
+    #                     "addressLine1": result.addressLine1,
+    #                     "addressLine2": result.addressLine2,
+    #                     "pincode": result.pincode,
+    #                     "state": result.state,
+    #                     "country": result.country,
+    #                     "longitude":result.longitude,
+    #                     "latitude":result.latitude
+    #                 },
     #                 "total_documents": result.total_documents,
     #                 "verified_documents": result.verified_documents
     #             })
@@ -506,7 +541,7 @@ class VendorService:
     @staticmethod
     def get_all_vendors_with_status():
         """
-        Retrieve all vendors with their statuses and relevant information for the salesperson dashboard.
+        Retrieve all vendors with their statuses, timing info, and relevant information for the salesperson dashboard.
 
         :return: List of dictionaries containing vendor information and statuses.
         """
@@ -529,10 +564,14 @@ class VendorService:
                 PhysicalAddress.country,
                 PhysicalAddress.latitude,
                 PhysicalAddress.longitude,
+                Timing.opening_time,
+                Timing.closing_time,
                 func.count(Document.id).label('total_documents'),
                 func.sum(case((Document.status == 'verified', 1), else_=0)).label('verified_documents')
             ).join(
                 VendorStatus, VendorStatus.vendor_id == Vendor.id
+            ).join(
+                Timing, Timing.id == Vendor.timing_id  # join timing table
             ).outerjoin(
                 Document, Document.vendor_id == Vendor.id
             ).outerjoin(
@@ -553,7 +592,9 @@ class VendorService:
                 VendorStatus.status, Vendor.created_at, Vendor.updated_at,
                 ContactInfo.email, ContactInfo.phone,
                 PhysicalAddress.addressLine1, PhysicalAddress.addressLine2,
-                PhysicalAddress.pincode, PhysicalAddress.state, PhysicalAddress.country, PhysicalAddress.latitude, PhysicalAddress.longitude
+                PhysicalAddress.pincode, PhysicalAddress.state, PhysicalAddress.country,
+                PhysicalAddress.latitude, PhysicalAddress.longitude,
+                Timing.opening_time, Timing.closing_time
             ).all()
 
             for result in results:
@@ -572,9 +613,11 @@ class VendorService:
                         "pincode": result.pincode,
                         "state": result.state,
                         "country": result.country,
-                        "longitude":result.longitude,
-                        "latitude":result.latitude
+                        "longitude": result.longitude,
+                        "latitude": result.latitude
                     },
+                    "opening_time": result.opening_time,
+                    "closing_time": result.closing_time,
                     "total_documents": result.total_documents,
                     "verified_documents": result.verified_documents
                 })
