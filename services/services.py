@@ -616,8 +616,9 @@ class VendorService:
                         "longitude": result.longitude,
                         "latitude": result.latitude
                     },
-                    "opening_time": result.opening_time,
-                    "closing_time": result.closing_time,
+                   # Convert time to string (e.g., 'HH:MM:SS')
+                    "opening_time": result.opening_time.strftime("%H:%M:%S") if result.opening_time else None,
+                    "closing_time": result.closing_time.strftime("%H:%M:%S") if result.closing_time else None,
                     "total_documents": result.total_documents,
                     "verified_documents": result.verified_documents
                 })
