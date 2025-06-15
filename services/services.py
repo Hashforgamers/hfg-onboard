@@ -527,6 +527,8 @@ class VendorService:
                 PhysicalAddress.pincode,
                 PhysicalAddress.state,
                 PhysicalAddress.country,
+                PhysicalAddress.latitude,
+                PhysicalAddress.longitude,
                 func.count(Document.id).label('total_documents'),
                 func.sum(case((Document.status == 'verified', 1), else_=0)).label('verified_documents')
             ).join(
@@ -569,7 +571,9 @@ class VendorService:
                         "addressLine2": result.addressLine2,
                         "pincode": result.pincode,
                         "state": result.state,
-                        "country": result.country
+                        "country": result.country,
+                        "longitude":result.longitude,
+                        "latitude":result.latitude
                     },
                     "total_documents": result.total_documents,
                     "verified_documents": result.verified_documents
