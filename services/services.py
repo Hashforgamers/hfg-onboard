@@ -553,7 +553,7 @@ class VendorService:
                 VendorStatus.status, Vendor.created_at, Vendor.updated_at,
                 ContactInfo.email, ContactInfo.phone,
                 PhysicalAddress.addressLine1, PhysicalAddress.addressLine2,
-                PhysicalAddress.pincode, PhysicalAddress.state, PhysicalAddress.country
+                PhysicalAddress.pincode, PhysicalAddress.state, PhysicalAddress.country, PhysicalAddress.latitude, PhysicalAddress.longitude
             ).all()
 
             for result in results:
