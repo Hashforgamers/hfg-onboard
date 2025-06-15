@@ -28,6 +28,9 @@ from datetime import datetime, timedelta
 from sqlalchemy import case, func
 from sqlalchemy import text
 
+from sqlalchemy import and_
+
+
 
 class VendorService:
 
