@@ -156,7 +156,7 @@ class VendorService:
                 closing_datetime = datetime.combine(datetime.today(), closing_time)
 
                 while current_time < closing_datetime:
-                    end_time = current_time + timedelta(minutes=60)
+                    end_time = current_time + timedelta(minutes=data.get("slot_duration"))
                     if end_time > closing_datetime:
                         break
 
