@@ -154,6 +154,19 @@ def get_vendor_dashboard():
         current_app.logger.error(f"Error fetching vendor dashboard: {e}")
         return jsonify({'message': 'An error occurred while fetching vendor data', 'error': str(e)}), 500
 
+@vendor_bp.route('/vendor/getAllGamingCafe', methods=['GET'])
+def get_all_gaming_cafe():
+    """
+    API to retrieve all vendors with their statuses and relevant information for the salesperson dashboard.
+    """
+    try:
+        response_data = VendorService.get_all_gaming_cafe()
+        return jsonify(response_data), 200
+    except Exception as e:
+        current_app.logger.error(f"Error fetching vendor dashboard: {e}")
+        return jsonify({'message': 'An error occurred while fetching vendor data', 'error': str(e)}), 500
+
+
 @vendor_bp.route('/upload-photos/<int:vendor_id>', methods=['POST'])
 def upload_photos(vendor_id):
     """API endpoint to upload photos to Google Drive."""
