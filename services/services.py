@@ -256,7 +256,7 @@ class VendorService:
     @staticmethod
     def generate_credentials_and_notify(vendor):
         """Generate credentials or link to existing ones, then notify vendor."""
-        email = vendor.contact_info.email
+        email = vendor.account.email
 
         # Step 1: Check if PasswordManager already exists for this email
         existing_password_manager = (
