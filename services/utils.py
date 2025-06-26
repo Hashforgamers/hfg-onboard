@@ -8,6 +8,7 @@ from flask import current_app
 from datetime import datetime
 import re
 from werkzeug.utils import secure_filename
+from models.vendorPin import VendorPin
 
 ALLOWED_EXTENSIONS = {'pdf'}
 
