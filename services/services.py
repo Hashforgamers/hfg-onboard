@@ -264,6 +264,7 @@ class VendorService:
             .join(Vendor, Vendor.id == PasswordManager.parent_id)
             .join(ContactInfo, Vendor.contact_info)
             .filter(ContactInfo.email == email)
+            .filter(PasswordManager.parent_type == 'vendor') 
             .first()
         )
 
