@@ -22,6 +22,12 @@ def generate_credentials(length=8):
     password = ''.join(random.choice(letters + digits) for i in range(length))
     return username, password
 
+def generate_unique_vendor_pin():
+    while True:
+        pin = "{:04d}".format(random.randint(0, 9999))
+        if not VendorPin.query.filter_by(pin_code=pin).first():
+            return pin
+
 def send_email(subject, recipients, body, html=None):
     msg = Message(subject, recipients=recipients)
     msg.body = body

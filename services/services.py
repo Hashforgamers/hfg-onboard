@@ -16,9 +16,11 @@ from models.passwordManager import PasswordManager
 from models.vendorStatus import VendorStatus
 from models.uploadedImage import Image
 from models.slots import Slot
+from models.vendorAccount import VendorAccount
+
 
 from db.extensions import db
-from .utils import send_email, generate_credentials
+from .utils import send_email, generate_credentials, generate_unique_vendor_pin
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from google.oauth2 import service_account
@@ -43,17 +45,43 @@ class VendorService:
         current_app.logger.info("Logging Started")
         
         try:
+            # Step 0: Handle optional parent vendor account (multi-café support)
+            vendor_account_email = data.get("vendor_account_email")
+            vendor_account = None
+
+            if vendor_account_email:
+                current_app.logger.debug(f"Received vendor_account_email: {vendor_account_email}")
+                vendor_account = VendorAccount.query.filter_by(email=vendor_account_email).first()
+                
+                if not vendor_account:
+                    current_app.logger.info(f"No existing VendorAccount found for email: {vendor_account_email}. Creating new one.")
+                    vendor_account = VendorAccount(email=vendor_account_email)
+                    db.session.add(vendor_account)
+                    db.session.flush()  # Ensure ID is available
+                else:
+                    current_app.logger.info(f"Existing VendorAccount found with ID: {vendor_account.id}")
+
             # Step 1: Create Vendor placeholder
             vendor = Vendor(
                 cafe_name=data.get('cafe_name'),
                 owner_name=data.get('owner_name'),
                 description=data.get('description', ''),
-                business_registration_id=None,  # Will be updated later
-                timing_id=None  # Will be updated later
+                business_registration_id=None,
+                timing_id=None,
+                account=vendor_account  # ← this links it
             )
             db.session.add(vendor)
             db.session.flush()  # Ensure vendor.id is generated
             current_app.logger.info(f"Vendor created with ID: {vendor.id}")
+
+            # Step X: Create VendorPin
+            vendor_pin = VendorPin(
+                vendor_id=vendor.id,
+                pin_code=generate_unique_vendor_pin()
+            )
+            db.session.add(vendor_pin)
+            db.session.flush()
+            current_app.logger.info(f"VendorPin created for Vendor ID {vendor.id} with PIN {vendor_pin.pin_code}")
 
             # Step 2: Create ContactInfo
             contact_info = ContactInfo(
@@ -227,88 +255,45 @@ class VendorService:
 
     @staticmethod
     def generate_credentials_and_notify(vendor):
-        """Generate credentials for the vendor and send them via email."""
-        username, password = generate_credentials()
-        credential_username = username
-        credential_password = password
-        
-        # Vendor Credntial storing in DB
-        password_manager = PasswordManager(
-            userid=vendor.id,
-            password=credential_password,
-            parent_id=vendor.id,
-            parent_type="vendor"
+        """Generate credentials or link to existing ones, then notify vendor."""
+        email = vendor.contact_info.email
+
+        # Step 1: Check if PasswordManager already exists for this email
+        existing_password_manager = (
+            db.session.query(PasswordManager)
+            .join(Vendor, Vendor.id == PasswordManager.parent_id)
+            .join(ContactInfo, Vendor.contact_info)
+            .filter(ContactInfo.email == email)
+            .first()
         )
-        db.session.add(password_manager)
-        db.session.flush()
-        current_app.logger.info(f"VendorCredential instances created: {password_manager}")
-    
-        #  Store initial vendor status as pending verification
+
+        if existing_password_manager:
+            # Already has credentials — link this vendor to same account
+            password_manager = existing_password_manager
+            current_app.logger.info(f"Linked vendor {vendor.id} to existing credentials.")
+        else:
+            # Generate new credentials
+            username, password = generate_credentials()
+            password_manager = PasswordManager(
+                userid=vendor.id,
+                password=password,
+                parent_id=vendor.id,
+                parent_type="vendor"
+            )
+            db.session.add(password_manager)
+            db.session.flush()
+            current_app.logger.info(f"Created new credentials for vendor {vendor.id}")
+
+
+        # Step 2: Create VendorStatus regardless
         vendor_status = VendorStatus(
             vendor_id=vendor.id,
-            status="pending_verification"  
+            status="pending_verification"
         )
         db.session.add(vendor_status)
         db.session.flush()
+
         db.session.commit()
-        current_app.logger.info(f"VendorStatus instances created")
-
-        current_app.logger.info(f"Generated credentials for vendor: {vendor.owner_name}.")
-        
-        # # Send Credentials via Email
-        # send_email(
-        #     subject='Your Vendor Account Credentials',
-        #     recipients=[vendor.contact_info.email],
-        #     body=f"Hello {vendor.owner_name},\n\nYour account has been created.\nUsername: {username}\nPassword: {password}\n\n With Profile status as {vendor_status.status}"
-        # )
-        send_email(
-            subject=f"""Welcome to Hash, {vendor.owner_name} – Your Gaming Dashboard is Ready!""",
-            recipients=[vendor.contact_info.email],
-            body="",  # Optional: can keep plain-text fallback
-            html=f"""<!DOCTYPE html>
-            <html lang="en">
-            <head>
-            <meta charset="UTF-8">
-            <title>Welcome to Hash</title>
-            </head>
-            <body style="font-family: 'Segoe UI', sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
-            <div style="max-width: 640px; margin: auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); overflow: hidden;">
-
-                <div style="background: linear-gradient(to right, #000000, #550000); color: #fff; text-align: center; padding: 30px 20px;">
-                <h1 style="margin: 0; font-size: 24px;">Welcome to Hash</h1>
-                <div style="font-size: 14px; color: #ccc; margin-top: 10px;">Your gaming café, streamlined.</div>
-                </div>
-
-                <div style="padding: 30px; color: #333;">
-                <p>Hi {vendor.owner_name},</p>
-                <p>We’re thrilled 🎉 to welcome <strong>{vendor.cafe_name}</strong> to the Hash platform. Your account has been successfully onboarded and is now active.</p>
-
-                <p>Here are your login credentials:</p>
-                <div style="background-color: #f9f9f9; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 20px;">
-                    <p style="margin: 0;"><strong>Email:</strong> {vendor.contact_info.email}</p>
-                    <p style="margin: 0;"><strong>Password:</strong> {password}</p>
-                    <p style="margin: 10px 0 0;">
-                    <a href="https://v0-hash-landing-page-hythuqlxsue.vercel.app/login" target="_blank" style="color: #550000; text-decoration: underline;">
-                        Log In to Your Dashboard
-                    </a>
-                    </p>
-                </div>
-
-                <p>Profile status: <strong>{vendor_status.status}</strong></p>
-
-                <p>🔧 You can now manage bookings, consoles, track statistics, and host tournaments—all from one place.</p>
-                <p>If you have any questions or need help getting started, our team is here for you!</p>
-                <p style="margin-top: 30px;">Happy gaming,<br><strong>The Hash Team</strong></p>
-                </div>
-
-                <div style="text-align: center; padding: 20px; font-size: 12px; color: #888; background-color: #fafafa;">
-                &copy; 2025 Hash Platform. All rights reserved.
-                </div>
-
-            </div>
-            </body>
-            </html>"""
-        )
 
 
     @staticmethod
