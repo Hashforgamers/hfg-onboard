@@ -14,14 +14,6 @@ class PasswordManager(db.Model):
     parent_id = Column(Integer, nullable=False)
     parent_type = Column(String(50), nullable=False)
 
-    # Polymorphic setup for distinguishing between Vendor and User
-    @declared_attr
-    def __mapper_args__(cls):
-        return {
-            'polymorphic_on': cls.parent_type,
-            'polymorphic_identity': 'password_manager'
-        }
-
     # Relationships to Vendor and User using polymorphism
     @declared_attr
     def vendor(cls):

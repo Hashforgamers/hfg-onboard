@@ -16,9 +16,11 @@ from models.passwordManager import PasswordManager
 from models.vendorStatus import VendorStatus
 from models.uploadedImage import Image
 from models.slots import Slot
+from models.vendorAccount import VendorAccount
+from models.vendorPin import VendorPin
 
 from db.extensions import db
-from .utils import send_email, generate_credentials
+from .utils import send_email, generate_credentials, generate_unique_vendor_pin
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from google.oauth2 import service_account
@@ -27,6 +29,10 @@ from datetime import datetime, timedelta
 
 from sqlalchemy import case, func
 from sqlalchemy import text
+
+from sqlalchemy import and_
+from sqlalchemy.orm import joinedload
+
 
 
 class VendorService:
@@ -39,17 +45,43 @@ class VendorService:
         current_app.logger.info("Logging Started")
         
         try:
+            # Step 0: Handle optional parent vendor account (multi-café support)
+            vendor_account_email = data.get("vendor_account_email")
+            vendor_account = None
+
+            if vendor_account_email:
+                current_app.logger.debug(f"Received vendor_account_email: {vendor_account_email}")
+                vendor_account = VendorAccount.query.filter_by(email=vendor_account_email).first()
+                
+                if not vendor_account:
+                    current_app.logger.info(f"No existing VendorAccount found for email: {vendor_account_email}. Creating new one.")
+                    vendor_account = VendorAccount(email=vendor_account_email)
+                    db.session.add(vendor_account)
+                    db.session.flush()  # Ensure ID is available
+                else:
+                    current_app.logger.info(f"Existing VendorAccount found with ID: {vendor_account.id}")
+
             # Step 1: Create Vendor placeholder
             vendor = Vendor(
                 cafe_name=data.get('cafe_name'),
                 owner_name=data.get('owner_name'),
                 description=data.get('description', ''),
-                business_registration_id=None,  # Will be updated later
-                timing_id=None  # Will be updated later
+                business_registration_id=None,
+                timing_id=None,
+                account=vendor_account  # ← this links it
             )
             db.session.add(vendor)
             db.session.flush()  # Ensure vendor.id is generated
             current_app.logger.info(f"Vendor created with ID: {vendor.id}")
+
+            # Step X: Create VendorPin
+            vendor_pin = VendorPin(
+                vendor_id=vendor.id,
+                pin_code=generate_unique_vendor_pin()
+            )
+            db.session.add(vendor_pin)
+            db.session.flush()
+            current_app.logger.info(f"VendorPin created for Vendor ID {vendor.id} with PIN {vendor_pin.pin_code}")
 
             # Step 2: Create ContactInfo
             contact_info = ContactInfo(
@@ -152,7 +184,7 @@ class VendorService:
                 closing_datetime = datetime.combine(datetime.today(), closing_time)
 
                 while current_time < closing_datetime:
-                    end_time = current_time + timedelta(minutes=60)
+                    end_time = current_time + timedelta(minutes=data.get("slot_duration"))
                     if end_time > closing_datetime:
                         break
 
@@ -223,88 +255,46 @@ class VendorService:
 
     @staticmethod
     def generate_credentials_and_notify(vendor):
-        """Generate credentials for the vendor and send them via email."""
-        username, password = generate_credentials()
-        credential_username = username
-        credential_password = password
-        
-        # Vendor Credntial storing in DB
-        password_manager = PasswordManager(
-            userid=vendor.id,
-            password=credential_password,
-            parent_id=vendor.id,
-            parent_type="vendor"
+        """Generate credentials or link to existing ones, then notify vendor."""
+        email = vendor.account.email
+
+        # Step 1: Check if PasswordManager already exists for this email
+        existing_password_manager = (
+            db.session.query(PasswordManager)
+            .join(Vendor, Vendor.id == PasswordManager.parent_id)
+            .join(ContactInfo, Vendor.contact_info)
+            .filter(ContactInfo.email == email)
+            .filter(PasswordManager.parent_type == 'vendor') 
+            .first()
         )
-        db.session.add(password_manager)
-        db.session.flush()
-        current_app.logger.info(f"VendorCredential instances created: {password_manager}")
-    
-        #  Store initial vendor status as pending verification
+
+        if existing_password_manager:
+            # Already has credentials — link this vendor to same account
+            password_manager = existing_password_manager
+            current_app.logger.info(f"Linked vendor {vendor.id} to existing credentials.")
+        else:
+            # Generate new credentials
+            username, password = generate_credentials()
+            password_manager = PasswordManager(
+                userid=vendor.id,
+                password=password,
+                parent_id=vendor.id,
+                parent_type="vendor"
+            )
+            db.session.add(password_manager)
+            db.session.flush()
+            current_app.logger.info(f"Created new credentials for vendor {vendor.id}")
+
+
+        # Step 2: Create VendorStatus regardless
         vendor_status = VendorStatus(
             vendor_id=vendor.id,
-            status="pending_verification"  
+            status="pending_verification"
         )
         db.session.add(vendor_status)
         db.session.flush()
+
         db.session.commit()
-        current_app.logger.info(f"VendorStatus instances created")
-
-        current_app.logger.info(f"Generated credentials for vendor: {vendor.owner_name}.")
-        
-        # # Send Credentials via Email
-        # send_email(
-        #     subject='Your Vendor Account Credentials',
-        #     recipients=[vendor.contact_info.email],
-        #     body=f"Hello {vendor.owner_name},\n\nYour account has been created.\nUsername: {username}\nPassword: {password}\n\n With Profile status as {vendor_status.status}"
-        # )
-        send_email(
-            subject=f"""Welcome to Hash, {vendor.owner_name} – Your Gaming Dashboard is Ready!""",
-            recipients=[vendor.contact_info.email],
-            body="",  # Optional: can keep plain-text fallback
-            html=f"""<!DOCTYPE html>
-            <html lang="en">
-            <head>
-            <meta charset="UTF-8">
-            <title>Welcome to Hash</title>
-            </head>
-            <body style="font-family: 'Segoe UI', sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
-            <div style="max-width: 640px; margin: auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); overflow: hidden;">
-
-                <div style="background: linear-gradient(to right, #000000, #550000); color: #fff; text-align: center; padding: 30px 20px;">
-                <h1 style="margin: 0; font-size: 24px;">Welcome to Hash</h1>
-                <div style="font-size: 14px; color: #ccc; margin-top: 10px;">Your gaming café, streamlined.</div>
-                </div>
-
-                <div style="padding: 30px; color: #333;">
-                <p>Hi {vendor.owner_name},</p>
-                <p>We’re thrilled 🎉 to welcome <strong>{vendor.cafe_name}</strong> to the Hash platform. Your account has been successfully onboarded and is now active.</p>
-
-                <p>Here are your login credentials:</p>
-                <div style="background-color: #f9f9f9; padding: 15px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 20px;">
-                    <p style="margin: 0;"><strong>Email:</strong> {vendor.contact_info.email}</p>
-                    <p style="margin: 0;"><strong>Password:</strong> {password}</p>
-                    <p style="margin: 10px 0 0;">
-                    <a href="https://v0-hash-landing-page-hythuqlxsue.vercel.app/login" target="_blank" style="color: #550000; text-decoration: underline;">
-                        Log In to Your Dashboard
-                    </a>
-                    </p>
-                </div>
-
-                <p>Profile status: <strong>{vendor_status.status}</strong></p>
-
-                <p>🔧 You can now manage bookings, consoles, track statistics, and host tournaments—all from one place.</p>
-                <p>If you have any questions or need help getting started, our team is here for you!</p>
-                <p style="margin-top: 30px;">Happy gaming,<br><strong>The Hash Team</strong></p>
-                </div>
-
-                <div style="text-align: center; padding: 20px; font-size: 12px; color: #888; background-color: #fafafa;">
-                &copy; 2025 Hash Platform. All rights reserved.
-                </div>
-
-            </div>
-            </body>
-            </html>"""
-        )
 
 
     @staticmethod
@@ -452,36 +442,65 @@ class VendorService:
             current_app.logger.error(f"Error verifying documents: {e}")
             return {'message': 'An error occurred while verifying documents', 'error': str(e)}, 500
 
-
     @staticmethod
     def get_all_vendors_with_status():
         """
-        Retrieve all vendors with their statuses and relevant information for the salesperson dashboard.
-        
+        Retrieve all vendors with their statuses, timing info, and relevant information for the salesperson dashboard.
+
         :return: List of dictionaries containing vendor information and statuses.
         """
         try:
             vendors_data = []
-            
-            # Updated query to use 'cafe_name' instead of 'name'
+
             results = db.session.query(
                 Vendor.id.label('vendor_id'),
-                Vendor.cafe_name.label('cafe_name'),
-                Vendor.owner_name.label('owner_name'),
-                VendorStatus.status.label('status'),
-                Vendor.created_at.label('created_at'),
-                Vendor.updated_at.label('updated_at'),
+                Vendor.cafe_name,
+                Vendor.owner_name,
+                VendorStatus.status,
+                Vendor.created_at,
+                Vendor.updated_at,
+                ContactInfo.email,
+                ContactInfo.phone,
+                PhysicalAddress.addressLine1,
+                PhysicalAddress.addressLine2,
+                PhysicalAddress.pincode,
+                PhysicalAddress.state,
+                PhysicalAddress.country,
+                PhysicalAddress.latitude,
+                PhysicalAddress.longitude,
+                Timing.opening_time,
+                Timing.closing_time,
                 func.count(Document.id).label('total_documents'),
                 func.sum(case((Document.status == 'verified', 1), else_=0)).label('verified_documents')
             ).join(
                 VendorStatus, VendorStatus.vendor_id == Vendor.id
+            ).join(
+                Timing, Timing.id == Vendor.timing_id  # join timing table
             ).outerjoin(
                 Document, Document.vendor_id == Vendor.id
+            ).outerjoin(
+                ContactInfo,
+                and_(
+                    ContactInfo.parent_id == Vendor.id,
+                    ContactInfo.parent_type == 'vendor'
+                )
+            ).outerjoin(
+                PhysicalAddress,
+                and_(
+                    PhysicalAddress.parent_id == Vendor.id,
+                    PhysicalAddress.parent_type == 'vendor',
+                    PhysicalAddress.is_active == True
+                )
             ).group_by(
-                Vendor.id, VendorStatus.status
+                Vendor.id, Vendor.cafe_name, Vendor.owner_name,
+                VendorStatus.status, Vendor.created_at, Vendor.updated_at,
+                ContactInfo.email, ContactInfo.phone,
+                PhysicalAddress.addressLine1, PhysicalAddress.addressLine2,
+                PhysicalAddress.pincode, PhysicalAddress.state, PhysicalAddress.country,
+                PhysicalAddress.latitude, PhysicalAddress.longitude,
+                Timing.opening_time, Timing.closing_time
             ).all()
 
-            # Construct response data
             for result in results:
                 vendors_data.append({
                     "vendor_id": result.vendor_id,
@@ -490,6 +509,20 @@ class VendorService:
                     "status": result.status,
                     "created_at": result.created_at,
                     "updated_at": result.updated_at,
+                    "email": result.email,
+                    "phone": result.phone,
+                    "address": {
+                        "addressLine1": result.addressLine1,
+                        "addressLine2": result.addressLine2,
+                        "pincode": result.pincode,
+                        "state": result.state,
+                        "country": result.country,
+                        "longitude": result.longitude,
+                        "latitude": result.latitude
+                    },
+                   # Convert time to string (e.g., 'HH:MM:SS')
+                    "opening_time": result.opening_time.strftime("%H:%M:%S") if result.opening_time else None,
+                    "closing_time": result.closing_time.strftime("%H:%M:%S") if result.closing_time else None,
                     "total_documents": result.total_documents,
                     "verified_documents": result.verified_documents
                 })
@@ -500,6 +533,113 @@ class VendorService:
             current_app.logger.error(f"Error in get_all_vendors_with_status: {e}")
             raise
 
+    @staticmethod
+    def get_all_gaming_cafe():
+        """
+        Retrieve all vendors with their statuses, timing info, and amenities for the salesperson dashboard.
+        """
+        try:
+            vendors_data = []
+
+            # Step 1: Fetch core vendor data
+            results = db.session.query(
+                Vendor.id.label('vendor_id'),
+                Vendor.cafe_name,
+                Vendor.owner_name,
+                VendorStatus.status,
+                Vendor.created_at,
+                Vendor.updated_at,
+                ContactInfo.email,
+                ContactInfo.phone,
+                PhysicalAddress.addressLine1,
+                PhysicalAddress.addressLine2,
+                PhysicalAddress.pincode,
+                PhysicalAddress.state,
+                PhysicalAddress.country,
+                PhysicalAddress.latitude,
+                PhysicalAddress.longitude,
+                Timing.opening_time,
+                Timing.closing_time,
+                func.count(Document.id).label('total_documents'),
+                func.sum(case((Document.status == 'verified', 1), else_=0)).label('verified_documents')
+            ).join(
+                VendorStatus, VendorStatus.vendor_id == Vendor.id
+            ).join(
+                Timing, Timing.id == Vendor.timing_id
+            ).outerjoin(
+                Document, Document.vendor_id == Vendor.id
+            ).outerjoin(
+                ContactInfo,
+                and_(
+                    ContactInfo.parent_id == Vendor.id,
+                    ContactInfo.parent_type == 'vendor'
+                )
+            ).outerjoin(
+                PhysicalAddress,
+                and_(
+                    PhysicalAddress.parent_id == Vendor.id,
+                    PhysicalAddress.parent_type == 'vendor',
+                    PhysicalAddress.is_active == True
+                )
+            ).group_by(
+                Vendor.id, Vendor.cafe_name, Vendor.owner_name,
+                VendorStatus.status, Vendor.created_at, Vendor.updated_at,
+                ContactInfo.email, ContactInfo.phone,
+                PhysicalAddress.addressLine1, PhysicalAddress.addressLine2,
+                PhysicalAddress.pincode, PhysicalAddress.state, PhysicalAddress.country,
+                PhysicalAddress.latitude, PhysicalAddress.longitude,
+                Timing.opening_time, Timing.closing_time
+            ).all()
+
+            vendor_ids = [result.vendor_id for result in results]
+
+            # Step 2: Fetch all amenities for those vendors
+            amenities = db.session.query(
+                Amenity.vendor_id,
+                Amenity.name,
+                Amenity.available
+            ).filter(Amenity.vendor_id.in_(vendor_ids)).all()
+
+            # Step 3: Organize amenities by vendor_id
+            amenities_map = {}
+            for amenity in amenities:
+                amenities_map.setdefault(amenity.vendor_id, []).append({
+                    "name": amenity.name,
+                    "available": amenity.available
+                })
+
+            # Step 4: Combine both datasets
+            for result in results:
+                vendors_data.append({
+                    "vendor_id": result.vendor_id,
+                    "cafe_name": result.cafe_name,
+                    "owner_name": result.owner_name,
+                    "status": result.status,
+                    "created_at": result.created_at,
+                    "updated_at": result.updated_at,
+                    "email": result.email,
+                    "phone": result.phone,
+                    "address": {
+                        "addressLine1": result.addressLine1,
+                        "addressLine2": result.addressLine2,
+                        "pincode": result.pincode,
+                        "state": result.state,
+                        "country": result.country,
+                        "longitude": result.longitude,
+                        "latitude": result.latitude
+                    },
+                    "opening_time": result.opening_time.strftime("%H:%M:%S") if result.opening_time else None,
+                    "closing_time": result.closing_time.strftime("%H:%M:%S") if result.closing_time else None,
+                    "total_documents": result.total_documents,
+                    "verified_documents": result.verified_documents,
+                    "amenities": amenities_map.get(result.vendor_id, [])
+                })
+
+            return {"vendors": vendors_data}
+
+        except Exception as e:
+            current_app.logger.error(f"Error in get_all_gaming_cafe: {e}")
+            raise
 
     @staticmethod
     def save_image_to_db(vendor_id, image_id, path):

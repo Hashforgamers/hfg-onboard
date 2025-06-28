@@ -12,6 +12,8 @@ from models.physicalAddress import PhysicalAddress
 from models.contactInfo import ContactInfo
 from models.businessRegistration import BusinessRegistration
 from models.timing import Timing
+from models.vendorAccount import VendorAccount
+from models.vendorPin import VendorPin
 
 class Vendor(db.Model):
     __tablename__ = 'vendors'
@@ -113,6 +115,12 @@ class Vendor(db.Model):
         back_populates='vendor',
         cascade="all, delete"
     )
+
+    # In Vendor model
+    account_id = Column(Integer, ForeignKey('vendor_accounts.id'), nullable=True)
+    account = relationship('VendorAccount', back_populates='vendors')
+
+    pin = relationship('VendorPin', back_populates='vendor', uselist=False, cascade="all, delete-orphan")
 
     def __str__(self):
         return f"Vendor(id={self.id}, cafe_name='{self.cafe_name}', owner_name='{self.owner_name}', description='{self.description}')"
