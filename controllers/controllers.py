@@ -14,7 +14,7 @@ from models.uploadedImage import Image
 from models.bookingQueue import BookingQueue
 from models.booking import Booking
 from models.accessBookingCode import AccessBookingCode
-from extension.extensions import db
+from db.extensions import db
 from datetime import datetime
 
 
