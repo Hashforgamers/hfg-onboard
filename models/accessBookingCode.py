@@ -1,12 +1,12 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from . import db
+from db.extensions import db
 
 class AccessBookingCode(db.Model):
     __tablename__ = 'access_booking_codes'
 
     id = Column(Integer, primary_key=True)
-    booking_id = Column(Integer, ForeignKey('bookings.id'), nullable=False)
-    access_code = Column(String(50), unique=True, nullable=False)
+    access_code = Column(String(6), unique=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
-    booking = relationship('Booking', backref='access_code')
+    bookings = db.relationship('Booking', back_populates='access_code_entry')

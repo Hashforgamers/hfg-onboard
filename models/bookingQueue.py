@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from . import db
+from db.extensions import db
 
 class BookingQueue(db.Model):
     __tablename__ = 'booking_queue'
