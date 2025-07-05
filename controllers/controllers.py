@@ -11,6 +11,12 @@ from services.utils import process_files
 from models.vendor import Vendor
 from models.uploadedImage import Image
 
+from models.bookingQueue import BookingQueue
+from models.booking import Booking
+from models.accessBookingCode import AccessBookingCode
+from extension.extensions import db
+from datetime import datetime
+
 
 vendor_bp = Blueprint('vendor', __name__)
 
@@ -230,3 +236,80 @@ def get_vendor_photos(vendor_id):
     except Exception as e:
         # Handle unexpected errors
         return jsonify({"error": str(e)}), 500
+
+@vendor_bp.route('/bookingQueue', methods=['POST'])
+def insert_to_queue():
+    data = request.get_json()
+    console_id = data.get('console_id')
+    game_id = data.get('game_id')
+    vendor_id = data.get('vendor_id')
+
+    if not console_id or not game_id or not vendor_id:
+        return jsonify({'error': 'Missing fields'}), 400
+
+    queue = BookingQueue(
+        console_id=console_id,
+        game_id=game_id,
+        vendor_id=vendor_id,
+        status='queued'
+    )
+    db.session.add(queue)
+    db.session.commit()
+    return jsonify({'message': 'Queued successfully'}), 201
+
+
+@vendor_bp.route('/bookingQueue', methods=['GET'])
+def poll_queue():
+    console_id = request.args.get('console_id')
+    if not console_id:
+        return jsonify({'error': 'Console ID required'}), 400
+
+    queue_entry = BookingQueue.query.filter_by(console_id=console_id, status='queued').first()
+    if not queue_entry:
+        return jsonify({'message': 'No queued entry found'}), 204
+
+    queue_entry.status = 'started'
+    queue_entry.start_time = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({
+        'booking_id': queue_entry.booking_id,
+        'user_id': queue_entry.user_id,
+        'game_id': queue_entry.game_id,
+        'vendor_id': queue_entry.vendor_id,
+        'status': queue_entry.status,
+        'start_time': queue_entry.start_time,
+        'end_time': queue_entry.end_time
+    })
+
+
+@vendor_bp.route('/accessCodeUnlock', methods=['POST'])
+def unlock_with_code():
+    data = request.get_json()
+    access_code = data.get('access_code')
+    console_id = data.get('console_id')
+    game_id = data.get('game_id')
+    vendor_id = data.get('vendor_id')
+
+    if not access_code or not console_id:
+        return jsonify({'error': 'Missing access_code or console_id'}), 400
+
+    entry = AccessBookingCode.query.filter_by(access_code=access_code).first()
+    if not entry:
+        return jsonify({'error': 'Invalid access code'}), 404
+
+    booking = entry.booking
+
+    queue = BookingQueue(
+        booking_id=booking.id,
+        user_id=booking.user_id,
+        game_id=booking.game_id,
+        vendor_id=vendor_id,
+        console_id=console_id,
+        status='started',
+        start_time=datetime.utcnow()
+    )
+    db.session.add(queue)
+    db.session.commit()
+
+    return jsonify({'message': 'Booking started via access code'}), 200
