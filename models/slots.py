@@ -17,3 +17,4 @@ class Slot(db.Model):
     available_game = relationship('AvailableGame', back_populates='slots')
     
     def __repr__(self):
+        return f"<Slot available_game_id={self.gaming_type_id} time_bracket={self.start_time} - {self.end_time}>"
