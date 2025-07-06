@@ -10,11 +10,14 @@ class Booking(db.Model):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, nullable=False)
     game_id = Column(Integer, nullable=False)
-    slot_id = Column(Integer, nullable=False)
+    slot_id = Column(Integer, ForeignKey('slots.id'), nullable=False)
     status = db.Column(db.String(20), default='pending_verified')  # New field for verification status
     
     access_code_id = Column(Integer, ForeignKey('access_booking_codes.id'), nullable=True)
     access_code_entry = db.relationship('AccessBookingCode', back_populates='bookings')
+
+    # Add this relationship
+    slot = relationship('Slot', back_populates='bookings')
 
     def __repr__(self):
         return f"<Booking user_id={self.user_id} game_id={self.game_id}>"
