@@ -314,7 +314,7 @@ def insert_to_queue():
 
         merged_start = datetime.combine(today, active_group[0].start_time)
         merged_end = datetime.combine(today, active_group[-1].end_time)
-        
+
         queue = BookingQueue(
             booking_id=booking_id,
             console_id=console_id,
@@ -337,27 +337,107 @@ def insert_to_queue():
 
 @vendor_bp.route('/bookingQueue', methods=['GET'])
 def poll_queue():
-    console_id = request.args.get('console_id')
-    if not console_id:
-        return jsonify({'error': 'Console ID required'}), 400
+    try:
+        console_id = request.args.get('console_id')
+        if not console_id:
+            return jsonify({'error': 'Console ID required'}), 400
 
-    queue_entry = BookingQueue.query.filter_by(console_id=console_id, status='queued').first()
-    if not queue_entry:
-        return jsonify({'message': 'No queued entry found'}), 204
+        queue_entry = BookingQueue.query.filter_by(console_id=console_id, status='queued').first()
+        if not queue_entry:
+            return jsonify({'message': 'No queued entry found'}), 204
 
-    queue_entry.status = 'started'
-    queue_entry.start_time = datetime.utcnow()
-    db.session.commit()
+        # Update queue status and start time
+        queue_entry.status = 'started'
+        queue_entry.start_time = datetime.utcnow()
 
-    return jsonify({
-        'booking_id': queue_entry.booking_id,
-        'user_id': queue_entry.user_id,
-        'game_id': queue_entry.game_id,
-        'vendor_id': queue_entry.vendor_id,
-        'status': queue_entry.status,
-        'start_time': queue_entry.start_time,
-        'end_time': queue_entry.end_time
-    })
+        vendor_id = queue_entry.vendor_id
+        user_id = queue_entry.user_id
+        game_id = queue_entry.game_id
+        start_time = queue_entry.start_time
+        end_time = queue_entry.end_time
+
+        # ✅ Fetch relevant slots between start and end time
+        slot_ids = db.session.query(Slot.id).filter(
+            Slot.vendor_id == vendor_id,
+            Slot.start_time >= start_time,
+            Slot.end_time <= end_time
+        ).all()
+        slot_ids = [s.id for s in slot_ids]
+
+        if not slot_ids:
+            return jsonify({"error": "No slots found in time range"}), 404
+
+        # ✅ Fetch all matching bookings
+        bookings = Booking.query.filter(
+            Booking.slot_id.in_(slot_ids),
+            Booking.user_id == user_id,
+            Booking.vendor_id == vendor_id,
+            Booking.game_id == game_id
+        ).all()
+
+        if not bookings:
+            return jsonify({"error": "No relevant bookings found"}), 404
+
+        booking_ids = [b.id for b in bookings]
+
+        # ✅ Dynamic table names
+        console_table_name = f"VENDOR_{vendor_id}_CONSOLE_AVAILABILITY"
+        booking_table_name = f"VENDOR_{vendor_id}_DASHBOARD"
+
+        # ✅ Check console availability
+        sql_check_availability = text(f"""
+            SELECT is_available FROM {console_table_name}
+            WHERE console_id = :console_id AND game_id = :game_id
+        """)
+        result = db.session.execute(sql_check_availability, {
+            "console_id": console_id,
+            "game_id": game_id
+        }).fetchone()
+
+        if not result:
+            return jsonify({"error": "Console not found"}), 404
+
+        if not result.is_available:
+            return jsonify({"error": "Console is already in use"}), 400
+
+        # ✅ Mark console as unavailable
+        sql_update_console_status = text(f"""
+            UPDATE {console_table_name}
+            SET is_available = FALSE
+            WHERE console_id = :console_id AND game_id = :game_id
+        """)
+        db.session.execute(sql_update_console_status, {
+            "console_id": console_id,
+            "game_id": game_id
+        })
+
+        # ✅ Update bookings to 'current' and assign console
+        sql_update_bookings = text(f"""
+            UPDATE {booking_table_name}
+            SET book_status = 'current', console_id = :console_id
+            WHERE book_id = ANY(:booking_ids) AND game_id = :game_id AND book_status = 'upcoming'
+        """)
+        db.session.execute(sql_update_bookings, {
+            "console_id": console_id,
+            "game_id": game_id,
+            "booking_ids": booking_ids
+        })
+
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Queued entry started and console assigned',
+            'booking_ids': booking_ids,
+            'user_id': user_id,
+            'game_id': game_id,
+            'vendor_id': vendor_id,
+            'start_time': queue_entry.start_time,
+            'end_time': queue_entry.end_time
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 
 @vendor_bp.route('/accessCodeUnlock', methods=['POST'])
