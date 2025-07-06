@@ -18,6 +18,8 @@ from db.extensions import db
 from datetime import datetime
 from models.transaction import Transaction
 from models.slots import Slot
+from pytz import timezone
+
 
 
 vendor_bp = Blueprint('vendor', __name__)
