@@ -15,6 +15,9 @@ class Slot(db.Model):
 
     # Relationship with AvailableGame (many-to-one)
     available_game = relationship('AvailableGame', back_populates='slots')
-    
+
+    # Relationship with Booking (one-to-many)
+    bookings = relationship('Booking', back_populates='slot', cascade="all, delete-orphan")
+
     def __repr__(self):
         return f"<Slot available_game_id={self.gaming_type_id} time_bracket={self.start_time} - {self.end_time}>"

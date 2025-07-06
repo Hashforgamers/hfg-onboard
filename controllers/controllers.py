@@ -275,7 +275,10 @@ def insert_to_queue():
         if not today_booking_ids:
             return jsonify({'error': 'No bookings found for today'}), 404
 
-        slots = Slot.query.filter(Slot.booking_id.in_(today_booking_ids)).order_by(Slot.start_time).all()
+        today_bookings = Booking.query.filter(Booking.id.in_(today_booking_ids)).all()
+        slot_ids = {booking.slot_id for booking in today_bookings}
+        slots = Slot.query.filter(Slot.id.in_(slot_ids)).order_by(Slot.start_time).all()
+
         if not slots:
             return jsonify({'error': 'No slots found'}), 404
 
