@@ -312,9 +312,9 @@ def insert_to_queue():
         if not active_group:
             return jsonify({'error': 'No active or recent booking block at this time'}), 400
 
-        merged_start = active_group[0].start_time
-        merged_end = active_group[-1].end_time
-
+        merged_start = datetime.combine(today, active_group[0].start_time)
+        merged_end = datetime.combine(today, active_group[-1].end_time)
+        
         queue = BookingQueue(
             booking_id=booking_id,
             console_id=console_id,
