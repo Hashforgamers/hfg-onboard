@@ -328,6 +328,7 @@ def insert_to_queue():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+        
 @vendor_bp.route('/bookingQueue', methods=['GET'])
 def poll_queue():
     console_id = request.args.get('console_id')
