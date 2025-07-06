@@ -241,8 +241,6 @@ def get_vendor_photos(vendor_id):
         # Handle unexpected errors
         return jsonify({"error": str(e)}), 500
 
-
-
 @vendor_bp.route('/bookingQueue', methods=['POST'])
 def insert_to_queue():
     try:
@@ -260,9 +258,11 @@ def insert_to_queue():
             return jsonify({'error': 'Booking not found'}), 404
 
         user_id = booking.user_id
+
         ist = timezone('Asia/Kolkata')
         now_ist = datetime.now(ist)
         today = now_ist.date()
+        now_time = now_ist.time()
 
         # Fetch today's bookings
         today_transactions = Transaction.query.filter_by(
@@ -270,13 +270,13 @@ def insert_to_queue():
             vendor_id=vendor_id,
             booked_date=today
         ).all()
-        today_booking_ids = [t.booking_id for t in today_transactions]
 
+        today_booking_ids = [t.booking_id for t in today_transactions]
         if not today_booking_ids:
             return jsonify({'error': 'No bookings found for today'}), 404
 
         today_bookings = Booking.query.filter(Booking.id.in_(today_booking_ids)).all()
-        slot_ids = {booking.slot_id for booking in today_bookings}
+        slot_ids = {b.slot_id for b in today_bookings}
         slots = Slot.query.filter(Slot.id.in_(slot_ids)).order_by(Slot.start_time).all()
 
         if not slots:
@@ -287,33 +287,34 @@ def insert_to_queue():
         current_group = [slots[0]]
 
         for i in range(1, len(slots)):
-            prev_slot = current_group[-1]
-            curr_slot = slots[i]
-
-            if curr_slot.start_time == prev_slot.end_time:
-                current_group.append(curr_slot)
+            prev = current_group[-1]
+            curr = slots[i]
+            if curr.start_time == prev.end_time:
+                current_group.append(curr)
             else:
                 grouped_slots.append(current_group)
-                current_group = [curr_slot]
-
+                current_group = [curr]
         grouped_slots.append(current_group)
 
-        # Find group that includes current time
+        # Look for a group that is still valid (within or recently expired)
+        from datetime import datetime as dt, timedelta
+
         active_group = None
         for group in grouped_slots:
-            group_start = group[0].start_time
-            group_end = group[-1].end_time
-            if group_start <= now_ist.time() < group_end:
+            group_start = dt.combine(today, group[0].start_time)
+            group_end = dt.combine(today, group[-1].end_time)
+            now_dt = dt.combine(today, now_time)
+
+            if group_start <= now_dt <= group_end + timedelta(minutes=30):  # 30-min grace
                 active_group = group
                 break
 
         if not active_group:
-            return jsonify({'error': 'No active booking block at this time'}), 400
+            return jsonify({'error': 'No active or recent booking block at this time'}), 400
 
         merged_start = active_group[0].start_time
         merged_end = active_group[-1].end_time
 
-        # Create queue entry
         queue = BookingQueue(
             booking_id=booking_id,
             console_id=console_id,
@@ -333,7 +334,7 @@ def insert_to_queue():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
-        
+
 @vendor_bp.route('/bookingQueue', methods=['GET'])
 def poll_queue():
     console_id = request.args.get('console_id')
