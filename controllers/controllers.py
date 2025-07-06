@@ -17,7 +17,7 @@ from models.accessBookingCode import AccessBookingCode
 from db.extensions import db
 from datetime import datetime
 from models.transaction import Transaction
-from models.slot import Slot
+from models.slots import Slot
 
 
 vendor_bp = Blueprint('vendor', __name__)
