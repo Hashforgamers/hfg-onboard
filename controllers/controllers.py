@@ -11,6 +11,16 @@ from services.utils import process_files
 from models.vendor import Vendor
 from models.uploadedImage import Image
 
+from models.bookingQueue import BookingQueue
+from models.booking import Booking
+from models.accessBookingCode import AccessBookingCode
+from db.extensions import db
+from datetime import datetime
+from models.transaction import Transaction
+from models.slots import Slot
+from pytz import timezone
+
+
 
 vendor_bp = Blueprint('vendor', __name__)
 
@@ -230,3 +240,233 @@ def get_vendor_photos(vendor_id):
     except Exception as e:
         # Handle unexpected errors
         return jsonify({"error": str(e)}), 500
+
+@vendor_bp.route('/bookingQueue', methods=['POST'])
+def insert_to_queue():
+    try:
+        data = request.get_json()
+        console_id = data.get('console_id')
+        game_id = data.get('game_id')
+        vendor_id = data.get('vendor_id')
+        booking_id = data.get('booking_id')
+
+        if not all([console_id, game_id, vendor_id, booking_id]):
+            return jsonify({'error': 'Missing fields'}), 400
+
+        booking = Booking.query.filter_by(id=booking_id).first()
+        if not booking:
+            return jsonify({'error': 'Booking not found'}), 404
+
+        user_id = booking.user_id
+
+        ist = timezone('Asia/Kolkata')
+        now_ist = datetime.now(ist)
+        today = now_ist.date()
+        now_time = now_ist.time()
+
+        # Fetch today's bookings
+        today_transactions = Transaction.query.filter_by(
+            user_id=user_id,
+            vendor_id=vendor_id,
+            booked_date=today
+        ).all()
+
+        today_booking_ids = [t.booking_id for t in today_transactions]
+        if not today_booking_ids:
+            return jsonify({'error': 'No bookings found for today'}), 404
+
+        today_bookings = Booking.query.filter(Booking.id.in_(today_booking_ids)).all()
+        slot_ids = {b.slot_id for b in today_bookings}
+        slots = Slot.query.filter(Slot.id.in_(slot_ids)).order_by(Slot.start_time).all()
+
+        if not slots:
+            return jsonify({'error': 'No slots found'}), 404
+
+        # Group consecutive slots
+        grouped_slots = []
+        current_group = [slots[0]]
+
+        for i in range(1, len(slots)):
+            prev = current_group[-1]
+            curr = slots[i]
+            if curr.start_time == prev.end_time:
+                current_group.append(curr)
+            else:
+                grouped_slots.append(current_group)
+                current_group = [curr]
+        grouped_slots.append(current_group)
+
+        # Look for a group that is still valid (within or recently expired)
+        from datetime import datetime as dt, timedelta
+
+        active_group = None
+        for group in grouped_slots:
+            group_start = dt.combine(today, group[0].start_time)
+            group_end = dt.combine(today, group[-1].end_time)
+            now_dt = dt.combine(today, now_time)
+
+            if group_start <= now_dt <= group_end + timedelta(minutes=30):  # 30-min grace
+                active_group = group
+                break
+
+        if not active_group:
+            return jsonify({'error': 'No active or recent booking block at this time'}), 400
+
+        merged_start = datetime.combine(today, active_group[0].start_time)
+        merged_end = datetime.combine(today, active_group[-1].end_time)
+
+        queue = BookingQueue(
+            booking_id=booking_id,
+            console_id=console_id,
+            game_id=game_id,
+            vendor_id=vendor_id,
+            user_id=user_id,
+            status='queued',
+            start_time=merged_start,
+            end_time=merged_end
+        )
+
+        db.session.add(queue)
+        db.session.commit()
+
+        return jsonify({'message': 'Queued successfully'}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@vendor_bp.route('/bookingQueue', methods=['GET'])
+def poll_queue():
+    try:
+        console_id = request.args.get('console_id')
+        if not console_id:
+            return jsonify({'error': 'Console ID required'}), 400
+
+        queue_entry = BookingQueue.query.filter_by(console_id=console_id, status='queued').first()
+        if not queue_entry:
+            return jsonify({'message': 'No queued entry found'}), 204
+
+        # Update queue status and start time
+        queue_entry.status = 'started'
+        queue_entry.start_time = datetime.utcnow()
+
+        vendor_id = queue_entry.vendor_id
+        user_id = queue_entry.user_id
+        game_id = queue_entry.game_id
+        start_time = queue_entry.start_time
+        end_time = queue_entry.end_time
+
+        # ✅ Fetch relevant slots between start and end time
+        slot_ids = db.session.query(Slot.id).filter(
+            Slot.vendor_id == vendor_id,
+            Slot.start_time >= start_time,
+            Slot.end_time <= end_time
+        ).all()
+        slot_ids = [s.id for s in slot_ids]
+
+        if not slot_ids:
+            return jsonify({"error": "No slots found in time range"}), 404
+
+        # ✅ Fetch all matching bookings
+        bookings = Booking.query.filter(
+            Booking.slot_id.in_(slot_ids),
+            Booking.user_id == user_id,
+            Booking.vendor_id == vendor_id,
+            Booking.game_id == game_id
+        ).all()
+
+        if not bookings:
+            return jsonify({"error": "No relevant bookings found"}), 404
+
+        booking_ids = [b.id for b in bookings]
+
+        # ✅ Dynamic table names
+        console_table_name = f"VENDOR_{vendor_id}_CONSOLE_AVAILABILITY"
+        booking_table_name = f"VENDOR_{vendor_id}_DASHBOARD"
+
+        # ✅ Check console availability
+        sql_check_availability = text(f"""
+            SELECT is_available FROM {console_table_name}
+            WHERE console_id = :console_id AND game_id = :game_id
+        """)
+        result = db.session.execute(sql_check_availability, {
+            "console_id": console_id,
+            "game_id": game_id
+        }).fetchone()
+
+        if not result:
+            return jsonify({"error": "Console not found"}), 404
+
+        if not result.is_available:
+            return jsonify({"error": "Console is already in use"}), 400
+
+        # ✅ Mark console as unavailable
+        sql_update_console_status = text(f"""
+            UPDATE {console_table_name}
+            SET is_available = FALSE
+            WHERE console_id = :console_id AND game_id = :game_id
+        """)
+        db.session.execute(sql_update_console_status, {
+            "console_id": console_id,
+            "game_id": game_id
+        })
+
+        # ✅ Update bookings to 'current' and assign console
+        sql_update_bookings = text(f"""
+            UPDATE {booking_table_name}
+            SET book_status = 'current', console_id = :console_id
+            WHERE book_id = ANY(:booking_ids) AND game_id = :game_id AND book_status = 'upcoming'
+        """)
+        db.session.execute(sql_update_bookings, {
+            "console_id": console_id,
+            "game_id": game_id,
+            "booking_ids": booking_ids
+        })
+
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Queued entry started and console assigned',
+            'booking_ids': booking_ids,
+            'user_id': user_id,
+            'game_id': game_id,
+            'vendor_id': vendor_id,
+            'start_time': queue_entry.start_time,
+            'end_time': queue_entry.end_time
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@vendor_bp.route('/accessCodeUnlock', methods=['POST'])
+def unlock_with_code():
+    data = request.get_json()
+    access_code = data.get('access_code')
+    console_id = data.get('console_id')
+    game_id = data.get('game_id')
+    vendor_id = data.get('vendor_id')
+
+    if not access_code or not console_id:
+        return jsonify({'error': 'Missing access_code or console_id'}), 400
+
+    entry = AccessBookingCode.query.filter_by(access_code=access_code).first()
+    if not entry:
+        return jsonify({'error': 'Invalid access code'}), 404
+
+    booking = entry.booking
+
+    queue = BookingQueue(
+        booking_id=booking.id,
+        user_id=booking.user_id,
+        game_id=booking.game_id,
+        vendor_id=vendor_id,
+        console_id=console_id,
+        status='started',
+        start_time=datetime.utcnow()
+    )
+    db.session.add(queue)
+    db.session.commit()
+
+    return jsonify({'message': 'Booking started via access code'}), 200
