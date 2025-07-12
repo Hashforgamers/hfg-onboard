@@ -241,49 +241,71 @@ class VendorService:
             if not vendor:
                 raise ValueError(f"No vendor found with ID {vendor_id}")
 
-            # Delete related data in reverse creation order
+            # Step 1: Delete related Slots (via AvailableGames)
             current_app.logger.debug("Deleting related Slots")
-            Slot.query.filter_by(gaming_type_id=AvailableGame.id).filter(AvailableGame.vendor_id == vendor_id).delete(synchronize_session=False)
+            Slot.query.filter(
+                Slot.gaming_type_id.in_(
+                    db.session.query(AvailableGame.id).filter_by(vendor_id=vendor_id)
+                )
+            ).delete(synchronize_session=False)
 
+            # Step 2: Delete Available Games
             current_app.logger.debug("Deleting Available Games")
             AvailableGame.query.filter_by(vendor_id=vendor_id).delete(synchronize_session=False)
 
+            # Step 3: Delete Amenities
             current_app.logger.debug("Deleting Amenities")
             Amenity.query.filter_by(vendor_id=vendor_id).delete(synchronize_session=False)
 
+            # Step 4: Delete Opening Days
             current_app.logger.debug("Deleting Opening Days")
             OpeningDay.query.filter_by(vendor_id=vendor_id).delete(synchronize_session=False)
 
+            # Step 5: Nullify foreign key references before deleting Timing and BusinessRegistration
+            current_app.logger.debug("Nullifying vendor timing_id and business_registration_id")
+            vendor.timing_id = None
+            vendor.business_registration_id = None
+            db.session.flush()
+
+            # Step 6: Delete Timing
             current_app.logger.debug("Deleting Timing")
             if vendor.timing_id:
                 Timing.query.filter_by(id=vendor.timing_id).delete(synchronize_session=False)
 
+            # Step 7: Delete Business Registration
             current_app.logger.debug("Deleting Business Registration")
             if vendor.business_registration_id:
                 BusinessRegistration.query.filter_by(id=vendor.business_registration_id).delete(synchronize_session=False)
 
+            # Step 8: Delete Physical Address
             current_app.logger.debug("Deleting Physical Address")
             PhysicalAddress.query.filter_by(parent_id=vendor_id, parent_type="vendor").delete(synchronize_session=False)
 
+            # Step 9: Delete Contact Info
             current_app.logger.debug("Deleting Contact Info")
             ContactInfo.query.filter_by(parent_id=vendor_id, parent_type="vendor").delete(synchronize_session=False)
 
+            # Step 10: Delete Vendor Pin
             current_app.logger.debug("Deleting Vendor Pin")
             VendorPin.query.filter_by(vendor_id=vendor_id).delete(synchronize_session=False)
 
+            # Step 11: Delete Vendor Documents
             current_app.logger.debug("Deleting Vendor Documents")
             Document.query.filter_by(parent_id=vendor_id, parent_type="vendor").delete(synchronize_session=False)
 
-            current_app.logger.debug("Deleting Vendor")
+            # Step 12: Delete Vendor record itself
+            current_app.logger.debug("Deleting Vendor record")
             db.session.delete(vendor)
 
-            # Drop vendor-specific dynamic tables
+            # Step 13: Drop vendor-specific dynamic tables
             VendorService.drop_vendor_slot_table(vendor_id)
             VendorService.drop_vendor_console_availability_table(vendor_id)
             VendorService.drop_vendor_dashboard_table(vendor_id)
             VendorService.drop_vendor_promo_table(vendor_id)
 
             db.session.commit()
+            current_app.logger.info(f"Successfully deboarded vendor ID: {vendor_id}")
+
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"Failed to deboard vendor {vendor_id}: {e}")
