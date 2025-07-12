@@ -233,6 +233,87 @@ class VendorService:
             current_app.logger.error(f"Error onboarding vendor: {e}")
             raise
 
+    @staticmethod
+    def deboard_vendor(vendor_id):
+        current_app.logger.info(f"Starting deboarding process for Vendor ID: {vendor_id}")
+        try:
+            vendor = Vendor.query.get(vendor_id)
+            if not vendor:
+                raise ValueError(f"No vendor found with ID {vendor_id}")
+
+            # Delete related data in reverse creation order
+            current_app.logger.debug("Deleting related Slots")
+            Slot.query.filter_by(gaming_type_id=AvailableGame.id).filter(AvailableGame.vendor_id == vendor_id).delete(synchronize_session=False)
+
+            current_app.logger.debug("Deleting Available Games")
+            AvailableGame.query.filter_by(vendor_id=vendor_id).delete(synchronize_session=False)
+
+            current_app.logger.debug("Deleting Amenities")
+            Amenity.query.filter_by(vendor_id=vendor_id).delete(synchronize_session=False)
+
+            current_app.logger.debug("Deleting Opening Days")
+            OpeningDay.query.filter_by(vendor_id=vendor_id).delete(synchronize_session=False)
+
+            current_app.logger.debug("Deleting Timing")
+            if vendor.timing_id:
+                Timing.query.filter_by(id=vendor.timing_id).delete(synchronize_session=False)
+
+            current_app.logger.debug("Deleting Business Registration")
+            if vendor.business_registration_id:
+                BusinessRegistration.query.filter_by(id=vendor.business_registration_id).delete(synchronize_session=False)
+
+            current_app.logger.debug("Deleting Physical Address")
+            PhysicalAddress.query.filter_by(parent_id=vendor_id, parent_type="vendor").delete(synchronize_session=False)
+
+            current_app.logger.debug("Deleting Contact Info")
+            ContactInfo.query.filter_by(parent_id=vendor_id, parent_type="vendor").delete(synchronize_session=False)
+
+            current_app.logger.debug("Deleting Vendor Pin")
+            VendorPin.query.filter_by(vendor_id=vendor_id).delete(synchronize_session=False)
+
+            current_app.logger.debug("Deleting Vendor Documents")
+            Document.query.filter_by(parent_id=vendor_id, parent_type="vendor").delete(synchronize_session=False)
+
+            current_app.logger.debug("Deleting Vendor")
+            db.session.delete(vendor)
+
+            # Drop vendor-specific dynamic tables
+            VendorService.drop_vendor_slot_table(vendor_id)
+            VendorService.drop_vendor_console_availability_table(vendor_id)
+            VendorService.drop_vendor_dashboard_table(vendor_id)
+            VendorService.drop_vendor_promo_table(vendor_id)
+
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Failed to deboard vendor {vendor_id}: {e}")
+            raise
+
+    @staticmethod
+    def drop_vendor_slot_table(vendor_id):
+        table_name = f"vendor_{vendor_id}_slot"
+        db.session.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
+        current_app.logger.info(f"Dropped slot table: {table_name}")
+
+    @staticmethod
+    def drop_vendor_console_availability_table(vendor_id):
+        table_name = f"vendor_{vendor_id}_console_availability"
+        db.session.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
+        current_app.logger.info(f"Dropped console availability table: {table_name}")
+
+    @staticmethod
+    def drop_vendor_dashboard_table(vendor_id):
+        table_name = f"vendor_{vendor_id}_dashboard"
+        db.session.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
+        current_app.logger.info(f"Dropped dashboard table: {table_name}")
+
+    @staticmethod
+    def drop_vendor_promo_table(vendor_id):
+        table_name = f"vendor_{vendor_id}_promo"
+        db.session.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
+        current_app.logger.info(f"Dropped promo table: {table_name}")
+
+
 
     @staticmethod
     def handle_documents(documents, files, drive_service, vendor_id):
