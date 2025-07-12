@@ -332,7 +332,7 @@ class VendorService:
 
     @staticmethod
     def drop_vendor_promo_table(vendor_id):
-        table_name = f"vendor_{vendor_id}_promo"
+        table_name = f"vendor_{vendor_id}_promo_detail"
         db.session.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
         current_app.logger.info(f"Dropped promo table: {table_name}")
 
