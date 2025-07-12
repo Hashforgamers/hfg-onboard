@@ -291,7 +291,8 @@ class VendorService:
 
             # Step 11: Delete Vendor Documents
             current_app.logger.debug("Deleting Vendor Documents")
-            Document.query.filter_by(parent_id=vendor_id, parent_type="vendor").delete(synchronize_session=False)
+            Document.query.filter_by(vendor_id=vendor_id).delete(synchronize_session=False)
+
 
             # Step 12: Delete Vendor record itself
             current_app.logger.debug("Deleting Vendor record")
