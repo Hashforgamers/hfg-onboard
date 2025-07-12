@@ -42,156 +42,148 @@ class VendorService:
         current_app.logger.debug("Onboard Vendor Started.")
         current_app.logger.debug(f"Received data: {data}")
         current_app.logger.debug(f"Received files: {files}")
-        current_app.logger.info("Logging Started")
         
         try:
-            # Step 0: Handle optional parent vendor account (multi-café support)
-            vendor_account_email = data.get("vendor_account_email")
             vendor_account = None
-
+            vendor_account_email = data.get("vendor_account_email")
+            
             if vendor_account_email:
-                current_app.logger.debug(f"Received vendor_account_email: {vendor_account_email}")
                 vendor_account = VendorAccount.query.filter_by(email=vendor_account_email).first()
-                
                 if not vendor_account:
-                    current_app.logger.info(f"No existing VendorAccount found for email: {vendor_account_email}. Creating new one.")
                     vendor_account = VendorAccount(email=vendor_account_email)
                     db.session.add(vendor_account)
-                    db.session.flush()  # Ensure ID is available
+                    db.session.flush()
+                    current_app.logger.info(f"Created new VendorAccount for {vendor_account_email}")
                 else:
-                    current_app.logger.info(f"Existing VendorAccount found with ID: {vendor_account.id}")
+                    current_app.logger.info(f"Found existing VendorAccount with ID: {vendor_account.id}")
 
-            # Step 1: Create Vendor placeholder
+            # Step 1: Vendor creation
             vendor = Vendor(
-                cafe_name=data.get('cafe_name'),
-                owner_name=data.get('owner_name'),
-                description=data.get('description', ''),
+                cafe_name=data.get("cafe_name"),
+                owner_name=data.get("owner_name"),
+                description=data.get("description", ""),
                 business_registration_id=None,
                 timing_id=None,
-                account=vendor_account  # ← this links it
+                account=vendor_account
             )
             db.session.add(vendor)
-            db.session.flush()  # Ensure vendor.id is generated
+            db.session.flush()
             current_app.logger.info(f"Vendor created with ID: {vendor.id}")
 
-            # Step X: Create VendorPin
+            # Step 2: Vendor PIN
             vendor_pin = VendorPin(
                 vendor_id=vendor.id,
                 pin_code=generate_unique_vendor_pin()
             )
             db.session.add(vendor_pin)
-            db.session.flush()
-            current_app.logger.info(f"VendorPin created for Vendor ID {vendor.id} with PIN {vendor_pin.pin_code}")
 
-            # Step 2: Create ContactInfo
+            # Step 3: Contact Info
+            contact = data.get("contact_info", {})
             contact_info = ContactInfo(
-                email=data['contact_info']['email'],
-                phone=data['contact_info']['phone'],
+                email=contact.get("email"),
+                phone=contact.get("phone"),
                 parent_id=vendor.id,
                 parent_type="vendor"
             )
             db.session.add(contact_info)
-            db.session.flush()
-            current_app.logger.info(f"ContactInfo created with ID: {contact_info.id}")
 
-            # Step 3: Create PhysicalAddress
+            # Step 4: Address
+            address = data.get("physicalAddress", {})
             physical_address = PhysicalAddress(
-                address_type=data['physicalAddress']['address_type'],
-                addressLine1=data['physicalAddress']['addressLine1'],
-                addressLine2=data['physicalAddress']['addressLine2'],
-                pincode=data['physicalAddress']['pincode'],
-                state=data['physicalAddress']['state'],
-                country=data['physicalAddress']['country'],
-                latitude=data['physicalAddress'].get('latitude'),
-                longitude=data['physicalAddress'].get('longitude'),
+                address_type=address.get("address_type"),
+                addressLine1=address.get("addressLine1"),
+                addressLine2=address.get("addressLine2"),
+                pincode=address.get("pincode"),
+                state=address.get("state"),
+                country=address.get("country"),
+                latitude=address.get("latitude"),
+                longitude=address.get("longitude"),
                 parent_id=vendor.id,
                 parent_type="vendor"
             )
             db.session.add(physical_address)
-            db.session.flush()
-            current_app.logger.info(f"PhysicalAddress created with ID: {physical_address.id}")
 
-            # Step 4: Create BusinessRegistration
+            # Step 5: Business Registration
+            registration = data.get("business_registration_details", {})
             business_registration = BusinessRegistration(
-                registration_number=data['business_registration_details']['registration_number'],
-                registration_date=datetime.strptime(
-                    data['business_registration_details']['registration_date'], '%Y-%m-%d'
-                ).date()
+                registration_number=registration.get("registration_number"),
+                registration_date=datetime.strptime(registration.get("registration_date"), "%Y-%m-%d").date()
             )
             db.session.add(business_registration)
-            db.session.flush()
-            current_app.logger.info(f"BusinessRegistration created with ID: {business_registration.id}")
 
-            # Step 5: Create Timing
-            timing = Timing(
-                opening_time=datetime.strptime(data['timing']['opening_time'], '%I:%M %p').time(),
-                closing_time=datetime.strptime(data['timing']['closing_time'], '%I:%M %p').time(),
-            )
+            # Step 6: Timing
+            opening_time = datetime.strptime(data["timing"]["opening_time"], "%I:%M %p").time()
+            closing_time = datetime.strptime(data["timing"]["closing_time"], "%I:%M %p").time()
+
+            timing = Timing(opening_time=opening_time, closing_time=closing_time)
             db.session.add(timing)
-            db.session.flush()
-            current_app.logger.info(f"Timing created with ID: {timing.id}")
 
-            # Step 6: Update Vendor with business_registration and timing references
+            # Step 7: Update Vendor with foreign keys
+            db.session.flush()
             vendor.business_registration_id = business_registration.id
             vendor.timing_id = timing.id
             db.session.flush()
-            current_app.logger.info(f"Vendor updated with business_registration_id: {vendor.business_registration_id}, timing_id: {vendor.timing_id}")
 
-            # Step 7: Create OpeningDay
-            opening_days_instances = [
+            # Step 8: Opening Days
+            opening_day_data = data.get("opening_day", {})
+            opening_days = [
                 OpeningDay(day=day, is_open=is_open, vendor_id=vendor.id)
-                for day, is_open in data['opening_day'].items()
+                for day, is_open in opening_day_data.items()
             ]
-            db.session.add_all(opening_days_instances)
-            db.session.flush()
-            current_app.logger.info(f"OpeningDay instances created: {opening_days_instances}")
+            db.session.add_all(opening_days)
 
-            # Step 8: Create Amenities
-            amenities_instances = [
-                Amenity(name=name, vendor_id=vendor.id) for name, available in data.get('amenities', {}).items() if available
+            # Step 9: Amenities
+            amenities = [
+                Amenity(name=amenity, vendor_id=vendor.id)
+                for amenity, available in data.get("amenities", {}).items() if available
             ]
-            db.session.add_all(amenities_instances)
-            db.session.flush()
-            current_app.logger.info(f"Amenity instances created: {amenities_instances}")
+            db.session.add_all(amenities)
 
-            # Step 9: Create AvailableGames
+            # Step 10: Available Games
+            available_games_data = data.get("available_games", {})
             available_games_instances = [
                 AvailableGame(
                     game_name=game_name,
-                    total_slot=details['total_slot'],
-                    single_slot_price=details['single_slot_price'],
+                    total_slot=details.get("total_slot", 0),
+                    single_slot_price=details.get("single_slot_price", 0),
                     vendor_id=vendor.id
-                ) for game_name, details in data.get('available_games', {}).items()
+                ) for game_name, details in available_games_data.items()
             ]
             db.session.add_all(available_games_instances)
             db.session.flush()
-            current_app.logger.info(f"AvailableGame instances created: {available_games_instances}")
 
-            # Step 10: Create Slots
+            # Step 11: Slot Creation
             current_app.logger.debug("Creating slots for the vendor.")
-            slot_data = []
             try:
-                opening_time = datetime.strptime(data['timing']['opening_time'], '%I:%M %p').time()
-                closing_time = datetime.strptime(data['timing']['closing_time'], '%I:%M %p').time()
-
                 game_slots = {
-                    game_name.lower(): details["total_slot"]
-                    for game_name, details in data["available_games"].items()
+                    game_name.lower(): details.get("total_slot", 0)
+                    for game_name, details in available_games_data.items()
                 }
-                game_ids = {game.game_name.lower(): game.id for game in available_games_instances}
+                game_ids = {
+                    game.game_name.lower(): game.id
+                    for game in available_games_instances
+                }
 
-                current_time = datetime.combine(datetime.today(), opening_time)
-                closing_datetime = datetime.combine(datetime.today(), closing_time)
+                today = datetime.today()
+                current_time = datetime.combine(today, opening_time)
+                closing_datetime = datetime.combine(today, closing_time)
+
+                # Handle 12:00 AM case (i.e., after midnight)
+                if closing_datetime <= current_time:
+                    closing_datetime += timedelta(days=1)
+
+                slot_duration = data.get("slot_duration", 30)
+                slot_data = []
 
                 while current_time < closing_datetime:
-                    end_time = current_time + timedelta(minutes=data.get("slot_duration"))
+                    end_time = current_time + timedelta(minutes=slot_duration)
                     if end_time > closing_datetime:
                         break
 
                     for game_name, total_slots in game_slots.items():
                         game_id = game_ids.get(game_name)
                         if not game_id:
-                            current_app.logger.warning(f"Game '{game_name}' not found in available games.")
+                            current_app.logger.warning(f"Game '{game_name}' not found.")
                             continue
 
                         slot = Slot(
@@ -206,26 +198,21 @@ class VendorService:
                     current_time = end_time
 
                 db.session.add_all(slot_data)
-                db.session.flush()
                 current_app.logger.info(f"{len(slot_data)} slots created for vendor.")
+
             except Exception as e:
                 current_app.logger.error(f"Error creating slots: {e}")
                 raise
 
             db.session.commit()
 
-            # Create the vendor-specific slot table
+            # Step 12: Vendor-specific table creations
             VendorService.create_vendor_slot_table(vendor.id)
-
-            # Create the vendor-specific console availbility 
             VendorService.create_vendor_console_availability_table(vendor.id)
-
-            # Create the vendor-dashboard dynamic table 
             VendorService.create_vendor_dashboard_table(vendor.id)
-
-            #Promo Table for Dynamic Discount for Vendor
             VendorService.create_vendor_promo_table(vendor.id)
-        
+
+            current_app.logger.info(f"Vendor onboarding completed successfully: {vendor.id}")
             return vendor
 
         except Exception as e:
