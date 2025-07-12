@@ -14,6 +14,8 @@ from models.businessRegistration import BusinessRegistration
 from models.timing import Timing
 from models.vendorAccount import VendorAccount
 from models.vendorPin import VendorPin
+from sqlalchemy import Text
+
 
 class Vendor(db.Model):
     __tablename__ = 'vendors'
@@ -21,7 +23,7 @@ class Vendor(db.Model):
     id = Column(Integer, primary_key=True)
     cafe_name = Column(String(255), nullable=False)
     owner_name = Column(String(255), nullable=False)
-    description = Column(String(255), nullable=True)
+    description = Column(Text, nullable=True)
 
     # Foreign Key to BusinessRegistration
     business_registration_id = Column(Integer, ForeignKey('business_registration.id'), nullable=True)

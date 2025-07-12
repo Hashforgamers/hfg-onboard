@@ -123,6 +123,17 @@ def onboard_vendor():
         current_app.logger.error(f"Onboarding error: {e}")
         return jsonify({'message': 'An error occurred during onboarding', 'error': str(e)}), 500
 
+@vendor_bp.route('/deboard/<int:vendor_id>', methods=['DELETE'])
+def deboard_vendor(vendor_id):
+    current_app.logger.debug(f"Received deboarding request for vendor ID: {vendor_id}")
+    try:
+        VendorService.deboard_vendor(vendor_id)
+        current_app.logger.info(f"Vendor {vendor_id} deboarded successfully.")
+        return jsonify({'message': f'Vendor {vendor_id} deboarded successfully'}), 200
+    except Exception as e:
+        current_app.logger.error(f"Deboarding error for vendor {vendor_id}: {e}")
+        return jsonify({'message': 'An error occurred during deboarding', 'error': str(e)}), 500
+
 
 @vendor_bp.route('/vendor/<int:vendor_id>/documents', methods=['GET'])
 def get_unverified_documents(vendor_id):
