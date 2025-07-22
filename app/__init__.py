@@ -6,6 +6,7 @@ from flask import Flask
 from .config import Config
 from db.extensions import db, migrate, mail
 from controllers.controllers import vendor_bp
+from conrollers.vendor_games import vendor_games_bp
 
 def create_app():
     app = Flask(__name__)
@@ -18,6 +19,7 @@ def create_app():
     
     # Register blueprints
     app.register_blueprint(vendor_bp, url_prefix='/api')
+    app.register_blueprint(vendor_games_bp, url_prefix='/api')
 
     # Configure logging
     debug_mode = os.getenv("DEBUG_MODE", "false").lower() == "true"
