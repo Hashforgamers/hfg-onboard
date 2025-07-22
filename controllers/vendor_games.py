@@ -4,6 +4,7 @@ from flask import Blueprint, request, jsonify
 from services.supported_game_service import SupportedGameService
 from models.supportedGame import PlatformEnum
 from models.game import Game
+from services.game_service import GameService
 
 vendor_games_bp = Blueprint('vendor_games', __name__)
 
