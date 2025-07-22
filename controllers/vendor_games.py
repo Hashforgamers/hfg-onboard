@@ -109,6 +109,48 @@ def create_game():
     except Exception as e:
         return jsonify({"message": str(e)}), 400
 
+@vendor_games_bp.route('/games/batch', methods=['POST'])
+def create_games_batch():
+    data = request.get_json()
+
+    if not isinstance(data, list):
+        return jsonify({"message": "Expected a list of games"}), 400
+
+    created_games = []
+    errors = []
+
+    for idx, game_data in enumerate(data):
+        try:
+            game = GameService.create_game(
+                name=game_data.get('name'),
+                description=game_data.get('description'),
+                release_date=game_data.get('release_date'),
+                developer=game_data.get('developer'),
+                publisher=game_data.get('publisher'),
+                genre=game_data.get('genre'),
+                cover_image_url=game_data.get('cover_image_url'),
+                screenshots=game_data.get('screenshots'),
+                average_rating=game_data.get('average_rating'),
+                trailer_url=game_data.get('trailer_url'),
+                multiplayer=game_data.get('multiplayer'),
+                esrb_rating=game_data.get('esrb_rating'),
+            )
+            created_games.append(game.to_dict())
+        except Exception as e:
+            errors.append({
+                "index": idx,
+                "game_name": game_data.get('name'),
+                "error": str(e)
+            })
+
+    response_payload = {
+        "created_games": created_games,
+        "errors": errors
+    }
+
+    status_code = 201 if not errors else 207  # 207: Multi-Status indicates partial success
+
+    return jsonify(response_payload), status_code
 
 @vendor_games_bp.route('/games', methods=['GET'])
 def get_all_games():

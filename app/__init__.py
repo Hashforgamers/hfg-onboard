@@ -6,7 +6,7 @@ from flask import Flask
 from .config import Config
 from db.extensions import db, migrate, mail
 from controllers.controllers import vendor_bp
-from conrollers.vendor_games import vendor_games_bp
+from controllers.vendor_games import vendor_games_bp
 
 def create_app():
     app = Flask(__name__)
