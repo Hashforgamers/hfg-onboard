@@ -1,6 +1,6 @@
 # docker-compose.yml
 
-version: '3.8'
+version: "3.8"
 
 services:
   web:
@@ -8,7 +8,7 @@ services:
     command: python run.py
     volumes:
       - .:/code
-      - ./credentials:/code/credentials  # Mount credentials directory
+      - ./credentials:/code/credentials # Mount credentials directory
     ports:
       - "5052:5052"
     environment:
@@ -20,8 +20,13 @@ services:
       - MAIL_DEFAULT_SENDER=support@hashforgamers.co.in
       - SECRET_KEY=your_secret_key
       - GOOGLE_DRIVE_FOLDER_ID=16muxbG0nfp6PEjdJ-u1lwrZASpoW82b3
-      - GOOGLE_APPLICATION_CREDENTIALS=/code/credentials/google_service_account.json  # Updated path
+      - GOOGLE_APPLICATION_CREDENTIALS=/code/credentials/google_service_account.json # Updated path
       - DEBUG_MODE=true
+
+      # *** NEW: Replace these with your actual Cloudinary credentials ***
+      - CLOUDINARY_CLOUD_NAME=dxjjigepf
+      - CLOUDINARY_API_KEY=181315914336585
+      - CLOUDINARY_API_SECRET=DpUMsRVIpXZ4P3pu63cb-jJGwXA
 
   # db:
   #   image: postgres:latest
@@ -34,6 +39,10 @@ services:
   #     - "5433:5432"
   #   volumes:
   #     - postgres_data:/var/lib/postgresql/data
-
 # volumes:
 #   postgres_data:
+
+#*** postgresql://neondb_owner:Od9UnVJ2Wvfr@ep-patient-sound-a8cq577j-pooler.eastus2.azure.neon.tech/neondb?sslmode=require
+
+# develop-2 branch db url
+#postgresql://neondb_owner:npg_tF14oULHzflV@ep-divine-bird-a8m81vvk-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require

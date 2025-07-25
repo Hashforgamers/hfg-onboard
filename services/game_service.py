@@ -1,6 +1,8 @@
 from models.game import Game
 from db.extensions import db
 from datetime import datetime
+from services.cloudinary_services import CloudinaryGameImageService
+from flask import current_app
 
 class GameService:
     @staticmethod
@@ -58,3 +60,64 @@ class GameService:
             raise Exception(f"Failed to create game: {str(e)}")
 
         return game
+    
+    # new game service with cloudinary
+
+    @staticmethod
+    def create_game_with_cover_image(
+        name,
+        cover_image_file=None,
+        description=None,
+        release_date=None,
+        developer=None,
+        publisher=None,
+        genre=None,
+        screenshots=None,
+        average_rating=0.0,
+        trailer_url=None,
+        multiplayer=False,
+        esrb_rating=None,
+    ):
+        """
+        Create game with Cloudinary cover image upload
+        """
+        if not name:
+            raise ValueError("Game name is required.")
+
+        cover_image_url = None
+        
+        # Upload cover image to Cloudinary if provided
+        if cover_image_file:
+            try:
+                from services.cloudinary_services import CloudinaryGameImageService
+                upload_result = CloudinaryGameImageService.upload_game_cover_image(
+                    cover_image_file, 
+                    name
+                )
+                
+                if upload_result['success']:
+                    cover_image_url = upload_result['url']
+                    current_app.logger.info(f"Cover image uploaded for game '{name}': {cover_image_url}")
+                else:
+                    current_app.logger.warning(f"Failed to upload cover image: {upload_result['error']}")
+            except ImportError:
+                current_app.logger.warning("Cloudinary service not available")
+
+        # Create game using existing create_game method
+        return GameService.create_game(
+            name=name,
+            description=description,
+            release_date=release_date,
+            developer=developer,
+            publisher=publisher,
+            genre=genre,
+            cover_image_url=cover_image_url,  # Cloudinary URL
+            screenshots=screenshots,
+            average_rating=average_rating,
+            trailer_url=trailer_url,
+            multiplayer=multiplayer,
+            esrb_rating=esrb_rating,
+        )
+
+    
+  

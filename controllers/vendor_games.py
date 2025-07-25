@@ -1,12 +1,151 @@
 # routes/vendor_games.py
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify,current_app
 from services.supported_game_service import SupportedGameService
 from models.supportedGame import PlatformEnum
 from models.game import Game
 from services.game_service import GameService
+import json
 
 vendor_games_bp = Blueprint('vendor_games', __name__)
+
+
+# *** ROUTE 1: checking routes working ***
+@vendor_games_bp.route('/games/health', methods=['GET'])
+def health_check():
+    
+    return jsonify({
+        "success": True,
+        "message": "Games endpoint is working",
+        "timestamp": "2025-07-24"
+    }), 200
+         
+        # Route 2 (cloudinary configration testing)
+
+@vendor_games_bp.route('/games/test-cloudinary', methods=['GET'])
+def test_cloudinary_connection():
+    """Test Cloudinary configuration and connectivity"""
+    try:
+        from services.cloudinary_services import CloudinaryGameImageService
+        
+        # Check if credentials are configured
+        is_configured = CloudinaryGameImageService.is_cloudinary_configured()
+        current_app.logger.info(f"Cloudinary configured: {is_configured}")
+        
+        # Test connection if configured
+        can_connect = False
+        if is_configured:
+            can_connect = CloudinaryGameImageService.configure_cloudinary()
+            current_app.logger.info(f"Cloudinary connection: {can_connect}")
+        
+        # Build response
+        response_data = {
+            "cloudinary_status": {
+                "configured": is_configured,
+                "can_connect": can_connect,
+                "folder": "poc",
+                "message": "Cloudinary ready for game cover images" if (is_configured and can_connect) else "Cloudinary not ready"
+            }
+        }
+        
+        # Add error details if not working
+        if not is_configured:
+            response_data["cloudinary_status"]["error"] = "Missing Cloudinary credentials in environment variables"
+        elif not can_connect:
+            response_data["cloudinary_status"]["error"] = "Cannot connect to Cloudinary - check credentials"
+        
+        current_app.logger.info(f"Cloudinary test response: {response_data}")
+        
+        return jsonify(response_data), 200
+        
+    except ImportError as e:
+        current_app.logger.error(f"Cloudinary service import failed: {str(e)}")
+        return jsonify({
+            "cloudinary_status": {
+                "configured": False,
+                "can_connect": False,
+                "error": f"Cloudinary service not available: {str(e)}"
+            }
+        }), 500
+        
+    except Exception as e:
+        current_app.logger.error(f"Cloudinary test failed: {str(e)}")
+        return jsonify({
+            "cloudinary_status": {
+                "configured": False,
+                "can_connect": False,
+                "error": f"Cloudinary test error: {str(e)}"
+            }
+        }), 500
+        
+        
+        # Route 3: Add cover image upload route
+@vendor_games_bp.route('/games/add-image', methods=['POST'])
+def add_cover_image():
+    """
+    Upload cover image to Cloudinary
+    """
+    try:
+        # Get form data
+        json_data = request.form.get('json')
+        cover_image_file = request.files.get('cover_image')
+        
+        # Validate image file
+        if not cover_image_file or cover_image_file.filename == '':
+            return jsonify({
+                'success': False,
+                'message': 'Cover image file is required'
+            }), 400
+        
+        # Parse JSON data for game name (for naming the image)
+        if json_data:
+            try:
+                data = json.loads(json_data)
+                game_name = data.get('name', 'unknown_game')
+            except json.JSONDecodeError:
+                return jsonify({
+                    'success': False,
+                    'message': 'Invalid JSON data'
+                }), 400
+        else:
+            # If no JSON provided, use timestamp for naming
+            from datetime import datetime
+            game_name = f"image_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        # Upload to Cloudinary using your existing service
+        from services.cloudinary_services import CloudinaryGameImageService
+        upload_result = CloudinaryGameImageService.upload_game_cover_image(
+            cover_image_file, 
+            game_name
+        )
+        
+        if upload_result['success']:
+            return jsonify({
+                "success": True,
+                "message": "Cover image uploaded successfully",
+                "image_data": {
+                    "cover_image_url": upload_result['url'],
+                    "public_id": upload_result['public_id'],
+                    "folder": "POC"
+                }
+            }), 201
+        else:
+            return jsonify({
+                "success": False,
+                "message": "Failed to upload cover image",
+                "error": upload_result['error']
+            }), 500
+            
+    except Exception as e:
+        current_app.logger.error(f"Error in add_cover_image: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Server error: {str(e)}'
+        }), 500
+
+
+
+   # EXISITNG FILE ROUTES OF DEVELOP BRANCH
 
 # Add a supported game for a vendor
 @vendor_games_bp.route('/vendors/<int:vendor_id>/supported-games', methods=['POST'])
@@ -92,6 +231,11 @@ def list_vendors_for_game(game_id):
 def create_game():
     data = request.get_json()
     try:
+         # Log the received cover_image_url for debugging
+        cover_image_url = data.get('cover_image_url')
+        if cover_image_url:
+            current_app.logger.info(f"Using pre-uploaded cover image: {cover_image_url}")
+            
         game = GameService.create_game(
             name=data.get('name'),
             description=data.get('description'),
@@ -99,7 +243,7 @@ def create_game():
             developer=data.get('developer'),
             publisher=data.get('publisher'),
             genre=data.get('genre'),
-            cover_image_url=data.get('cover_image_url'),
+            cover_image_url=cover_image_url,
             screenshots=data.get('screenshots'),
             average_rating=data.get('average_rating'),
             trailer_url=data.get('trailer_url'),
@@ -162,3 +306,7 @@ def get_all_games():
         }), 200
     except Exception as e:
         return jsonify({"message": f"Failed to fetch games: {str(e)}"}), 500
+    
+    
+  
+  
