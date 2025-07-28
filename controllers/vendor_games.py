@@ -308,5 +308,4 @@ def get_all_games():
         return jsonify({"message": f"Failed to fetch games: {str(e)}"}), 500
     
     
-  
-  
+ 

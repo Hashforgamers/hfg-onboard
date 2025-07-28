@@ -109,13 +109,13 @@ class CloudinaryGameImageService:
                 public_id=public_id,
                 resource_type="image",
                 overwrite=True,
-                quality="auto:good",
+                quality="auto:best",
                 # REMOVED: format="auto" - this was causing the API error
                 transformation=[
                     {
                         'width': 500,
                         'height': 750,
-                        'crop': 'fill',
+                        'crop': 'fit',
                         'gravity': 'center'
                     }
                 ]

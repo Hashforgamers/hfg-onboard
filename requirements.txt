@@ -1,6 +1,7 @@
 Flask==2.3.2
 Flask-SQLAlchemy==3.0.3
 Flask-Migrate==4.0.4
+flask-cors
 psycopg2-binary==2.9.6
 Flask-Mail==0.9.1
 Werkzeug==2.3.4

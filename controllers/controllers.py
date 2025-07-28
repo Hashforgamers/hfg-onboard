@@ -4,6 +4,7 @@ from flask import Blueprint, request, jsonify, current_app
 from services.services import VendorService
 from werkzeug.utils import secure_filename
 import json
+from services.cloudinary_services import CloudinaryGameImageService
 from models.document import Document
 
 from services.utils import process_files
@@ -481,3 +482,103 @@ def unlock_with_code():
     db.session.commit()
 
     return jsonify({'message': 'Booking started via access code'}), 200
+
+
+
+   # add image route
+
+@vendor_bp.route('/vendor/<int:vendor_id>/add-image', methods=['POST'])
+def upload_vendor_image(vendor_id):
+    """
+    Uploads an image for a vendor to Cloudinary and saves the URL in the DB, linking it to the vendor.
+    Expects form-data: 'image' (file), optional 'label' (text)
+    """
+    
+    image_file = request.files.get('image')
+    
+
+    if not image_file or image_file.filename == '':
+        return jsonify({'success': False, 'message': 'No image file provided'}), 400
+
+    vendor = Vendor.query.get(vendor_id)
+    if not vendor:
+        return jsonify({'success': False, 'message': 'Vendor not found'}), 404
+
+    # Upload to Cloudinary
+    upload_result = CloudinaryGameImageService.upload_game_cover_image(image_file, vendor.cafe_name)
+    if not upload_result['success']:
+        return jsonify({'success': False, 'message': 'Cloudinary upload failed', 'error': upload_result['error']}), 500
+
+    # Save in DB
+    new_image = Image(
+        url=upload_result['url'],
+        public_id=upload_result['public_id'],
+        vendor_id=vendor_id,
+        
+    )
+    db.session.add(new_image)
+    db.session.commit()
+    
+    db.session.refresh(vendor)
+    
+     # Return all images to keep frontend in sync
+    all_images = [{'id': img.id, 'url': img.url, 'public_id': img.public_id} for img in vendor.images]
+
+
+    return jsonify({
+        'success': True,
+        'message': 'Vendor image uploaded and saved successfully',
+        'image': {
+            'id': new_image.id,
+            'url': new_image.url,
+            'public_id': new_image.public_id,
+            
+        },
+        'all_images': all_images
+    }), 201
+    
+    
+@vendor_bp.route('/vendor/<int:vendor_id>/dashboard', methods=['GET'])
+def get_vendor_dashboard_data(vendor_id):
+    """
+    API to retrieve vendor dashboard data - only contact info and images.
+    """
+    try:
+        vendor = Vendor.query.get(vendor_id)
+        if not vendor:
+            return jsonify({'success': False, 'message': 'Vendor not found'}), 
+        
+        
+        db.session.refresh(vendor)
+
+        # Fetch all images for this vendor
+        images = [img.url for img in vendor.images]
+        
+        # Get contact info
+        contact_info = vendor.contact_info
+        
+        response_data = {
+            "success": True,
+            "cafeProfile": {
+                "name": vendor.cafe_name or "Cafe Name",
+                "membershipStatus": "Standard Member",
+                "website": contact_info.website if contact_info and hasattr(contact_info, 'website') else "Not Available",
+                "email": contact_info.email if contact_info else "No Email Provided",
+                "phone": contact_info.phone if contact_info else "No Phone Provided"
+            },
+            "cafeGallery": {
+                "images": images
+            }
+        }
+        
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Dashboard API Error: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to fetch dashboard data'}), 500
+
+    
+    
+    
+
+       
