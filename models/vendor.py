@@ -83,6 +83,14 @@ class Vendor(db.Model):
         back_populates='vendor',
         cascade="all, delete-orphan"
     )
+    
+        # ADDED: Relationship to Document (for Cloudinary documents)
+    documents = relationship(
+        'Document',
+        back_populates='vendor',
+        cascade="all, delete-orphan"
+    )
+
 
     # Relationship to AvailableGame
     available_games = relationship(

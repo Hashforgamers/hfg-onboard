@@ -26,7 +26,7 @@ services:
       # *** NEW: Replace these with your actual Cloudinary credentials ***
       - CLOUDINARY_CLOUD_NAME=dxjjigepf
       - CLOUDINARY_API_KEY=181315914336585
-      - CLOUDINARY_API_SECRET=secret-key
+      - CLOUDINARY_API_SECRET=SECRET_KEY
 
   # db:
   #   image: postgres:latest

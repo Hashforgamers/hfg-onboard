@@ -8,6 +8,7 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 from flask import current_app
+from datetime import datetime
 from werkzeug.utils import secure_filename
 
 class CloudinaryGameImageService:
@@ -271,5 +272,73 @@ class CloudinaryGameImageService:
             return {
                 'success': False,
                 'error': error_msg
+            }
+            
+            
+      
+    
+    @staticmethod
+    def upload_vendor_document(document_file, cafe_name, document_type, vendor_id):
+        """
+        Upload vendor documents (PDFs and other files) to Cloudinary
+        """
+        try:
+            if not document_file or document_file.filename == '':
+                return {
+                    'success': False, 
+                    'error': 'No document file provided', 
+                    'url': None, 
+                    'public_id': None
+                }
+                
+            if not CloudinaryGameImageService.configure_cloudinary():
+                return {
+                    'success': False, 
+                    'error': 'Cloudinary not configured', 
+                    'url': None, 
+                    'public_id': None
+                }
+
+            # Create organized folder structure and filename
+            safe_cafe_name = secure_filename(cafe_name.replace(' ', '_').lower()) if cafe_name else 'unknown_cafe'
+            folder_path = f"VENDOR_DOCUMENTS/{safe_cafe_name}_ID_{vendor_id}"
+            public_id = f"{document_type}_{int(datetime.utcnow().timestamp())}"
+
+            current_app.logger.info(f"Uploading document to Cloudinary: {folder_path}/{public_id}")
+            
+            # Upload document to Cloudinary
+            upload_result = cloudinary.uploader.upload(
+                document_file,
+                folder=folder_path,
+                public_id=public_id,
+                resource_type="auto",
+                overwrite=False,
+                quality="auto:best"
+            )
+
+            if 'secure_url' in upload_result and 'public_id' in upload_result:
+                current_app.logger.info(f"Document uploaded successfully: {upload_result['secure_url']}")
+                return {
+                    'success': True,
+                    'url': upload_result['secure_url'],
+                    'public_id': upload_result['public_id'],
+                    'error': None
+                }
+            else:
+                current_app.logger.error(f"Invalid Cloudinary response: {upload_result}")
+                return {
+                    'success': False, 
+                    'error': 'Invalid Cloudinary response', 
+                    'url': None, 
+                    'public_id': None
+                }
+
+        except Exception as e:
+            current_app.logger.error(f"Cloudinary document upload error: {str(e)}")
+            return {
+                'success': False, 
+                'error': str(e), 
+                'url': None, 
+                'public_id': None
             }
 

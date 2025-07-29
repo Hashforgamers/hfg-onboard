@@ -10,7 +10,7 @@ import re
 from werkzeug.utils import secure_filename
 from models.vendorPin import VendorPin
 
-ALLOWED_EXTENSIONS = {'pdf'}
+ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png', 'gif', 'doc', 'docx'}
 
 def allowed_file(filename):
     """Check if the file has an allowed extension."""
@@ -49,7 +49,7 @@ def format_filename(vendor_name, document_name):
     return f"{today}_{formatted_vendor_name}_{formatted_document_name}"
 
 
-def process_files(request, data, document_types):
+#def process_files(request, data, document_types):
     """Process uploaded files and ensure they meet requirements."""
     files = {}
     for doc_type in document_types:
@@ -69,4 +69,24 @@ def process_files(request, data, document_types):
             # Check if the document is marked as submitted but no file is provided
             if data.get('document_submitted', {}).get(doc_type, False):
                 return None, f'Missing file for {doc_type}'
+    return files, None
+
+def process_files(request, data, document_types):
+    """Process uploaded files and ensure they meet requirements."""
+    files = {}
+    
+    for doc_type in document_types:
+        if doc_type in request.files:
+            file = request.files[doc_type]
+            if file and file.filename and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                files[doc_type] = file
+            elif file and file.filename:
+                return None, f'Invalid file type for {doc_type}. Allowed types: {", ".join(ALLOWED_EXTENSIONS)}'
+        else:
+            
+             # Check if the document is marked as submitted but no file is provided
+            if data.get('document_submitted', {}).get(doc_type, False):
+                return None, f'Missing file for {doc_type}'
+    
     return files, None
