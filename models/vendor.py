@@ -83,6 +83,14 @@ class Vendor(db.Model):
         back_populates='vendor',
         cascade="all, delete-orphan"
     )
+    
+        # ADDED: Relationship to Document (for Cloudinary documents)
+    documents = relationship(
+        'Document',
+        back_populates='vendor',
+        cascade="all, delete-orphan"
+    )
+
 
     # Relationship to AvailableGame
     available_games = relationship(
@@ -123,6 +131,13 @@ class Vendor(db.Model):
     account = relationship('VendorAccount', back_populates='vendors')
 
     pin = relationship('VendorPin', back_populates='vendor', uselist=False, cascade="all, delete-orphan")
+
+    # Added new Vendor model
+    supported_games = relationship(
+        'SupportedGame',
+        back_populates='vendor',
+        cascade="all, delete-orphan"
+    )
 
     def __str__(self):
         return f"Vendor(id={self.id}, cafe_name='{self.cafe_name}', owner_name='{self.owner_name}', description='{self.description}')"

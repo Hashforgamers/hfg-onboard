@@ -4,6 +4,7 @@ from flask import Blueprint, request, jsonify, current_app
 from services.services import VendorService
 from werkzeug.utils import secure_filename
 import json
+from services.cloudinary_services import CloudinaryGameImageService
 from models.document import Document
 
 from services.utils import process_files
@@ -24,7 +25,7 @@ from pytz import timezone
 
 vendor_bp = Blueprint('vendor', __name__)
 
-ALLOWED_EXTENSIONS = {'pdf'}
+ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png', 'gif', 'doc', 'docx'}
 
 def allowed_file(filename):
     """Check if the file has an allowed extension."""
@@ -34,6 +35,96 @@ def validate_json(data, required_fields):
     """Validate the JSON data for required fields."""
     missing_fields = [field for field in required_fields if field not in data]
     return missing_fields
+
+
+def upload_documents_to_cloudinary(files, vendor_id, cafe_name):
+    """
+    Upload vendor documents to Cloudinary and return URLs
+    """
+    document_urls = {}
+    
+    for doc_type, file in files.items():
+        try:
+            current_app.logger.info(f"Uploading {doc_type} to Cloudinary for vendor {vendor_id}")
+            
+            # Use Cloudinary service for document upload
+            upload_result = CloudinaryGameImageService.upload_vendor_document(
+                file, 
+                cafe_name,
+                doc_type, 
+                vendor_id
+            )
+            
+            if upload_result['success']:
+                document_urls[doc_type] = {
+                    'url': upload_result['url'],
+                    'public_id': upload_result['public_id']
+                }
+                current_app.logger.info(f"Successfully uploaded {doc_type}: {upload_result['url']}")
+            else:
+                current_app.logger.error(f"Failed to upload {doc_type}: {upload_result['error']}")
+                raise Exception(f"Failed to upload {doc_type} to Cloudinary")
+        except Exception as e:
+            current_app.logger.error(f"Error uploading {doc_type}: {str(e)}")
+            raise Exception(f"Document upload failed for {doc_type}")
+    
+    return document_urls
+
+def save_vendor_documents(vendor_id, document_urls, document_submitted):
+    """
+    Save document information to database (fixed for your Document model)
+    """
+    try:
+        for doc_type, doc_info in document_urls.items():
+            # Check if document was submitted
+            if document_submitted.get(doc_type, False):
+                new_document = Document(
+                    vendor_id=vendor_id,
+                    document_type=doc_type,
+                    document_url=doc_info['url'],
+                    public_id=doc_info['public_id'],
+                    uploaded_at=datetime.utcnow(),
+                    status='unverified'  # Use 'status' instead of 'is_verified'
+                )
+                db.session.add(new_document)
+        
+        db.session.commit()
+        current_app.logger.info(f"Saved {len(document_urls)} documents for vendor {vendor_id}")
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error saving documents to database: {str(e)}")
+        raise e
+
+    """
+    Save document information to database
+    """
+    try:
+        for doc_type, doc_info in document_urls.items():
+            # Check if document was submitted
+            if document_submitted.get(doc_type, False):
+                new_document = Document(
+                    vendor_id=vendor_id,
+                    document_type=doc_type,
+                    document_url=doc_info['url'],
+                    public_id=doc_info['public_id'],
+                    status="unverified",  # Initially not verified
+                    uploaded_at=datetime.utcnow()
+                )
+                db.session.add(new_document)
+                db.session.commit()
+        current_app.logger.info(f"Saved {len(document_urls)} documents for vendor {vendor_id}")
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error saving documents to database: {str(e)}")
+        raise e
+
+@vendor_bp.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint."""
+    return jsonify({'status': 'healthy'}), 200
+
 
 # def process_files(request, document_types):
 #     """Process uploaded files and ensure they meet requirements."""
@@ -51,11 +142,6 @@ def validate_json(data, required_fields):
 #             if data.get('document_submitted', {}).get(doc_type, False):
 #                 return None, f'Missing file for {doc_type}'
 #     return files, None
-
-@vendor_bp.route('/health', methods=['GET'])
-def health_check():
-    """Health check endpoint."""
-    return jsonify({'status': 'healthy'}), 200
 
 @vendor_bp.route('/onboard', methods=['POST'])
 def onboard_vendor():
@@ -90,7 +176,14 @@ def onboard_vendor():
         return jsonify({'message': f'Missing fields: {", ".join(missing_fields)}'}), 400
 
     # Process files
-    current_app.logger.debug("Started Processing File")
+    #.logger.debug("Started Processing File")
+    #document_types = [
+#'business_registration', 'owner_identification_proof',
+#'tax_identification_number', 'bank_acc_details'
+#]
+
+ # Process files for Cloudinary upload
+    current_app.logger.debug("Started Processing Files for Cloudinary")
     document_types = [
         'business_registration', 'owner_identification_proof',
         'tax_identification_number', 'bank_acc_details'
@@ -100,28 +193,34 @@ def onboard_vendor():
     if error_message:
         current_app.logger.error(f"File processing error: {error_message}")
         return jsonify({'message': error_message}), 400
-
+    
     try:
-        # Onboard the vendor and manage document uploads
-        current_app.logger.debug("Onboard the vendor and manage document uploads")
-
-        current_app.logger.debug("Calling VendorService.get_drive_service()")
-        drive_service = VendorService.get_drive_service()
-
-        current_app.logger.debug("Calling VendorService.onboard_vendor(data, files)") 
+        # Onboard the vendor
+        current_app.logger.debug("Onboarding vendor...")
         vendor = VendorService.onboard_vendor(data, files)
 
-        current_app.logger.debug("VendorService.handle_documents({data['document_submitted']}, files={files}, drive_service={drive_service}, vendor.id={vendor.id})")
-        VendorService.handle_documents(data['document_submitted'], files, drive_service, vendor.id)
+        # Upload documents to Cloudinary instead of Google Drive
+        current_app.logger.debug("Uploading documents to Cloudinary...")
+        document_urls = upload_documents_to_cloudinary(files, vendor.id, vendor.cafe_name)
+        
+        # Save document information to database
+        save_vendor_documents(vendor.id, document_urls, data['document_submitted'])
 
-        current_app.logger.debug("VendorService.generate_credentials_and_notify(vendor)")
+        # Generate credentials and notify
+        current_app.logger.debug("Generating credentials and notifications...")
         VendorService.generate_credentials_and_notify(vendor)
-
+        
         current_app.logger.info(f"Vendor onboarded successfully: {vendor.id}")
-        return jsonify({'message': 'Vendor onboarded successfully', 'vendor_id': vendor.id}), 201
+        return jsonify({
+            'message': 'Vendor onboarded successfully', 
+            'vendor_id': vendor.id,
+            'documents_uploaded': len(document_urls)
+        }), 201
+        
     except Exception as e:
         current_app.logger.error(f"Onboarding error: {e}")
         return jsonify({'message': 'An error occurred during onboarding', 'error': str(e)}), 500
+
 
 @vendor_bp.route('/deboard/<int:vendor_id>', methods=['DELETE'])
 def deboard_vendor(vendor_id):
@@ -481,3 +580,103 @@ def unlock_with_code():
     db.session.commit()
 
     return jsonify({'message': 'Booking started via access code'}), 200
+
+
+
+   # add image route
+
+@vendor_bp.route('/vendor/<int:vendor_id>/add-image', methods=['POST'])
+def upload_vendor_image(vendor_id):
+    """
+    Uploads an image for a vendor to Cloudinary and saves the URL in the DB, linking it to the vendor.
+    Expects form-data: 'image' (file), optional 'label' (text)
+    """
+    
+    image_file = request.files.get('image')
+    
+
+    if not image_file or image_file.filename == '':
+        return jsonify({'success': False, 'message': 'No image file provided'}), 400
+
+    vendor = Vendor.query.get(vendor_id)
+    if not vendor:
+        return jsonify({'success': False, 'message': 'Vendor not found'}), 404
+
+    # Upload to Cloudinary
+    upload_result = CloudinaryGameImageService.upload_game_cover_image(image_file, vendor.cafe_name)
+    if not upload_result['success']:
+        return jsonify({'success': False, 'message': 'Cloudinary upload failed', 'error': upload_result['error']}), 500
+
+    # Save in DB
+    new_image = Image(
+        url=upload_result['url'],
+        public_id=upload_result['public_id'],
+        vendor_id=vendor_id,
+        
+    )
+    db.session.add(new_image)
+    db.session.commit()
+    
+    db.session.refresh(vendor)
+    
+     # Return all images to keep frontend in sync
+    all_images = [{'id': img.id, 'url': img.url, 'public_id': img.public_id} for img in vendor.images]
+
+
+    return jsonify({
+        'success': True,
+        'message': 'Vendor image uploaded and saved successfully',
+        'image': {
+            'id': new_image.id,
+            'url': new_image.url,
+            'public_id': new_image.public_id,
+            
+        },
+        'all_images': all_images
+    }), 201
+    
+    
+@vendor_bp.route('/vendor/<int:vendor_id>/dashboard', methods=['GET'])
+def get_vendor_dashboard_data(vendor_id):
+    """
+    API to retrieve vendor dashboard data - only contact info and images.
+    """
+    try:
+        vendor = Vendor.query.get(vendor_id)
+        if not vendor:
+            return jsonify({'success': False, 'message': 'Vendor not found'}), 
+        
+        
+        db.session.refresh(vendor)
+
+        # Fetch all images for this vendor
+        images = [img.url for img in vendor.images]
+        
+        # Get contact info
+        contact_info = vendor.contact_info
+        
+        response_data = {
+            "success": True,
+            "cafeProfile": {
+                "name": vendor.cafe_name or "Cafe Name",
+                "membershipStatus": "Standard Member",
+                "website": contact_info.website if contact_info and hasattr(contact_info, 'website') else "Not Available",
+                "email": contact_info.email if contact_info else "No Email Provided",
+                "phone": contact_info.phone if contact_info else "No Phone Provided"
+            },
+            "cafeGallery": {
+                "images": images
+            }
+        }
+        
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Dashboard API Error: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to fetch dashboard data'}), 500
+
+    
+    
+    
+
+       
