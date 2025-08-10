@@ -3,6 +3,7 @@
 import logging
 import os
 from flask import Flask
+#from flask_cors import CORS
 from .config import Config
 from db.extensions import db, migrate, mail
 from controllers.controllers import vendor_bp
@@ -10,6 +11,7 @@ from controllers.vendor_games import vendor_games_bp
 
 def create_app():
     app = Flask(__name__)
+    #CORS(app, origins=["http://localhost:3000"])
     app.config.from_object(Config)
     
     # Initialize extensions
