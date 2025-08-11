@@ -636,8 +636,8 @@ def upload_vendor_image(vendor_id):
     }), 201
     
     
-@vendor_bp.route('/vendor/<int:vendor_id>/dashboard', methods=['GET'])
-def get_vendor_dashboard_data(vendor_id):
+#@vendor_bp.route('/vendor/<int:vendor_id>/dashboard', methods=['GET'])
+#def get_vendor_dashboard_data(vendor_id):
     """
     API to retrieve vendor dashboard data - only contact info and images.
     """
@@ -674,9 +674,59 @@ def get_vendor_dashboard_data(vendor_id):
     except Exception as e:
         current_app.logger.error(f"Dashboard API Error: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to fetch dashboard data'}), 500
+    
+    
+@vendor_bp.route('/vendor/<int:vendor_id>/dashboard', methods=['GET'])
+def get_vendor_dashboard_data(vendor_id):
+    """
+    API to retrieve vendor dashboard data with real document information
+    """
+    try:
+        vendor = Vendor.query.get(vendor_id)
+        if not vendor:
+            return jsonify({'success': False, 'message': 'Vendor not found'}), 404
 
-    
-    
-    
-
-       
+        # Refresh vendor object to get latest data from database
+        db.session.refresh(vendor)
+        
+        # Fetch all images
+        images = [img.url for img in vendor.images]
+        
+        # Get contact info
+        contact_info = vendor.contact_info
+        
+        # IMPORTANT: Fetch real documents from your Document model
+        documents = Document.query.filter_by(vendor_id=vendor_id).all()
+        verified_documents = []
+        
+        for doc in documents:
+            verified_documents.append({
+                "id": doc.id,
+                "name": doc.document_type.replace('_', ' ').title(),
+                "status": doc.status,
+                "expiry": "No expiry",  # You can add actual expiry logic if needed
+                "uploadedAt": doc.uploaded_at.isoformat() if doc.uploaded_at else None,
+                "documentUrl": doc.document_url,  # This is the Cloudinary URL
+                "publicId": doc.public_id        # This is the Cloudinary public_id
+            })
+        
+        response_data = {
+            "success": True,
+            "cafeProfile": {
+                "name": vendor.cafe_name or "Cafe Name",
+                "membershipStatus": "Standard Member",
+                "website": contact_info.website if contact_info and hasattr(contact_info, 'website') else "Not Available",
+                "email": contact_info.email if contact_info else "No Email Provided",
+                "phone": contact_info.phone if contact_info else "No Phone Provided"
+            },
+            "cafeGallery": {
+                "images": images
+            },
+            "verifiedDocuments": verified_documents  # Real document data
+        }
+        
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Dashboard API Error: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to fetch dashboard data'}), 500
