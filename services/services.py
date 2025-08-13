@@ -18,6 +18,7 @@ from models.uploadedImage import Image
 from models.slots import Slot
 from models.vendorAccount import VendorAccount
 from models.vendorPin import VendorPin
+from models.image import Image
 
 from db.extensions import db
 from .utils import send_email, generate_credentials, generate_unique_vendor_pin
@@ -32,6 +33,7 @@ from sqlalchemy import text
 
 from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
+
 
 
 
@@ -627,7 +629,7 @@ class VendorService:
     @staticmethod
     def get_all_gaming_cafe():
         """
-        Retrieve all vendors with their statuses, timing info, and amenities for the salesperson dashboard.
+        Retrieve all vendors with their statuses, timing info, amenities, and images for the salesperson dashboard.
         """
         try:
             vendors_data = []
@@ -691,7 +693,6 @@ class VendorService:
                 Amenity.available
             ).filter(Amenity.vendor_id.in_(vendor_ids)).all()
 
-            # Step 3: Organize amenities by vendor_id
             amenities_map = {}
             for amenity in amenities:
                 amenities_map.setdefault(amenity.vendor_id, []).append({
@@ -699,7 +700,21 @@ class VendorService:
                     "available": amenity.available
                 })
 
-            # Step 4: Combine both datasets
+            # Step 3: Fetch all images for those vendors
+            images = db.session.query(
+                Image.vendor_id,
+                Image.image_id,
+                Image.path
+            ).filter(Image.vendor_id.in_(vendor_ids)).all()
+
+            images_map = {}
+            for img in images:
+                images_map.setdefault(img.vendor_id, []).append({
+                    "image_id": img.image_id,
+                    "path": img.path
+                })
+
+            # Step 4: Combine all datasets
             for result in results:
                 vendors_data.append({
                     "vendor_id": result.vendor_id,
@@ -723,7 +738,8 @@ class VendorService:
                     "closing_time": result.closing_time.strftime("%H:%M:%S") if result.closing_time else None,
                     "total_documents": result.total_documents,
                     "verified_documents": result.verified_documents,
-                    "amenities": amenities_map.get(result.vendor_id, [])
+                    "amenities": amenities_map.get(result.vendor_id, []),
+                    "images": images_map.get(result.vendor_id, [])
                 })
 
             return {"vendors": vendors_data}
