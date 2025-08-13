@@ -11,7 +11,7 @@ from controllers.vendor_games import vendor_games_bp
 
 def create_app():
     app = Flask(__name__)
-    CORS(app, origins=["http://localhost:3000"],
+    CORS(app, origins=["http://localhost:3000" , "https://dashboard.hashforgamers.co.in" , "https://dev-dashboard.hashforgamers.co.in" ],
           methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
      allow_headers=['Content-Type', 'Authorization']
          )
