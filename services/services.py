@@ -18,7 +18,6 @@ from models.uploadedImage import Image
 from models.slots import Slot
 from models.vendorAccount import VendorAccount
 from models.vendorPin import VendorPin
-from models.image import Image
 
 from db.extensions import db
 from .utils import send_email, generate_credentials, generate_unique_vendor_pin
