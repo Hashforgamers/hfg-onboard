@@ -703,14 +703,17 @@ class VendorService:
             images = db.session.query(
                 Image.vendor_id,
                 Image.image_id,
-                Image.path
+                Image.path,
+                Image.public_id,
+                Image.url
             ).filter(Image.vendor_id.in_(vendor_ids)).all()
 
             images_map = {}
             for img in images:
                 images_map.setdefault(img.vendor_id, []).append({
                     "image_id": img.image_id,
-                    "path": img.path
+                    "url": img.url,
+                    "public_id":img.public_id
                 })
 
             # Step 4: Combine all datasets
