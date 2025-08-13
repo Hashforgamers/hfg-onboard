@@ -676,8 +676,8 @@ def upload_vendor_image(vendor_id):
         return jsonify({'success': False, 'error': 'Failed to fetch dashboard data'}), 500
     
     
-@vendor_bp.route('/vendor/<int:vendor_id>/dashboard', methods=['GET'])
-def get_vendor_dashboard_data(vendor_id):
+#@vendor_bp.route('/vendor/<int:vendor_id>/dashboard', methods=['GET'])
+#def get_vendor_dashboard_data(vendor_id):
     """
     API to retrieve vendor dashboard data with real document information
     """
@@ -724,6 +724,73 @@ def get_vendor_dashboard_data(vendor_id):
             },
             "verifiedDocuments": verified_documents  # Real document data
         }
+        
+        return jsonify(response_data), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Dashboard API Error: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to fetch dashboard data'}), 500
+
+
+@vendor_bp.route('/vendor/<int:vendor_id>/dashboard', methods=['GET'])
+def get_vendor_dashboard_data(vendor_id):
+    """
+    API to retrieve vendor dashboard data with real document information
+    """
+    try:
+        vendor = Vendor.query.get(vendor_id)
+        if not vendor:
+            return jsonify({'success': False, 'message': 'Vendor not found'}), 404
+
+        # DEBUG: Add logging to see what's happening
+        current_app.logger.info(f"Loading dashboard for vendor_id: {vendor_id}")
+        
+        # Query images directly from the database using your Image model
+        vendor_images = Image.query.filter_by(vendor_id=vendor_id).all()
+        
+        # DEBUG: Log image count
+        current_app.logger.info(f"Found {len(vendor_images)} images for vendor {vendor_id}")
+        
+        images = []
+        for img in vendor_images:
+            current_app.logger.info(f"Image ID: {img.id}, URL: {img.url}")
+            images.append(img.url)
+        
+        # Get contact info
+        contact_info = vendor.contact_info
+        
+        # Fetch documents
+        documents = Document.query.filter_by(vendor_id=vendor_id).all()
+        verified_documents = []
+        
+        for doc in documents:
+            verified_documents.append({
+                "id": doc.id,
+                "name": doc.document_type.replace('_', ' ').title(),
+                "status": doc.status,
+                "expiry": "No expiry",
+                "uploadedAt": doc.uploaded_at.isoformat() if doc.uploaded_at else None,
+                "documentUrl": doc.document_url,
+                "publicId": doc.public_id
+            })
+        
+        response_data = {
+            "success": True,
+            "cafeProfile": {
+                "name": vendor.cafe_name or "Cafe Name",
+                "membershipStatus": "Standard Member",
+                "website": contact_info.website if contact_info and hasattr(contact_info, 'website') else "Not Available",
+                "email": contact_info.email if contact_info else "No Email Provided",
+                "phone": contact_info.phone if contact_info else "No Phone Provided"
+            },
+            "cafeGallery": {
+                "images": images
+            },
+            "verifiedDocuments": verified_documents
+        }
+        
+        # DEBUG: Log final response
+        current_app.logger.info(f"Returning {len(images)} images in response")
         
         return jsonify(response_data), 200
         
