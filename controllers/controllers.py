@@ -687,7 +687,7 @@ def get_vendor_dashboard_data(vendor_id):
             return jsonify({'success': False, 'message': 'Vendor not found'}), 404
 
         # Refresh vendor object to get latest data from database
-        db.session.refresh(vendor)
+        #db.session.refresh(vendor)
         
         # Fetch all images
         images = [img.url for img in vendor.images]
