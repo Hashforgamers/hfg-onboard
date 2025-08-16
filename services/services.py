@@ -19,6 +19,7 @@ from models.slots import Slot
 from models.vendorAccount import VendorAccount
 from models.vendorPin import VendorPin
 from models.booking import Booking
+from models.transaction import Transaction
 
 from db.extensions import db
 from .utils import send_email, generate_credentials, generate_unique_vendor_pin
@@ -253,10 +254,12 @@ class VendorService:
                     )
                 """), {'booking_ids': booking_ids})
 
-                # Then delete the transactions
-                from models.transaction import Transaction
+                # Then delete all transactions for this vendor
                 Transaction.query.filter(
-                    Transaction.booking_id.in_(booking_ids)
+                    db.or_(
+                        Transaction.booking_id.in_(booking_ids),
+                        Transaction.vendor_id == vendor_id
+                    )
                 ).delete(synchronize_session=False)
 
                 # Finally delete the bookings
