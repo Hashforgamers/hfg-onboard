@@ -230,8 +230,8 @@ class VendorService:
             if not vendor:
                 raise ValueError(f"No vendor found with ID {vendor_id}")
 
-            # Step 0: Handle transactions and bookings
-            current_app.logger.debug("Handling transactions and bookings for this vendor's slots")
+            # Step 0: Handle payment mappings, transactions and bookings
+            current_app.logger.debug("Handling payment mappings, transactions and bookings for this vendor's slots")
 
             slot_ids_subquery = db.session.query(Slot.id).filter(
                 Slot.gaming_type_id.in_(
@@ -239,16 +239,28 @@ class VendorService:
                 )
             )
 
-            # First delete transactions referencing these bookings
-            from models.transaction import Transaction
-            Transaction.query.filter(
-                Transaction.booking_id.in_(
-                    db.session.query(Booking.id).filter(Booking.slot_id.in_(slot_ids_subquery))
-                )
-            ).delete(synchronize_session=False)
+            # Get booking IDs first
+            booking_ids = [b[0] for b in db.session.query(Booking.id).filter(
+                Booking.slot_id.in_(slot_ids_subquery)
+            ).all()]
+            
+            if booking_ids:
+                # First delete payment transaction mappings for these bookings
+                db.session.execute(text("""
+                    DELETE FROM payment_transaction_mappings
+                    WHERE transaction_id IN (
+                        SELECT id FROM transactions WHERE booking_id = ANY(:booking_ids)
+                    )
+                """), {'booking_ids': booking_ids})
 
-            # Then delete the bookings
-            Booking.query.filter(Booking.slot_id.in_(slot_ids_subquery)).delete(synchronize_session=False)
+                # Then delete the transactions
+                from models.transaction import Transaction
+                Transaction.query.filter(
+                    Transaction.booking_id.in_(booking_ids)
+                ).delete(synchronize_session=False)
+
+                # Finally delete the bookings
+                Booking.query.filter(Booking.id.in_(booking_ids)).delete(synchronize_session=False)
 
             # Step 1: Delete related Slots (via AvailableGames)
             current_app.logger.debug("Deleting related Slots")
