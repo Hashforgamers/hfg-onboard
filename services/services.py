@@ -327,14 +327,23 @@ class VendorService:
             Document.query.filter_by(vendor_id=vendor_id).delete(synchronize_session=False)
 
 
-            # Step 12: Delete Cafe Passes
+            # Step 12: Delete User Passes first
+            current_app.logger.debug("Deleting User Passes linked to vendor's cafe passes")
+            db.session.execute(text("""
+                DELETE FROM user_passes
+                WHERE cafe_pass_id IN (
+                    SELECT id FROM cafe_passes WHERE vendor_id = :vendor_id
+                )
+            """), {'vendor_id': vendor_id})
+
+            # Step 13: Delete Cafe Passes
             current_app.logger.debug("Deleting Cafe Passes")
             db.session.execute(text("""
                 DELETE FROM cafe_passes
                 WHERE vendor_id = :vendor_id
             """), {'vendor_id': vendor_id})
 
-            # Step 13: Delete Vendor record itself
+            # Step 14: Delete Vendor record itself
             current_app.logger.debug("Deleting Vendor record")
             db.session.delete(vendor)
 
