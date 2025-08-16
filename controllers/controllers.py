@@ -760,7 +760,6 @@ def update_slot(vendor_id):
       - For each vendor game:
          * Ensure base Slot exists for (game_id, start_time, end_time).
          * INSERT rows into VENDOR_{vendor_id}_SLOT with vendor_id, slot_id, date, available_slot, is_available.
-    - Also updates the vendor's Timing to reflect the new window.
     """
     try:
         payload = request.get_json(silent=True) or {}
@@ -884,13 +883,7 @@ def update_slot(vendor_id):
 
             updated_days += 1
 
-        except Exception as timing_err:
-            # Proceed without failing the entire slot update if timing update encounters an issue
-            current_app.logger.error(
-                f"[update_slot] Failed to update Timing for vendor_id={vendor_id}: {timing_err}"
-            )
-
-        # Commit all changes atomically
+        # Commit all changes atomically (no Timing updates)
         db.session.commit()
 
         return jsonify({
