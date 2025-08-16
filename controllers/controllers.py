@@ -762,7 +762,7 @@ def update_slot(vendor_id):
         if not start_time_str or not end_time_str or not slot_duration or not day_key:
             return jsonify({"message": "start_time, end_time, slot_duration, and day are required"}), 400
 
-        # Parse times (12h format)
+        # Parse times (12h -> time)
         try:
             start_time = datetime.strptime(start_time_str, "%I:%M %p").time()
             end_time   = datetime.strptime(end_time_str, "%I:%M %p").time()
@@ -770,27 +770,27 @@ def update_slot(vendor_id):
             return jsonify({"message": "start_time/end_time must be in 'HH:MM AM/PM' format"}), 400
 
         # Validate day
-        day_key = day_key.strip().lower()
+        day_key = str(day_key).strip().lower()
         if day_key not in WEEKDAY_MAP:
             return jsonify({"message": f"Invalid day '{day_key}'. Use one of mon..sun"}), 400
         target_weekday = WEEKDAY_MAP[day_key]
 
-        # Fetch games
+        # Fetch games for this vendor
         games = AvailableGame.query.filter_by(vendor_id=vendor_id).all()
         if not games:
             return jsonify({"message": "No games found for vendor"}), 404
 
-        # Determine next occurrence of the target weekday (including today)
+        # Determine target date (next occurrence, including today)
         today = date.today()
-        delta = (target_weekday - today.weekday()) % 7
-        target_date = today + timedelta(days=delta)
+        delta_days = (target_weekday - today.weekday()) % 7
+        target_date = today + timedelta(days=delta_days)
 
-        # Generate blocks between start and end, cross-midnight safe
+        # Generate time blocks (cross-midnight aware)
         def generate_blocks(anchor_day: date):
             start_dt = datetime.combine(anchor_day, start_time)
             end_dt   = datetime.combine(anchor_day, end_time)
             if end_dt <= start_dt:
-                end_dt += timedelta(days=1)  # cross-midnight
+                end_dt += timedelta(days=1)  # crosses midnight
 
             blocks = []
             cur = start_dt
@@ -799,6 +799,7 @@ def update_slot(vendor_id):
                 if nxt > end_dt:
                     break
                 block_start_t = cur.time()
+                # Normalize end time to same-day clock value if crossed midnight
                 block_end_t = (nxt.time() if nxt.date() == cur.date() else (nxt - timedelta(days=1)).time())
                 blocks.append((block_start_t, block_end_t))
                 cur = nxt
@@ -808,9 +809,13 @@ def update_slot(vendor_id):
         if not blocks:
             return jsonify({"message": "No blocks generated for the provided times/duration"}), 400
 
-        # Delete existing vendor daily rows for that date
-        db.session.execute(text(f"DELETE FROM VENDOR_{vendor_id}_SLOT WHERE date = :d"), {"d": target_date})
+        # 1) Delete existing vendor daily rows for that date (scoped by vendor_id and date)
+        db.session.execute(
+            text(f"DELETE FROM VENDOR_{vendor_id}_SLOT WHERE vendor_id = :vendor_id AND date = :d"),
+            {"vendor_id": vendor_id, "d": target_date}
+        )
 
+        # 2) Rebuild per game and per block
         inserted_rows = 0
 
         for game in games:
@@ -819,7 +824,7 @@ def update_slot(vendor_id):
                 continue
 
             for (st, et) in blocks:
-                # Ensure base Slot row exists
+                # Ensure base Slot row exists for (game, start, end)
                 slot_rec = Slot.query.filter_by(
                     gaming_type_id=game.id,
                     start_time=st,
@@ -834,15 +839,16 @@ def update_slot(vendor_id):
                         is_available=False
                     )
                     db.session.add(slot_rec)
-                    db.session.flush()
+                    db.session.flush()  # get slot_rec.id
 
-                # Insert vendor daily availability
+                # Insert vendor daily availability WITH vendor_id
                 db.session.execute(
                     text(f"""
-                        INSERT INTO VENDOR_{vendor_id}_SLOT (slot_id, date, available_slot, is_available)
-                        VALUES (:slot_id, :date, :available_slot, :is_available)
+                        INSERT INTO VENDOR_{vendor_id}_SLOT (vendor_id, slot_id, date, available_slot, is_available)
+                        VALUES (:vendor_id, :slot_id, :date, :available_slot, :is_available)
                     """),
                     {
+                        "vendor_id": vendor_id,
                         "slot_id": slot_rec.id,
                         "date": target_date,
                         "available_slot": per_block_total,
