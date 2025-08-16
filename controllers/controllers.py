@@ -16,16 +16,21 @@ from models.bookingQueue import BookingQueue
 from models.booking import Booking
 from models.accessBookingCode import AccessBookingCode
 from db.extensions import db
-from datetime import datetime
 from models.transaction import Transaction
 from models.slots import Slot
 from pytz import timezone
 
+from sqlalchemy import text
+from datetime import datetime, timedelta, date, time as dtime
 
 
 vendor_bp = Blueprint('vendor', __name__)
 
 ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png', 'gif', 'doc', 'docx'}
+
+WEEKDAY_MAP = {
+    "mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6
+}
 
 def allowed_file(filename):
     """Check if the file has an allowed extension."""
@@ -731,4 +736,130 @@ def get_vendor_dashboard_data(vendor_id):
         current_app.logger.error(f"Dashboard API Error: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to fetch dashboard data'}), 500
 
+@vendor_bp.route('/vendor/<int:vendor_id>/updateSlot', methods=['POST'])
+def update_slot(vendor_id):
+    """
+    Update vendor slot windows for the next occurrence of a specific weekday across all games.
 
+    Payload:
+    {
+      "start_time": "09:00 AM",   // required, 12h format
+      "end_time": "11:00 PM",     // required, 12h format
+      "slot_duration": 30,        // required minutes
+      "day": "wed"                // required, one of mon..sun
+    }
+    """
+    try:
+        payload = request.get_json(silent=True) or {}
+
+        # Required fields
+        start_time_str = payload.get("start_time")
+        end_time_str   = payload.get("end_time")
+        slot_duration  = payload.get("slot_duration")
+        day_key        = payload.get("day")
+
+        if not start_time_str or not end_time_str or not slot_duration or not day_key:
+            return jsonify({"message": "start_time, end_time, slot_duration, and day are required"}), 400
+
+        # Parse times (12h format)
+        try:
+            start_time = datetime.strptime(start_time_str, "%I:%M %p").time()
+            end_time   = datetime.strptime(end_time_str, "%I:%M %p").time()
+        except ValueError:
+            return jsonify({"message": "start_time/end_time must be in 'HH:MM AM/PM' format"}), 400
+
+        # Validate day
+        day_key = day_key.strip().lower()
+        if day_key not in WEEKDAY_MAP:
+            return jsonify({"message": f"Invalid day '{day_key}'. Use one of mon..sun"}), 400
+        target_weekday = WEEKDAY_MAP[day_key]
+
+        # Fetch games
+        games = AvailableGame.query.filter_by(vendor_id=vendor_id).all()
+        if not games:
+            return jsonify({"message": "No games found for vendor"}), 404
+
+        # Determine next occurrence of the target weekday (including today)
+        today = date.today()
+        delta = (target_weekday - today.weekday()) % 7
+        target_date = today + timedelta(days=delta)
+
+        # Generate blocks between start and end, cross-midnight safe
+        def generate_blocks(anchor_day: date):
+            start_dt = datetime.combine(anchor_day, start_time)
+            end_dt   = datetime.combine(anchor_day, end_time)
+            if end_dt <= start_dt:
+                end_dt += timedelta(days=1)  # cross-midnight
+
+            blocks = []
+            cur = start_dt
+            while cur < end_dt:
+                nxt = cur + timedelta(minutes=int(slot_duration))
+                if nxt > end_dt:
+                    break
+                block_start_t = cur.time()
+                block_end_t = (nxt.time() if nxt.date() == cur.date() else (nxt - timedelta(days=1)).time())
+                blocks.append((block_start_t, block_end_t))
+                cur = nxt
+            return blocks
+
+        blocks = generate_blocks(target_date)
+        if not blocks:
+            return jsonify({"message": "No blocks generated for the provided times/duration"}), 400
+
+        # Delete existing vendor daily rows for that date
+        db.session.execute(text(f"DELETE FROM VENDOR_{vendor_id}_SLOT WHERE date = :d"), {"d": target_date})
+
+        inserted_rows = 0
+
+        for game in games:
+            per_block_total = int(game.total_slot or 0)
+            if per_block_total <= 0:
+                continue
+
+            for (st, et) in blocks:
+                # Ensure base Slot row exists
+                slot_rec = Slot.query.filter_by(
+                    gaming_type_id=game.id,
+                    start_time=st,
+                    end_time=et
+                ).first()
+                if not slot_rec:
+                    slot_rec = Slot(
+                        gaming_type_id=game.id,
+                        start_time=st,
+                        end_time=et,
+                        available_slot=per_block_total,
+                        is_available=False
+                    )
+                    db.session.add(slot_rec)
+                    db.session.flush()
+
+                # Insert vendor daily availability
+                db.session.execute(
+                    text(f"""
+                        INSERT INTO VENDOR_{vendor_id}_SLOT (slot_id, date, available_slot, is_available)
+                        VALUES (:slot_id, :date, :available_slot, :is_available)
+                    """),
+                    {
+                        "slot_id": slot_rec.id,
+                        "date": target_date,
+                        "available_slot": per_block_total,
+                        "is_available": True if per_block_total > 0 else False
+                    }
+                )
+                inserted_rows += 1
+
+        db.session.commit()
+        return jsonify({
+            "message": "Slot configuration updated",
+            "vendor_id": vendor_id,
+            "day": day_key,
+            "target_date": target_date.isoformat(),
+            "inserted_rows": inserted_rows
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error updating slots for vendor {vendor_id}: {e}")
+        return jsonify({"message": "Failed to update slot configuration", "error": str(e)}), 500
