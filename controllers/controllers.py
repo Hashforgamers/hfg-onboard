@@ -17,6 +17,7 @@ from models.booking import Booking
 from models.accessBookingCode import AccessBookingCode
 from db.extensions import db
 from models.transaction import Transaction
+from models.availableGame import AvailableGame
 from models.slots import Slot
 from pytz import timezone
 
