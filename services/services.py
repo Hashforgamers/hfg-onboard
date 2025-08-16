@@ -230,8 +230,8 @@ class VendorService:
             if not vendor:
                 raise ValueError(f"No vendor found with ID {vendor_id}")
 
-            # Step 0: Delete bookings related to this vendor's slots
-            current_app.logger.debug("Deleting bookings for this vendor's slots")
+            # Step 0: Handle transactions and bookings
+            current_app.logger.debug("Handling transactions and bookings for this vendor's slots")
 
             slot_ids_subquery = db.session.query(Slot.id).filter(
                 Slot.gaming_type_id.in_(
@@ -239,6 +239,15 @@ class VendorService:
                 )
             )
 
+            # First delete transactions referencing these bookings
+            from models.transaction import Transaction
+            Transaction.query.filter(
+                Transaction.booking_id.in_(
+                    db.session.query(Booking.id).filter(Booking.slot_id.in_(slot_ids_subquery))
+                )
+            ).delete(synchronize_session=False)
+
+            # Then delete the bookings
             Booking.query.filter(Booking.slot_id.in_(slot_ids_subquery)).delete(synchronize_session=False)
 
             # Step 1: Delete related Slots (via AvailableGames)

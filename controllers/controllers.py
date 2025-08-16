@@ -19,6 +19,7 @@ from db.extensions import db
 from models.transaction import Transaction
 from models.availableGame import AvailableGame
 from models.slots import Slot
+from models.vendor_day_slot_config import VendorDaySlotConfig
 from pytz import timezone
 
 from sqlalchemy import text
@@ -743,28 +744,21 @@ def get_vendor_dashboard_data(vendor_id):
 @vendor_bp.route('/vendor/<int:vendor_id>/updateSlot', methods=['POST'])
 def update_slot(vendor_id):
     """
-    Apply new time windows to ALL future dates of the given weekday across all games.
+    Update slot windows for ALL AvailableGame (console types) for ALL future dates of the given weekday.
+    Also upserts day-wise configuration into vendor_day_slot_config.
 
     Payload:
     {
       "start_time": "09:00 AM",   // required, 12h format
-      "end_time": "11:00 PM",     // required, 12h format
+      "end_time":   "11:00 PM",   // required, 12h format
       "slot_duration": 30,        // required minutes
       "day": "sun"                // required, one of mon..sun
     }
-
-    Behavior:
-    - For each date in [today, today + FUTURE_WINDOW_DAYS] whose weekday == day:
-      - DELETE existing rows for (vendor_id, date) from VENDOR_{vendor_id}_SLOT.
-      - Generate blocks between start_time and end_time (cross-midnight safe).
-      - For each vendor game:
-         * Ensure base Slot exists for (game_id, start_time, end_time).
-         * INSERT rows into VENDOR_{vendor_id}_SLOT with vendor_id, slot_id, date, available_slot, is_available.
     """
     try:
         payload = request.get_json(silent=True) or {}
 
-        # Required inputs
+        # Validate required fields
         start_time_str = payload.get("start_time")
         end_time_str   = payload.get("end_time")
         slot_duration  = payload.get("slot_duration")
@@ -773,7 +767,7 @@ def update_slot(vendor_id):
         if not start_time_str or not end_time_str or not slot_duration or not day_key:
             return jsonify({"message": "start_time, end_time, slot_duration, and day are required"}), 400
 
-        # Parse times in 12-hour format, e.g., "09:00 AM"
+        # Parse times (12h format)
         try:
             start_time = datetime.strptime(start_time_str, "%I:%M %p").time()
             end_time   = datetime.strptime(end_time_str, "%I:%M %p").time()
@@ -786,12 +780,49 @@ def update_slot(vendor_id):
             return jsonify({"message": f"Invalid day '{day_key}'. Use one of mon..sun"}), 400
         target_weekday = WEEKDAY_MAP[day_key]
 
-        # Fetch vendor games
+        # Fetch all AvailableGame for vendor (apply to all)
         games = AvailableGame.query.filter_by(vendor_id=vendor_id).all()
         if not games:
-            return jsonify({"message": "No games found for vendor"}), 404
+            return jsonify({"message": "No console types (AvailableGame) found for vendor"}), 404
 
-        # Build all future dates that match the weekday within the configured window
+        # Upsert vendor_day_slot_config
+        opening_str_for_config = start_time.strftime("%I:%M %p")  # store same format as input
+        closing_str_for_config = end_time.strftime("%I:%M %p")
+
+        # Try update, else insert (simple upsert)
+        update_result = db.session.execute(
+            text("""
+                UPDATE vendor_day_slot_config
+                   SET opening_time = :opening_time,
+                       closing_time = :closing_time,
+                       slot_duration = :slot_duration
+                 WHERE vendor_id = :vendor_id
+                   AND day = :day
+            """),
+            {
+                "vendor_id": vendor_id,
+                "day": day_key,
+                "opening_time": opening_str_for_config,
+                "closing_time": closing_str_for_config,
+                "slot_duration": int(slot_duration)
+            }
+        )
+        if update_result.rowcount == 0:
+            db.session.execute(
+                text("""
+                    INSERT INTO vendor_day_slot_config (vendor_id, day, opening_time, closing_time, slot_duration)
+                    VALUES (:vendor_id, :day, :opening_time, :closing_time, :slot_duration)
+                """),
+                {
+                    "vendor_id": vendor_id,
+                    "day": day_key,
+                    "opening_time": opening_str_for_config,
+                    "closing_time": closing_str_for_config,
+                    "slot_duration": int(slot_duration)
+                }
+            )
+
+        # Build future dates for this weekday
         today = date.today()
         end_window = today + timedelta(days=FUTURE_WINDOW_DAYS)
         target_dates = []
@@ -804,13 +835,12 @@ def update_slot(vendor_id):
         if not target_dates:
             return jsonify({"message": "No matching future dates found in the configured window"}), 400
 
-        # Time block generator (cross-midnight safe)
+        # Generate time blocks (cross-midnight safe)
         def generate_blocks(anchor_day: date):
             start_dt = datetime.combine(anchor_day, start_time)
             end_dt   = datetime.combine(anchor_day, end_time)
             if end_dt <= start_dt:
-                # Handle cross-midnight by extending end to next day
-                end_dt += timedelta(days=1)
+                end_dt += timedelta(days=1)  # cross-midnight window
 
             blocks = []
             cur_dt = start_dt
@@ -819,8 +849,8 @@ def update_slot(vendor_id):
                 if nxt_dt > end_dt:
                     break
                 block_start_t = cur_dt.time()
-                # Normalize end time to same-day clock if window crosses midnight
-                block_end_t = (nxt_dt.time() if nxt_dt.date() == cur_dt.date() else (nxt_dt - timedelta(days=1)).time())
+                block_end_t   = (nxt_dt.time() if nxt_dt.date() == cur_dt.date()
+                                 else (nxt_dt - timedelta(days=1)).time())
                 blocks.append((block_start_t, block_end_t))
                 cur_dt = nxt_dt
             return blocks
@@ -828,66 +858,63 @@ def update_slot(vendor_id):
         updated_days = 0
         inserted_rows = 0
 
-        # Clear and rebuild per target date
         for d in target_dates:
             blocks = generate_blocks(d)
             if not blocks:
                 current_app.logger.warning(f"[update_slot] No blocks generated for {d} with provided times/duration.")
-                continue
+            else:
+                # Delete existing rows for this vendor and date from the dynamic table
+                db.session.execute(
+                    text(f"DELETE FROM VENDOR_{vendor_id}_SLOT WHERE vendor_id = :vendor_id AND date = :d"),
+                    {"vendor_id": vendor_id, "d": d}
+                )
 
-            # Delete existing rows scoped by vendor_id and date
-            db.session.execute(
-                text(f"DELETE FROM VENDOR_{vendor_id}_SLOT WHERE vendor_id = :vendor_id AND date = :d"),
-                {"vendor_id": vendor_id, "d": d}
-            )
+                # Rebuild per game and block
+                for game in games:
+                    per_block_total = int(game.total_slot or 0)
+                    if per_block_total <= 0:
+                        continue
 
-            # Rebuild rows for each game and block
-            for game in games:
-                per_block_total = int(game.total_slot or 0)
-                if per_block_total <= 0:
-                    continue
-
-                for (st, et) in blocks:
-                    # Ensure base Slot exists for this (game, start, end)
-                    slot_rec = Slot.query.filter_by(
-                        gaming_type_id=game.id,
-                        start_time=st,
-                        end_time=et
-                    ).first()
-                    if not slot_rec:
-                        slot_rec = Slot(
+                    for (st, et) in blocks:
+                        # Ensure base Slot exists for this (game, start, end)
+                        slot_rec = Slot.query.filter_by(
                             gaming_type_id=game.id,
                             start_time=st,
-                            end_time=et,
-                            available_slot=per_block_total,
-                            is_available=False
+                            end_time=et
+                        ).first()
+                        if not slot_rec:
+                            slot_rec = Slot(
+                                gaming_type_id=game.id,
+                                start_time=st,
+                                end_time=et,
+                                available_slot=per_block_total,
+                                is_available=False
+                            )
+                            db.session.add(slot_rec)
+                            db.session.flush()  # obtain slot_rec.id
+
+                        # Insert vendor daily availability WITH vendor_id
+                        db.session.execute(
+                            text(f"""
+                                INSERT INTO VENDOR_{vendor_id}_SLOT (vendor_id, slot_id, date, available_slot, is_available)
+                                VALUES (:vendor_id, :slot_id, :date, :available_slot, :is_available)
+                            """),
+                            {
+                                "vendor_id": vendor_id,
+                                "slot_id": slot_rec.id,
+                                "date": d,
+                                "available_slot": per_block_total,
+                                "is_available": True if per_block_total > 0 else False
+                            }
                         )
-                        db.session.add(slot_rec)
-                        db.session.flush()  # obtain slot_rec.id
+                        inserted_rows += 1
 
-                    # Insert vendor daily availability WITH vendor_id
-                    db.session.execute(
-                        text(f"""
-                            INSERT INTO VENDOR_{vendor_id}_SLOT (vendor_id, slot_id, date, available_slot, is_available)
-                            VALUES (:vendor_id, :slot_id, :date, :available_slot, :is_available)
-                        """),
-                        {
-                            "vendor_id": vendor_id,
-                            "slot_id": slot_rec.id,
-                            "date": d,
-                            "available_slot": per_block_total,
-                            "is_available": True if per_block_total > 0 else False
-                        }
-                    )
-                    inserted_rows += 1
+                updated_days += 1
 
-            updated_days += 1
-
-        # Commit all changes atomically (no Timing updates)
         db.session.commit()
 
         return jsonify({
-            "message": "Slot configuration updated for all future matching days",
+            "message": "Day-wise slot configuration saved and applied",
             "vendor_id": vendor_id,
             "day": day_key,
             "future_window_days": FUTURE_WINDOW_DAYS,
@@ -897,5 +924,5 @@ def update_slot(vendor_id):
 
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f"[update_slot] Error updating slots for vendor {vendor_id}: {e}")
+        current_app.logger.error(f"[update_slot] Error for vendor {vendor_id}: {e}")
         return jsonify({"message": "Failed to update slot configuration", "error": str(e)}), 500
