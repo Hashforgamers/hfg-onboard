@@ -33,6 +33,9 @@ WEEKDAY_MAP = {
     "mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6
 }
 
+# Adjust this window as needed (e.g., 365 for a year)
+FUTURE_WINDOW_DAYS = 180
+
 def allowed_file(filename):
     """Check if the file has an allowed extension."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -740,15 +743,23 @@ def get_vendor_dashboard_data(vendor_id):
 @vendor_bp.route('/vendor/<int:vendor_id>/updateSlot', methods=['POST'])
 def update_slot(vendor_id):
     """
-    Update vendor slot windows for the next occurrence of a specific weekday across all games.
+    Apply new time windows to ALL future dates of the given weekday across all games.
 
     Payload:
     {
       "start_time": "09:00 AM",   // required, 12h format
       "end_time": "11:00 PM",     // required, 12h format
       "slot_duration": 30,        // required minutes
-      "day": "wed"                // required, one of mon..sun
+      "day": "sun"                // required, one of mon..sun
     }
+
+    Behavior:
+    - For each future date in [today, today+FUTURE_WINDOW_DAYS] whose weekday == day:
+      - Delete existing rows for (vendor_id, date) from VENDOR_{vendor_id}_SLOT.
+      - Generate blocks between start_time and end_time (cross-midnight safe).
+      - For each vendor game:
+         * Ensure base Slot exists for (game_id, start_time, end_time).
+         * Insert vendor daily rows with available_slot=game.total_slot and is_available accordingly.
     """
     try:
         payload = request.get_json(silent=True) or {}
@@ -762,7 +773,7 @@ def update_slot(vendor_id):
         if not start_time_str or not end_time_str or not slot_duration or not day_key:
             return jsonify({"message": "start_time, end_time, slot_duration, and day are required"}), 400
 
-        # Parse times (12h -> time)
+        # Parse times
         try:
             start_time = datetime.strptime(start_time_str, "%I:%M %p").time()
             end_time   = datetime.strptime(end_time_str, "%I:%M %p").time()
@@ -780,12 +791,7 @@ def update_slot(vendor_id):
         if not games:
             return jsonify({"message": "No games found for vendor"}), 404
 
-        # Determine target date (next occurrence, including today)
-        today = date.today()
-        delta_days = (target_weekday - today.weekday()) % 7
-        target_date = today + timedelta(days=delta_days)
-
-        # Generate time blocks (cross-midnight aware)
+        # Generate time blocks for a given date (cross-midnight safe)
         def generate_blocks(anchor_day: date):
             start_dt = datetime.combine(anchor_day, start_time)
             end_dt   = datetime.combine(anchor_day, end_time)
@@ -799,70 +805,89 @@ def update_slot(vendor_id):
                 if nxt > end_dt:
                     break
                 block_start_t = cur.time()
-                # Normalize end time to same-day clock value if crossed midnight
+                # Normalize end time to same-day clock if crossed midnight
                 block_end_t = (nxt.time() if nxt.date() == cur.date() else (nxt - timedelta(days=1)).time())
                 blocks.append((block_start_t, block_end_t))
                 cur = nxt
             return blocks
 
-        blocks = generate_blocks(target_date)
-        if not blocks:
-            return jsonify({"message": "No blocks generated for the provided times/duration"}), 400
+        # Build all future dates in the window that match the requested weekday
+        today = date.today()
+        end_window = today + timedelta(days=FUTURE_WINDOW_DAYS)
+        target_dates = []
+        cur = today
+        while cur <= end_window:
+            if cur.weekday() == target_weekday:
+                target_dates.append(cur)
+            cur += timedelta(days=1)
 
-        # 1) Delete existing vendor daily rows for that date (scoped by vendor_id and date)
-        db.session.execute(
-            text(f"DELETE FROM VENDOR_{vendor_id}_SLOT WHERE vendor_id = :vendor_id AND date = :d"),
-            {"vendor_id": vendor_id, "d": target_date}
-        )
+        if not target_dates:
+            return jsonify({"message": "No matching future dates found in the configured window"}), 400
 
-        # 2) Rebuild per game and per block
+        updated_days = 0
         inserted_rows = 0
 
-        for game in games:
-            per_block_total = int(game.total_slot or 0)
-            if per_block_total <= 0:
+        for d in target_dates:
+            blocks = generate_blocks(d)
+            if not blocks:
+                current_app.logger.warning(f"No blocks generated for {d} with provided times/duration")
                 continue
 
-            for (st, et) in blocks:
-                # Ensure base Slot row exists for (game, start, end)
-                slot_rec = Slot.query.filter_by(
-                    gaming_type_id=game.id,
-                    start_time=st,
-                    end_time=et
-                ).first()
-                if not slot_rec:
-                    slot_rec = Slot(
+            # Clear existing daily rows for this vendor and date
+            db.session.execute(
+                text(f"DELETE FROM VENDOR_{vendor_id}_SLOT WHERE vendor_id = :vendor_id AND date = :d"),
+                {"vendor_id": vendor_id, "d": d}
+            )
+
+            # Rebuild per game and block
+            for game in games:
+                per_block_total = int(game.total_slot or 0)
+                if per_block_total <= 0:
+                    continue
+
+                for (st, et) in blocks:
+                    # Ensure base Slot row exists for (game, start, end)
+                    slot_rec = Slot.query.filter_by(
                         gaming_type_id=game.id,
                         start_time=st,
-                        end_time=et,
-                        available_slot=per_block_total,
-                        is_available=False
-                    )
-                    db.session.add(slot_rec)
-                    db.session.flush()  # get slot_rec.id
+                        end_time=et
+                    ).first()
+                    if not slot_rec:
+                        slot_rec = Slot(
+                            gaming_type_id=game.id,
+                            start_time=st,
+                            end_time=et,
+                            available_slot=per_block_total,
+                            is_available=False
+                        )
+                        db.session.add(slot_rec)
+                        db.session.flush()  # obtain slot_rec.id
 
-                # Insert vendor daily availability WITH vendor_id
-                db.session.execute(
-                    text(f"""
-                        INSERT INTO VENDOR_{vendor_id}_SLOT (vendor_id, slot_id, date, available_slot, is_available)
-                        VALUES (:vendor_id, :slot_id, :date, :available_slot, :is_available)
-                    """),
-                    {
-                        "vendor_id": vendor_id,
-                        "slot_id": slot_rec.id,
-                        "date": target_date,
-                        "available_slot": per_block_total,
-                        "is_available": True if per_block_total > 0 else False
-                    }
-                )
-                inserted_rows += 1
+                    # Insert vendor daily availability with vendor_id
+                    db.session.execute(
+                        text(f"""
+                            INSERT INTO VENDOR_{vendor_id}_SLOT (vendor_id, slot_id, date, available_slot, is_available)
+                            VALUES (:vendor_id, :slot_id, :date, :available_slot, :is_available)
+                        """),
+                        {
+                            "vendor_id": vendor_id,
+                            "slot_id": slot_rec.id,
+                            "date": d,
+                            "available_slot": per_block_total,
+                            "is_available": True if per_block_total > 0 else False
+                        }
+                    )
+                    inserted_rows += 1
+
+            updated_days += 1
 
         db.session.commit()
         return jsonify({
-            "message": "Slot configuration updated",
+            "message": "Slot configuration updated for all future matching days",
             "vendor_id": vendor_id,
             "day": day_key,
-            "target_date": target_date.isoformat(),
+            "future_window_days": FUTURE_WINDOW_DAYS,
+            "updated_days": updated_days,
             "inserted_rows": inserted_rows
         }), 200
 
