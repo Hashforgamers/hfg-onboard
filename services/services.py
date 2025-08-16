@@ -328,18 +328,26 @@ class VendorService:
 
             # Step 12: Delete Extra Service Menu Images and Menus
             current_app.logger.debug("Deleting Extra Service Menu Images")
-            db.session.execute(text("""
-                DELETE FROM extra_service_menu_images
-                WHERE menu_id IN (
-                    SELECT id FROM extra_service_menus WHERE vendor_id = :vendor_id
-                )
-            """), {'vendor_id': vendor_id})
-
-            current_app.logger.debug("Deleting Extra Service Menus")
-            db.session.execute(text("""
-                DELETE FROM extra_service_menus
-                WHERE vendor_id = :vendor_id
-            """), {'vendor_id': vendor_id})
+            
+            # First get menu IDs linked to this vendor's extra services
+            menu_ids = [m[0] for m in db.session.execute(text("""
+                SELECT m.id FROM extra_service_menus m
+                JOIN extra_service_categories c ON m.category_id = c.id
+                WHERE c.vendor_id = :vendor_id
+            """), {'vendor_id': vendor_id}).fetchall()]
+            
+            if menu_ids:
+                # Delete images for these menus
+                db.session.execute(text("""
+                    DELETE FROM extra_service_menu_images
+                    WHERE menu_id = ANY(:menu_ids)
+                """), {'menu_ids': menu_ids})
+                
+                # Then delete the menus
+                db.session.execute(text("""
+                    DELETE FROM extra_service_menus
+                    WHERE id = ANY(:menu_ids)
+                """), {'menu_ids': menu_ids})
 
             # Step 13: Delete User Passes first
             current_app.logger.debug("Deleting User Passes linked to vendor's cafe passes")
