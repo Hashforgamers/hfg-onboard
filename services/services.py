@@ -326,8 +326,22 @@ class VendorService:
             current_app.logger.debug("Deleting Vendor Documents")
             Document.query.filter_by(vendor_id=vendor_id).delete(synchronize_session=False)
 
+            # Step 12: Delete Extra Service Menu Images and Menus
+            current_app.logger.debug("Deleting Extra Service Menu Images")
+            db.session.execute(text("""
+                DELETE FROM extra_service_menu_images
+                WHERE menu_id IN (
+                    SELECT id FROM extra_service_menus WHERE vendor_id = :vendor_id
+                )
+            """), {'vendor_id': vendor_id})
 
-            # Step 12: Delete User Passes first
+            current_app.logger.debug("Deleting Extra Service Menus")
+            db.session.execute(text("""
+                DELETE FROM extra_service_menus
+                WHERE vendor_id = :vendor_id
+            """), {'vendor_id': vendor_id})
+
+            # Step 13: Delete User Passes first
             current_app.logger.debug("Deleting User Passes linked to vendor's cafe passes")
             db.session.execute(text("""
                 DELETE FROM user_passes
