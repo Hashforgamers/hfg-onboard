@@ -884,36 +884,6 @@ def update_slot(vendor_id):
 
             updated_days += 1
 
-        # Update vendor timing to reflect the new window
-        try:
-            vendor = Vendor.query.get(vendor_id)
-            if vendor and vendor.timing_id:
-                timing = Timing.query.get(vendor.timing_id)
-                if timing:
-                    timing.opening_time = start_time.strftime("%I:%M %p")  # or "%H:%M" if you prefer 24h
-                    timing.closing_time = end_time.strftime("%I:%M %p")
-                    db.session.add(timing)
-                    current_app.logger.info(
-                        f"[update_slot] Timing updated for vendor_id={vendor_id}: "
-                        f"{timing.opening_time} -> {timing.closing_time}"
-                    )
-            elif vendor and not vendor.timing_id:
-                # If missing timing, create one and link it
-                timing = Timing(
-                    opening_time=start_time.strftime("%I:%M %p"),
-                    closing_time=end_time.strftime("%I:%M %p")
-                )
-                db.session.add(timing)
-                db.session.flush()
-                vendor.timing_id = timing.id
-                db.session.add(vendor)
-                current_app.logger.info(
-                    f"[update_slot] Timing created and linked for vendor_id={vendor_id}"
-                )
-            else:
-                current_app.logger.warning(
-                    f"[update_slot] Vendor not found for vendor_id={vendor_id}; timing not updated."
-                )
         except Exception as timing_err:
             # Proceed without failing the entire slot update if timing update encounters an issue
             current_app.logger.error(
