@@ -327,11 +327,18 @@ class VendorService:
             Document.query.filter_by(vendor_id=vendor_id).delete(synchronize_session=False)
 
 
-            # Step 12: Delete Vendor record itself
+            # Step 12: Delete Cafe Passes
+            current_app.logger.debug("Deleting Cafe Passes")
+            db.session.execute(text("""
+                DELETE FROM cafe_passes
+                WHERE vendor_id = :vendor_id
+            """), {'vendor_id': vendor_id})
+
+            # Step 13: Delete Vendor record itself
             current_app.logger.debug("Deleting Vendor record")
             db.session.delete(vendor)
 
-            # Step 13: Drop vendor-specific dynamic tables
+            # Step 14: Drop vendor-specific dynamic tables
             VendorService.drop_vendor_slot_table(vendor_id)
             VendorService.drop_vendor_console_availability_table(vendor_id)
             VendorService.drop_vendor_dashboard_table(vendor_id)
