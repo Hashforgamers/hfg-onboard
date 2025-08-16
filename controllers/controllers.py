@@ -19,7 +19,7 @@ from db.extensions import db
 from models.transaction import Transaction
 from models.availableGame import AvailableGame
 from models.slots import Slot
-from models.vendor_day_slot_config import VendorDaySlotConfig
+from models.vendorDaySlotConfig import VendorDaySlotConfig
 from pytz import timezone
 
 from sqlalchemy import text
