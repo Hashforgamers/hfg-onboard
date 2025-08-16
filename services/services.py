@@ -270,7 +270,16 @@ class VendorService:
                 )
             ).delete(synchronize_session=False)
 
-            # Step 2: Delete Available Games
+            # Step 2: First delete available_game_console associations
+            current_app.logger.debug("Deleting available_game_console associations")
+            db.session.execute(text("""
+                DELETE FROM available_game_console
+                WHERE available_game_id IN (
+                    SELECT id FROM available_games WHERE vendor_id = :vendor_id
+                )
+            """), {'vendor_id': vendor_id})
+
+            # Step 3: Delete Available Games
             current_app.logger.debug("Deleting Available Games")
             AvailableGame.query.filter_by(vendor_id=vendor_id).delete(synchronize_session=False)
 
