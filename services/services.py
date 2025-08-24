@@ -18,6 +18,8 @@ from models.uploadedImage import Image
 from models.slots import Slot
 from models.vendorAccount import VendorAccount
 from models.vendorPin import VendorPin
+from models.booking import Booking
+from models.transaction import Transaction
 
 from db.extensions import db
 from .utils import send_email, generate_credentials, generate_unique_vendor_pin
@@ -229,6 +231,40 @@ class VendorService:
             if not vendor:
                 raise ValueError(f"No vendor found with ID {vendor_id}")
 
+            # Step 0: Handle payment mappings, transactions and bookings
+            current_app.logger.debug("Handling payment mappings, transactions and bookings for this vendor's slots")
+
+            slot_ids_subquery = db.session.query(Slot.id).filter(
+                Slot.gaming_type_id.in_(
+                    db.session.query(AvailableGame.id).filter_by(vendor_id=vendor_id)
+                )
+            )
+
+            # Get booking IDs first
+            booking_ids = [b[0] for b in db.session.query(Booking.id).filter(
+                Booking.slot_id.in_(slot_ids_subquery)
+            ).all()]
+            
+            if booking_ids:
+                # First delete payment transaction mappings for these bookings
+                db.session.execute(text("""
+                    DELETE FROM payment_transaction_mappings
+                    WHERE transaction_id IN (
+                        SELECT id FROM transactions WHERE booking_id = ANY(:booking_ids)
+                    )
+                """), {'booking_ids': booking_ids})
+
+                # Then delete all transactions for this vendor
+                Transaction.query.filter(
+                    db.or_(
+                        Transaction.booking_id.in_(booking_ids),
+                        Transaction.vendor_id == vendor_id
+                    )
+                ).delete(synchronize_session=False)
+
+                # Finally delete the bookings
+                Booking.query.filter(Booking.id.in_(booking_ids)).delete(synchronize_session=False)
+
             # Step 1: Delete related Slots (via AvailableGames)
             current_app.logger.debug("Deleting related Slots")
             Slot.query.filter(
@@ -237,7 +273,16 @@ class VendorService:
                 )
             ).delete(synchronize_session=False)
 
-            # Step 2: Delete Available Games
+            # Step 2: First delete available_game_console associations
+            current_app.logger.debug("Deleting available_game_console associations")
+            db.session.execute(text("""
+                DELETE FROM available_game_console
+                WHERE available_game_id IN (
+                    SELECT id FROM available_games WHERE vendor_id = :vendor_id
+                )
+            """), {'vendor_id': vendor_id})
+
+            # Step 3: Delete Available Games
             current_app.logger.debug("Deleting Available Games")
             AvailableGame.query.filter_by(vendor_id=vendor_id).delete(synchronize_session=False)
 
@@ -281,12 +326,50 @@ class VendorService:
             current_app.logger.debug("Deleting Vendor Documents")
             Document.query.filter_by(vendor_id=vendor_id).delete(synchronize_session=False)
 
+            # Step 12: Delete Extra Service Menu Images and Menus
+            current_app.logger.debug("Deleting Extra Service Menu Images")
+            
+            # First get menu IDs linked to this vendor's extra services
+            menu_ids = [m[0] for m in db.session.execute(text("""
+                SELECT m.id FROM extra_service_menus m
+                JOIN extra_service_categories c ON m.category_id = c.id
+                WHERE c.vendor_id = :vendor_id
+            """), {'vendor_id': vendor_id}).fetchall()]
+            
+            if menu_ids:
+                # Delete images for these menus
+                db.session.execute(text("""
+                    DELETE FROM extra_service_menu_images
+                    WHERE menu_id = ANY(:menu_ids)
+                """), {'menu_ids': menu_ids})
+                
+                # Then delete the menus
+                db.session.execute(text("""
+                    DELETE FROM extra_service_menus
+                    WHERE id = ANY(:menu_ids)
+                """), {'menu_ids': menu_ids})
 
-            # Step 12: Delete Vendor record itself
+            # Step 13: Delete User Passes first
+            current_app.logger.debug("Deleting User Passes linked to vendor's cafe passes")
+            db.session.execute(text("""
+                DELETE FROM user_passes
+                WHERE cafe_pass_id IN (
+                    SELECT id FROM cafe_passes WHERE vendor_id = :vendor_id
+                )
+            """), {'vendor_id': vendor_id})
+
+            # Step 13: Delete Cafe Passes
+            current_app.logger.debug("Deleting Cafe Passes")
+            db.session.execute(text("""
+                DELETE FROM cafe_passes
+                WHERE vendor_id = :vendor_id
+            """), {'vendor_id': vendor_id})
+
+            # Step 14: Delete Vendor record itself
             current_app.logger.debug("Deleting Vendor record")
             db.session.delete(vendor)
 
-            # Step 13: Drop vendor-specific dynamic tables
+            # Step 14: Drop vendor-specific dynamic tables
             VendorService.drop_vendor_slot_table(vendor_id)
             VendorService.drop_vendor_console_availability_table(vendor_id)
             VendorService.drop_vendor_dashboard_table(vendor_id)
