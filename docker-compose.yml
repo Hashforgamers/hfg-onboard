@@ -26,7 +26,11 @@ services:
       # *** NEW: Replace these with your actual Cloudinary credentials ***
       - CLOUDINARY_CLOUD_NAME=dxjjigepf
       - CLOUDINARY_API_KEY=181315914336585
-      - CLOUDINARY_API_SECRET=SECRET_KEY
+      - CLOUDINARY_API_SECRET=DpUMsRVIpXZ4P3pu63cb-jJGwXA
+
+        # Redis Configuration (External)
+      - REDIS_URL=rediss://red-d0hpfdidbo4c73dicadg:pKfNIbBN5g1GkX9RKZxig4yE9bQBRhdu@singapore-keyvalue.render.com:6379
+      - REDIS_TLS_ENABLED=true
 
   # db:
   #   image: postgres:latest
