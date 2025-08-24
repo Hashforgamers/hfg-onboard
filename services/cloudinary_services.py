@@ -10,6 +10,10 @@ import cloudinary.api
 from flask import current_app
 from datetime import datetime
 from werkzeug.utils import secure_filename
+import os
+import time
+import hashlib
+import hmac
 
 class CloudinaryGameImageService:
     """
@@ -274,7 +278,84 @@ class CloudinaryGameImageService:
                 'error': error_msg
             }
             
+            # In your CloudinaryGameImageService class
+
+    @staticmethod
+    def delete_image(public_id):
+        """
+        Delete an image from Cloudinary with manual signature generation
+        """
+        try:
+            # Get Cloudinary credentials from environment
+            api_key = os.getenv('CLOUDINARY_API_KEY')
+            api_secret = os.getenv('CLOUDINARY_API_SECRET') 
+            cloud_name = os.getenv('CLOUDINARY_CLOUD_NAME')
+        
+            if not all([api_key, api_secret, cloud_name]):
+               return {
+                'success': False,
+                'error': 'Cloudinary credentials not properly configured'
+            }
+         # Method 1: Try simple delete first
+            try:
+                result = cloudinary.uploader.destroy(public_id)
             
+                if result.get('result') in ['ok', 'not found']:
+                   return {
+                    'success': True,
+                    'message': 'Image deleted successfully',
+                    'result': result
+                }
+            except Exception as simple_error:
+                print(f"Simple delete failed: {simple_error}")
+                
+            # Method 2: Manual API call if simple method fails
+            import requests
+        
+            timestamp = int(time.time())
+        
+            # Create signature
+            params_to_sign = f"public_id={public_id}&timestamp={timestamp}"
+            signature = hmac.new(
+            api_secret.encode('utf-8'),
+            params_to_sign.encode('utf-8'),
+            hashlib.sha1
+            ).hexdigest()  
+            
+             # Prepare request data
+            data = {
+            'public_id': public_id,
+            'timestamp': timestamp,
+            'api_key': api_key,
+            'signature': signature
+            }  
+            # Make delete request
+            url = f"https://api.cloudinary.com/v1_1/{cloud_name}/image/destroy"
+            response = requests.post(url, data=data)
+            result = response.json()
+        
+            if result.get('result') in ['ok', 'not found']:
+               return {
+                'success': True,
+                'message': 'Image deleted successfully',
+                'result': result
+            }
+            else:
+                return {
+                'success': False,
+                'error': f'Manual delete failed: {result}',
+                'result': result
+            }
+            
+        except Exception as e:
+           print(f"Delete error: {str(e)}")
+        return {
+            'success': False,
+            'error': f'Cloudinary deletion error: {str(e)}'
+        }
+               
+    
+       
       
     
     @staticmethod

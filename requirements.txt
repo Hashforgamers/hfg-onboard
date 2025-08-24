@@ -12,3 +12,5 @@ google-auth-oauthlib
 Flask-Mail
 pytz
 cloudinary==1.36.0
+redis==5.0.1
+
