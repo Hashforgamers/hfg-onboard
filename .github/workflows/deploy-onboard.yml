@@ -12,19 +12,21 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: ap-south-1                  # set your region
-  ECR_REPOSITORY: hfg-onboard             # pre-created ECR repo name
-  APP_RUNNER_SERVICE: hfg-onboard         # existing or to be created
-  CPU: "0.5 vCPU"                         # App Runner size
+  AWS_REGION: ap-south-1
+  AWS_ACCOUNT_ID: ${{ vars.ACCOUNT_ID }}         # or: ${{ secrets.ACCOUNT_ID }}
+  ECR_REPOSITORY: hfg-onboard
+  APP_RUNNER_SERVICE: hfg-onboard
+  CPU: "0.5 vCPU"
   MEMORY: "1 GB"
   IMAGE_PORT: "5052"
 
 jobs:
   build-push-deploy:
     runs-on: ubuntu-latest
+    environment: prod                             # ensures env vars/secrets from prod are available
     defaults:
       run:
-        working-directory: hfg-onboard    # path to Dockerfile/context
+        working-directory: hfg-onboard
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,7 +34,7 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::ACCOUNT_ID:role/GitHubActions-AppRunner
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/GitHubActions-AppRunner
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
@@ -55,12 +57,11 @@ jobs:
         with:
           service: ${{ env.APP_RUNNER_SERVICE }}
           image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
-          access-role-arn: arn:aws:iam::ACCOUNT_ID:role/AppRunnerECRAccessRole
+          access-role-arn: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/AppRunnerECRAccessRole
           cpu: ${{ env.CPU }}
           memory: ${{ env.MEMORY }}
           port: ${{ env.IMAGE_PORT }}
           region: ${{ env.AWS_REGION }}
-          # optional scaling caps:
           min-size: 1
           max-size: 2
           healthcheck-path: /
