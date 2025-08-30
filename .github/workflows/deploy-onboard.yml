@@ -42,18 +42,21 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Debug repo structure
+        run: |
+          echo "Current directory: $(pwd)"
+          ls -R
+
       - name: Build and push image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: ${{ env.ECR_REPOSITORY }}
           TAG: ${{ github.sha }}
-        working-directory: ${{ github.workspace }}
         run: |
-          docker build -t $REGISTRY/$REPOSITORY:$TAG ./hfg-onboard
+          docker build -t $REGISTRY/$REPOSITORY:$TAG hfg-onboard/hfg-onboard
           docker push $REGISTRY/$REPOSITORY:$TAG
           docker tag  $REGISTRY/$REPOSITORY:$TAG $REGISTRY/$REPOSITORY:latest
           docker push $REGISTRY/$REPOSITORY:latest
-
 
       - name: Deploy to App Runner
         uses: awslabs/amazon-app-runner-deploy@main
