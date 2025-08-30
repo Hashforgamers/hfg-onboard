@@ -53,9 +53,9 @@ jobs:
           REPOSITORY: ${{ env.ECR_REPOSITORY }}
           TAG: ${{ github.sha }}
         run: |
-          docker build -t $REGISTRY/$REPOSITORY:$TAG hfg-onboard/hfg-onboard
+          docker build -t $REGISTRY/$REPOSITORY:$TAG .
           docker push $REGISTRY/$REPOSITORY:$TAG
-          docker tag  $REGISTRY/$REPOSITORY:$TAG $REGISTRY/$REPOSITORY:latest
+          docker tag $REGISTRY/$REPOSITORY:$TAG $REGISTRY/$REPOSITORY:latest
           docker push $REGISTRY/$REPOSITORY:latest
 
       - name: Deploy to App Runner
