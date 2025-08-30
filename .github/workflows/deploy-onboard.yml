@@ -24,9 +24,6 @@ jobs:
   build-push-deploy:
     runs-on: ubuntu-latest
     environment: prod                             # ensures env vars/secrets from prod are available
-    defaults:
-      run:
-        working-directory: hfg-onboard
     steps:
       - name: Checkout
         uses: actions/checkout@v4
