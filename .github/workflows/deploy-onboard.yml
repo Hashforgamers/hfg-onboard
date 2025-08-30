@@ -1,0 +1,66 @@
+name: Build, push to ECR, deploy App Runner (hfg-onboard)
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "hfg-onboard/**"
+      - ".github/workflows/deploy-onboard.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1                  # set your region
+  ECR_REPOSITORY: hfg-onboard             # pre-created ECR repo name
+  APP_RUNNER_SERVICE: hfg-onboard         # existing or to be created
+  CPU: "0.5 vCPU"                         # App Runner size
+  MEMORY: "1 GB"
+  IMAGE_PORT: "5052"
+
+jobs:
+  build-push-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hfg-onboard    # path to Dockerfile/context
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::ACCOUNT_ID:role/GitHubActions-AppRunner
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: ${{ env.ECR_REPOSITORY }}
+          TAG: ${{ github.sha }}
+        run: |
+          docker build -t $REGISTRY/$REPOSITORY:$TAG .
+          docker push $REGISTRY/$REPOSITORY:$TAG
+          docker tag  $REGISTRY/$REPOSITORY:$TAG $REGISTRY/$REPOSITORY:latest
+          docker push $REGISTRY/$REPOSITORY:latest
+
+      - name: Deploy to App Runner
+        uses: awslabs/amazon-app-runner-deploy@main
+        with:
+          service: ${{ env.APP_RUNNER_SERVICE }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          access-role-arn: arn:aws:iam::ACCOUNT_ID:role/AppRunnerECRAccessRole
+          cpu: ${{ env.CPU }}
+          memory: ${{ env.MEMORY }}
+          port: ${{ env.IMAGE_PORT }}
+          region: ${{ env.AWS_REGION }}
+          # optional scaling caps:
+          min-size: 1
+          max-size: 2
+          healthcheck-path: /
