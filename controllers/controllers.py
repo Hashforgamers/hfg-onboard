@@ -16,6 +16,8 @@ from models.bookingQueue import BookingQueue
 from models.booking import Booking
 from models.accessBookingCode import AccessBookingCode
 from db.extensions import db
+from datetime import datetime
+from services.otp_service import OTPService
 from models.transaction import Transaction
 from models.availableGame import AvailableGame
 from models.slots import Slot
@@ -740,6 +742,243 @@ def get_vendor_dashboard_data(vendor_id):
     except Exception as e:
         current_app.logger.error(f"Dashboard API Error: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to fetch dashboard data'}), 500
+
+
+@vendor_bp.route('/vendor/<int:vendor_id>/delete-image/<int:image_id>', methods=['DELETE'])
+def delete_vendor_image(vendor_id, image_id):
+    """
+    Deletes a vendor image from both Cloudinary and the database by image ID.
+    """
+    
+    try:
+        # Check if vendor exists
+        vendor = Vendor.query.get(vendor_id)
+        if not vendor:
+            return jsonify({'success': False, 'message': 'Vendor not found'}), 404
+        
+        # Check if image exists and belongs to the vendor
+        image = Image.query.filter_by(id=image_id, vendor_id=vendor_id).first()
+        if not image:
+            return jsonify({'success': False, 'message': 'Image not found or does not belong to this vendor'}), 404
+        
+        # Store image info for response
+        deleted_image_info = {
+            'id': image.id,
+            'public_id': image.public_id,
+            'url': image.url
+        }
+        
+        # Track deletion status
+        cloudinary_deleted = False
+        database_deleted = False
+        
+        # Try to delete from Cloudinary first
+        try:
+            delete_result = CloudinaryGameImageService.delete_image(image.public_id)
+            if delete_result['success']:
+                cloudinary_deleted = True
+            else:
+                # Log error but continue with database deletion
+                print(f"Cloudinary deletion failed for {image.public_id}: {delete_result.get('error')}")
+        except Exception as cloudinary_error:
+            print(f"Cloudinary deletion exception for {image.public_id}: {cloudinary_error}")
+        
+        # Delete from database regardless of Cloudinary result
+        try:
+            db.session.delete(image)
+            db.session.commit()
+            database_deleted = True
+        except Exception as db_error:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'message': 'Failed to delete image from database',
+                'error': str(db_error)
+            }), 500
+        
+        # Refresh vendor to get updated images list
+        db.session.refresh(vendor)
+        
+        # Build remaining images list
+        remaining_images = []
+        for img in vendor.images:
+            image_url = getattr(img, "path", None) or getattr(img, "url", "") or ""
+            remaining_images.append({
+                'id': img.id, 
+                'url': image_url, 
+                'public_id': img.public_id,
+                'uploaded_at': img.uploaded_at.isoformat() if img.uploaded_at else None
+            })
+        
+        # Determine response message based on what was deleted
+        if cloudinary_deleted and database_deleted:
+            message = 'Image deleted successfully from both Cloudinary and database'
+        elif database_deleted:
+            message = 'Image deleted from database. Cloudinary deletion failed but image record removed.'
+        else:
+            message = 'Partial deletion - please contact support'
+        
+        return jsonify({
+            'success': True,
+            'message': message,
+            'deleted_image': deleted_image_info,
+            'remaining_images': remaining_images,
+            'cloudinary_deleted': cloudinary_deleted,
+            'database_deleted': database_deleted
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Unexpected error deleting image {image_id} for vendor {vendor_id}: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'message': 'An unexpected error occurred while deleting the image',
+            'error': str(e)
+        }), 500
+
+@vendor_bp.route('/vendor/<int:vendor_id>/delete-image-by-url', methods=['DELETE'])
+def delete_vendor_image_by_url(vendor_id):
+    """
+    Deletes a vendor image by URL from both Cloudinary and the database.
+    """
+    
+    data = request.get_json()
+    image_url = data.get('imageUrl')
+    
+    if not image_url:
+        return jsonify({'success': False, 'message': 'Image URL is required'}), 400
+    
+    # Check if vendor exists
+    vendor = Vendor.query.get(vendor_id)
+    if not vendor:
+        return jsonify({'success': False, 'message': 'Vendor not found'}), 404
+    
+    # Find image by URL
+    image = Image.query.filter_by(url=image_url, vendor_id=vendor_id).first()
+    if not image:
+        # Try to find by path as well (since your dashboard uses path)
+        image = Image.query.filter_by(path=image_url, vendor_id=vendor_id).first()
+        
+    if not image:
+        return jsonify({'success': False, 'message': 'Image not found or does not belong to this vendor'}), 404
+    
+    # Delete from Cloudinary
+    delete_result = CloudinaryGameImageService.delete_image(image.public_id)
+    if not delete_result['success']:
+        return jsonify({
+            'success': False, 
+            'message': 'Failed to delete image from Cloudinary', 
+            'error': delete_result['error']
+        }), 500
+    
+    # Delete from database
+    db.session.delete(image)
+    db.session.commit()
+    
+    # Refresh vendor to get updated images list
+    db.session.refresh(vendor)
+    
+    # Return remaining images to keep frontend in sync
+    remaining_images = [{'id': img.id, 'url': img.url, 'public_id': img.public_id} for img in vendor.images]
+    
+    return jsonify({
+        'success': True,
+        'message': 'Vendor image deleted successfully',
+        'remaining_images': remaining_images
+    }), 200
+    
+    
+    # Add these imports at the top
+
+
+# Add these routes to your vendor_bp blueprint
+
+@vendor_bp.route('/vendor/<int:vendor_id>/send-otp', methods=['POST'])
+def send_otp(vendor_id):
+    """Send OTP for accessing restricted pages"""
+    try:
+        data = request.get_json()
+        page_type = data.get('page_type')  # 'bank_transfer' or 'payout_history'
+        
+        if page_type not in ['bank_transfer', 'payout_history']:
+            return jsonify({
+                'success': False, 
+                'message': 'Invalid page type'
+            }), 400
+        
+        result = OTPService.send_otp(vendor_id, page_type)
+        
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
+            
+    except Exception as e:
+        current_app.logger.error(f"Error in send_otp: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'message': 'Internal server error'
+        }), 500
+
+@vendor_bp.route('/vendor/<int:vendor_id>/verify-otp', methods=['POST'])
+def verify_otp(vendor_id):
+    """Verify OTP for accessing restricted pages"""
+    try:
+        data = request.get_json()
+        page_type = data.get('page_type')
+        otp = data.get('otp')
+        
+        if not page_type or not otp:
+            return jsonify({
+                'success': False, 
+                'message': 'Page type and OTP are required'
+            }), 400
+        
+        if page_type not in ['bank_transfer', 'payout_history']:
+            return jsonify({
+                'success': False, 
+                'message': 'Invalid page type'
+            }), 400
+        
+        result = OTPService.verify_otp(vendor_id, page_type, otp)
+        
+        if result['success']:
+            return jsonify(result), 200
+        else:
+            return jsonify(result), 400
+            
+    except Exception as e:
+        current_app.logger.error(f"Error in verify_otp: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'message': 'Internal server error'
+        }), 500
+
+@vendor_bp.route('/vendor/<int:vendor_id>/check-verification', methods=['GET'])
+def check_verification(vendor_id):
+    """Check if vendor is already verified for a page"""
+    try:
+        page_type = request.args.get('page_type')
+        
+        if not page_type or page_type not in ['bank_transfer', 'payout_history']:
+            return jsonify({
+                'success': False, 
+                'message': 'Invalid page type'
+            }), 400
+        
+        is_verified = OTPService.is_verified(vendor_id, page_type)
+        
+        return jsonify({
+            'success': True,
+            'is_verified': is_verified
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error in check_verification: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'message': 'Internal server error'
+        }), 500
 
 @vendor_bp.route('/vendor/<int:vendor_id>/updateSlot', methods=['POST'])
 def update_slot(vendor_id):
