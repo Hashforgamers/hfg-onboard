@@ -20,7 +20,9 @@ from models.vendorAccount import VendorAccount
 from models.vendorPin import VendorPin
 from models.booking import Booking
 from models.transaction import Transaction
-
+from models.paymentMethod import PaymentMethod
+from models.paymentVendorMap import PaymentVendorMap
+from sqlalchemy import exists
 from db.extensions import db
 from .utils import send_email, generate_credentials, generate_unique_vendor_pin
 from googleapiclient.discovery import build
@@ -798,6 +800,8 @@ class VendorService:
                     "url": img.url,
                     "public_id":img.public_id
                 })
+                
+            payment_methods_map = VendorService.get_payment_methods_for_vendors(vendor_ids)
 
             # Step 4: Combine all datasets
             for result in results:
@@ -824,7 +828,11 @@ class VendorService:
                     "total_documents": result.total_documents,
                     "verified_documents": result.verified_documents,
                     "amenities": amenities_map.get(result.vendor_id, []),
-                    "images": images_map.get(result.vendor_id, [])
+                    "images": images_map.get(result.vendor_id, []),
+                    "payment_methods": payment_methods_map.get(result.vendor_id, {
+                        "Pay at Cafe": False,
+                        "Hash": False
+                    })
                 })
 
             return {"vendors": vendors_data}
@@ -1041,3 +1049,41 @@ class VendorService:
         db.session.execute(sql_create)
         db.session.commit()
         current_app.logger.info(f"Table {table_name} created successfully.")
+        
+    @staticmethod
+    def get_payment_methods_for_vendors(vendor_ids):
+        """Payment Method"""
+        try:
+            payment_methods_map = {}
+        
+            for vendor_id in vendor_ids:
+                payment_status = {}
+            
+            # Method 1: Check Pay at Cafe using subquery
+                pay_cafe_exists = db.session.query(
+                    db.session.query(PaymentVendorMap).join(PaymentMethod).filter(
+                      PaymentVendorMap.vendor_id == vendor_id,
+                      PaymentMethod.method_name == 'Pay at Cafe'
+                ).exists()
+            ).scalar()
+                payment_status['Pay at Cafe'] = pay_cafe_exists
+            
+            # Method 2: Check Hash using subquery  
+                hash_exists = db.session.query(
+                    db.session.query(PaymentVendorMap).join(PaymentMethod).filter(
+                       PaymentVendorMap.vendor_id == vendor_id,
+                       PaymentMethod.method_name == 'Hash'
+                ).exists()
+            ).scalar()
+                payment_status['Hash'] = hash_exists
+            
+                payment_methods_map[vendor_id] = payment_status
+        
+            current_app.logger.info(f"Payment methods result: {payment_methods_map}")
+            return payment_methods_map
+
+        except Exception as e:
+          current_app.logger.error(f"Error in get_payment_methods_for_vendors: {e}")
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        return {vendor_id: {"Pay at Cafe": False, "Hash": False} for vendor_id in vendor_ids}
