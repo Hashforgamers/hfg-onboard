@@ -118,7 +118,9 @@ class Vendor(db.Model):
         cascade="all, delete-orphan"
     )
 
-
+    payment_methods = relationship('PaymentVendorMap', back_populates='vendor', cascade='all, delete-orphan')
+       
+       
     # One-to-Many relationship with VendorStatus
     statuses = relationship(
         'VendorStatus',
