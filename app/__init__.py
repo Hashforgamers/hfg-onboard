@@ -8,10 +8,12 @@ from .config import Config
 from db.extensions import db, migrate, mail
 from controllers.controllers import vendor_bp
 from controllers.vendor_games import vendor_games_bp
+from controllers.collaborator_controller import collaborator_bp
+from controllers.order_controller import order_bp
 
 def create_app():
     app = Flask(__name__)
-    CORS(app, origins=["http://localhost:3000" , "https://dashboard.hashforgamers.co.in" , "https://dev-dashboard.hashforgamers.co.in" ],
+    CORS(app, origins=["http://localhost:3000" ,"http://localhost:3001", "https://dashboard.hashforgamers.co.in" , "https://dev-dashboard.hashforgamers.co.in" ],
           methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
      allow_headers=['Content-Type', 'Authorization']
          )
@@ -25,6 +27,8 @@ def create_app():
     # Register blueprints
     app.register_blueprint(vendor_bp, url_prefix='/api')
     app.register_blueprint(vendor_games_bp, url_prefix='/api')
+    app.register_blueprint(collaborator_bp , url_prefix='/api')
+    app.register_blueprint(order_bp, url_prefix='/api')
 
     # Configure logging
     debug_mode = os.getenv("DEBUG_MODE", "false").lower() == "true"
