@@ -48,6 +48,7 @@ class Vendor(db.Model):
     # Relationship to ContactInfo
     contact_info = relationship(
         "ContactInfo",
+        primaryjoin="and_(foreign(ContactInfo.parent_id) == Vendor.id, ContactInfo.parent_type == 'vendor')",
         back_populates="vendor",  # Ensure this matches the relationship in ContactInfo
         uselist=False,
         cascade="all, delete"
