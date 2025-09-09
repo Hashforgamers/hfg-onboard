@@ -151,7 +151,7 @@ HashForGamers © {order.order_date.year}
             msg = Message(
                 subject, 
                 recipients=[collaborator.email],
-                cc=['prshntrjput.2020@gmail.com'], 
+                cc=['bhanu.joshi@hashforgamers.com' , 'Zeyan.ansari@hashforgamers.com'], 
                 body=text_body,
                 html=html_body
             )
