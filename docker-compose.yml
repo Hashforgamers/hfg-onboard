@@ -13,11 +13,13 @@ services:
       - "5052:5052"
     environment:
       - DATABASE_URI=postgresql://neondb_owner:Od9UnVJ2Wvfr@ep-square-star-a8fg370g-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require
-      - MAIL_SERVER=smtp.hashforgamers.co.in
-      - MAIL_PORT=587
+      - MAIL_SERVER=mail.smtp2go.com
+      - MAIL_PORT=2525
       - MAIL_USERNAME=support@hashforgamers.co.in
       - MAIL_PASSWORD=h3b:@yasDm
       - MAIL_DEFAULT_SENDER=support@hashforgamers.co.in
+      - MAIL_USE_TLS=true
+      - MAIL_USE_SSL=false
       - SECRET_KEY=your_secret_key
       - GOOGLE_DRIVE_FOLDER_ID=16muxbG0nfp6PEjdJ-u1lwrZASpoW82b3
       - GOOGLE_APPLICATION_CREDENTIALS=/code/credentials/google_service_account.json # Updated path
