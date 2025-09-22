@@ -30,6 +30,8 @@ from googleapiclient.http import MediaIoBaseUpload
 from google.oauth2 import service_account
 import io
 from datetime import datetime, timedelta
+from flask_mail import Message
+from db.extensions import mail
 
 from sqlalchemy import case, func
 from sqlalchemy import text
@@ -41,190 +43,262 @@ from sqlalchemy.orm import joinedload
 
 
 class VendorService:
-
+    
+    
+    @staticmethod
+    def safe_strptime(date_str, format_str):
+        """Safely parse date string, handling None and invalid values"""
+        if date_str is None or date_str == '':
+           return None
+    
+        if not isinstance(date_str, str):
+           current_app.logger.warning(f"Date string is not str type: {type(date_str)}")
+           return None
+    
+        try:
+           return datetime.strptime(date_str, format_str)
+        except ValueError as e:
+            current_app.logger.error(f"Error parsing date '{date_str}' with format '{format_str}': {e}")
+            return None
+        except Exception as e:
+            current_app.logger.error(f"Unexpected error parsing date '{date_str}': {e}")
+            return None
+        
     @staticmethod
     def onboard_vendor(data, files):
         current_app.logger.debug("Onboard Vendor Started.")
         current_app.logger.debug(f"Received data: {data}")
         current_app.logger.debug(f"Received files: {files}")
-        
+    
         try:
-            vendor_account = None
-            vendor_account_email = data.get("vendor_account_email")
-            
-            if vendor_account_email:
-                vendor_account = VendorAccount.query.filter_by(email=vendor_account_email).first()
-                if not vendor_account:
-                    vendor_account = VendorAccount(email=vendor_account_email)
-                    db.session.add(vendor_account)
-                    db.session.flush()
-                    current_app.logger.info(f"Created new VendorAccount for {vendor_account_email}")
-                else:
-                    current_app.logger.info(f"Found existing VendorAccount with ID: {vendor_account.id}")
+           vendor_account = None
+           vendor_account_email = data.get("vendor_account_email")
+        
+        # Create or get VendorAccount
+           if vendor_account_email:
+              vendor_account = VendorAccount.query.filter_by(email=vendor_account_email).first()
+              if not vendor_account:
+                  vendor_account = VendorAccount(email=vendor_account_email)
+                  db.session.add(vendor_account)
+                  db.session.commit()  # Commit immediately to ensure it's saved
+                  current_app.logger.info(f"Created and committed new VendorAccount for {vendor_account_email} with ID: {vendor_account.id}")
+                
+                # Verify it was saved
+                  saved_account = VendorAccount.query.get(vendor_account.id)
+                  if saved_account:
+                     current_app.logger.info(f"VendorAccount verified saved: ID={saved_account.id}, Email={saved_account.email}")
+                  else:
+                     current_app.logger.error(f"VendorAccount NOT saved properly")
+                     raise Exception("Failed to save VendorAccount")
+              else:
+                  current_app.logger.info(f"Found existing VendorAccount with ID: {vendor_account.id}")
 
-            # Step 1: Vendor creation
-            vendor = Vendor(
-                cafe_name=data.get("cafe_name"),
-                owner_name=data.get("owner_name"),
-                description=data.get("description", ""),
-                business_registration_id=None,
-                timing_id=None,
-                account=vendor_account
-            )
-            db.session.add(vendor)
-            db.session.flush()
-            current_app.logger.info(f"Vendor created with ID: {vendor.id}")
+        # Step 1: Vendor creation with explicit account_id
+           vendor = Vendor(
+               cafe_name=data.get("cafe_name"),
+               owner_name=data.get("owner_name"),
+               description=data.get("description", ""),
+               business_registration_id=None,
+               timing_id=None,
+               account_id=vendor_account.id if vendor_account else None
+           )
+           db.session.add(vendor)
+           db.session.flush()
+           current_app.logger.info(f"Vendor created with ID: {vendor.id}, Account ID: {vendor.account_id}")
 
-            # Step 2: Vendor PIN
-            vendor_pin = VendorPin(
-                vendor_id=vendor.id,
-                pin_code=generate_unique_vendor_pin()
-            )
-            db.session.add(vendor_pin)
+        # Verify the relationship works
+           if vendor_account:
+              try:
+                 test_account = vendor.account  # This should work if relationship is correct
+                 current_app.logger.info(f"Vendor account relationship verified: {test_account.email if test_account else 'None'}")
+              except Exception as e:
+                 current_app.logger.warning(f"Vendor account relationship issue: {e}")
 
-            # Step 3: Contact Info
-            contact = data.get("contact_info", {})
-            contact_info = ContactInfo(
-                email=contact.get("email"),
-                phone=contact.get("phone"),
-                parent_id=vendor.id,
-                parent_type="vendor"
-            )
-            db.session.add(contact_info)
+        # Step 2: Vendor PIN
+           vendor_pin = VendorPin(
+               vendor_id=vendor.id,
+               pin_code=generate_unique_vendor_pin()
+        )
+           db.session.add(vendor_pin)
 
-            # Step 4: Address
-            address = data.get("physicalAddress", {})
-            physical_address = PhysicalAddress(
-                address_type=address.get("address_type"),
-                addressLine1=address.get("addressLine1"),
-                addressLine2=address.get("addressLine2"),
-                pincode=address.get("pincode"),
-                state=address.get("state"),
-                country=address.get("country"),
-                latitude=address.get("latitude"),
-                longitude=address.get("longitude"),
-                parent_id=vendor.id,
-                parent_type="vendor"
-            )
-            db.session.add(physical_address)
+        # Step 3: Contact Info
+           contact = data.get("contact_info", {})
+           contact_info = ContactInfo(
+              email=contact.get("email"),
+              phone=contact.get("phone"),
+              parent_id=vendor.id,
+              parent_type="vendor"
+           )
+           db.session.add(contact_info)
 
-            # Step 5: Business Registration
-            registration = data.get("business_registration_details", {})
-            business_registration = BusinessRegistration(
+        # Step 4: Address
+           address = data.get("physicalAddress", {})
+           physical_address = PhysicalAddress(
+               address_type=address.get("address_type"),
+               addressLine1=address.get("addressLine1"),
+               addressLine2=address.get("addressLine2"),
+               pincode=address.get("pincode"),
+               state=address.get("state"),
+               country=address.get("country"),
+               latitude=address.get("latitude"),
+               longitude=address.get("longitude"),
+               parent_id=vendor.id,
+               parent_type="vendor"
+           )
+           db.session.add(physical_address)
+
+        # Step 5: Business Registration with safe parsing
+           registration = data.get("business_registration_details", {})
+           registration_date_str = registration.get("registration_date")
+        
+           if registration_date_str:
+               registration_date_parsed = VendorService.safe_strptime(registration_date_str, "%Y-%m-%d")
+               if registration_date_parsed:
+                  registration_date = registration_date_parsed.date()
+               else:
+                   registration_date = datetime.now().date()
+           else:
+               registration_date = datetime.now().date()
+        
+           business_registration = BusinessRegistration(
                 registration_number=registration.get("registration_number"),
-                registration_date=datetime.strptime(registration.get("registration_date"), "%Y-%m-%d").date()
+                registration_date=registration_date
             )
-            db.session.add(business_registration)
+           db.session.add(business_registration)
 
-            # Step 6: Timing
-            opening_time = datetime.strptime(data["timing"]["opening_time"], "%I:%M %p").time()
-            closing_time = datetime.strptime(data["timing"]["closing_time"], "%I:%M %p").time()
+        # Step 6: Timing with safe parsing
+           timing_data = data.get("timing", {})
+           opening_time_str = timing_data.get("opening_time")
+           closing_time_str = timing_data.get("closing_time")
+        
+           if not opening_time_str or not closing_time_str:
+              raise ValueError("Opening time and closing time are required")
+        
+           opening_time_parsed = VendorService.safe_strptime(opening_time_str, "%I:%M %p")
+           closing_time_parsed = VendorService.safe_strptime(closing_time_str, "%I:%M %p")
+        
+           if not opening_time_parsed or not closing_time_parsed:
+               raise ValueError(f"Invalid time format: opening_time={opening_time_str}, closing_time={closing_time_str}")
+        
+           opening_time = opening_time_parsed.time()
+           closing_time = closing_time_parsed.time()
 
-            timing = Timing(opening_time=opening_time, closing_time=closing_time)
-            db.session.add(timing)
+           timing = Timing(opening_time=opening_time, closing_time=closing_time)
+           db.session.add(timing)
 
-            # Step 7: Update Vendor with foreign keys
-            db.session.flush()
-            vendor.business_registration_id = business_registration.id
-            vendor.timing_id = timing.id
-            db.session.flush()
+        # Step 7: Update Vendor with foreign keys
+           db.session.flush()
+           vendor.business_registration_id = business_registration.id
+           vendor.timing_id = timing.id
+           db.session.flush()
 
-            # Step 8: Opening Days
-            opening_day_data = data.get("opening_day", {})
-            opening_days = [
+        # Step 8: Opening Days
+           opening_day_data = data.get("opening_day", {})
+           opening_days = [
                 OpeningDay(day=day, is_open=is_open, vendor_id=vendor.id)
                 for day, is_open in opening_day_data.items()
             ]
-            db.session.add_all(opening_days)
+           db.session.add_all(opening_days)
 
-            # Step 9: Amenities
-            amenities = [
+        # Step 9: Amenities
+           amenities = [
                 Amenity(name=amenity, vendor_id=vendor.id)
                 for amenity, available in data.get("amenities", {}).items() if available
             ]
-            db.session.add_all(amenities)
+           db.session.add_all(amenities)
 
-            # Step 10: Available Games
-            available_games_data = data.get("available_games", {})
-            available_games_instances = [
+        # Step 10: Available Games
+           available_games_data = data.get("available_games", {})
+           available_games_instances = [
                 AvailableGame(
-                    game_name=game_name,
-                    total_slot=details.get("total_slot", 0),
-                    single_slot_price=details.get("single_slot_price", 0),
-                    vendor_id=vendor.id
+                   game_name=game_name,
+                   total_slot=details.get("total_slot", 0),
+                   single_slot_price=details.get("single_slot_price", 0),
+                   vendor_id=vendor.id
                 ) for game_name, details in available_games_data.items()
             ]
-            db.session.add_all(available_games_instances)
-            db.session.flush()
+           db.session.add_all(available_games_instances)
+           db.session.flush()
 
-            # Step 11: Slot Creation
-            current_app.logger.debug("Creating slots for the vendor.")
-            try:
-                game_slots = {
-                    game_name.lower(): details.get("total_slot", 0)
-                    for game_name, details in available_games_data.items()
-                }
-                game_ids = {
-                    game.game_name.lower(): game.id
-                    for game in available_games_instances
-                }
+        # Step 11: Slot Creation
+           current_app.logger.debug("Creating slots for the vendor.")
+           try:
+              game_slots = {
+                 game_name.lower(): details.get("total_slot", 0)
+                 for game_name, details in available_games_data.items()
+               }
+              game_ids = {
+                  game.game_name.lower(): game.id
+                 for game in available_games_instances
+               }
 
-                today = datetime.today()
-                current_time = datetime.combine(today, opening_time)
-                closing_datetime = datetime.combine(today, closing_time)
+              today = datetime.today()
+              current_time = datetime.combine(today, opening_time)
+              closing_datetime = datetime.combine(today, closing_time)
 
-                # Handle 12:00 AM case (i.e., after midnight)
-                if closing_datetime <= current_time:
-                    closing_datetime += timedelta(days=1)
+            # Handle 12:00 AM case (i.e., after midnight)
+              if closing_datetime <= current_time:
+                closing_datetime += timedelta(days=1)
 
-                slot_duration = data.get("slot_duration", 30)
-                slot_data = []
+              slot_duration = data.get("slot_duration", 30)
+              slot_data = []
 
-                while current_time < closing_datetime:
-                    end_time = current_time + timedelta(minutes=slot_duration)
-                    if end_time > closing_datetime:
-                        break
+              while current_time < closing_datetime:
+                   end_time = current_time + timedelta(minutes=slot_duration)
+                   if end_time > closing_datetime:
+                      break
 
-                    for game_name, total_slots in game_slots.items():
-                        game_id = game_ids.get(game_name)
-                        if not game_id:
-                            current_app.logger.warning(f"Game '{game_name}' not found.")
-                            continue
+                   for game_name, total_slots in game_slots.items():
+                       game_id = game_ids.get(game_name)
+                       if not game_id:
+                          current_app.logger.warning(f"Game '{game_name}' not found.")
+                          continue
 
-                        slot = Slot(
-                            gaming_type_id=game_id,
-                            start_time=current_time.time(),
-                            end_time=end_time.time(),
-                            available_slot=total_slots,
-                            is_available=False
-                        )
-                        slot_data.append(slot)
+                       slot = Slot(
+                          gaming_type_id=game_id,
+                          start_time=current_time.time(),
+                          end_time=end_time.time(),
+                          available_slot=total_slots,
+                          is_available=False
+                       )
+                       slot_data.append(slot)
 
-                    current_time = end_time
+                   current_time = end_time
 
-                db.session.add_all(slot_data)
-                current_app.logger.info(f"{len(slot_data)} slots created for vendor.")
+                   db.session.add_all(slot_data)
+                   current_app.logger.info(f"{len(slot_data)} slots created for vendor.")
 
-            except Exception as e:
-                current_app.logger.error(f"Error creating slots: {e}")
-                raise
+           except Exception as e:
+              current_app.logger.error(f"Error creating slots: {e}")
+              raise
 
-            db.session.commit()
+           db.session.commit()
 
-            # Step 12: Vendor-specific table creations
-            VendorService.create_vendor_slot_table(vendor.id)
-            VendorService.create_vendor_console_availability_table(vendor.id)
-            VendorService.create_vendor_dashboard_table(vendor.id)
-            VendorService.create_vendor_promo_table(vendor.id)
+        # Final verification
+           if vendor_account:
+               final_account = VendorAccount.query.get(vendor_account.id)
+               final_vendor = Vendor.query.get(vendor.id)
+               current_app.logger.info(f"FINAL VERIFICATION:")
+               current_app.logger.info(f"- VendorAccount exists: {final_account is not None}")
+               current_app.logger.info(f"- Vendor account_id: {final_vendor.account_id}")
+               current_app.logger.info(f"- Relationship works: {final_vendor.account.email if final_vendor.account else 'NO RELATIONSHIP'}")
 
-            current_app.logger.info(f"Vendor onboarding completed successfully: {vendor.id}")
-            return vendor
+        # Step 12: Vendor-specific table creations
+           VendorService.create_vendor_slot_table(vendor.id)
+           VendorService.create_vendor_console_availability_table(vendor.id)
+           VendorService.create_vendor_dashboard_table(vendor.id)
+           VendorService.create_vendor_promo_table(vendor.id)
+
+           current_app.logger.info(f"Vendor onboarding completed successfully: {vendor.id}")
+           return vendor
 
         except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"Error onboarding vendor: {e}")
-            raise
+          db.session.rollback()
+          current_app.logger.error(f"Error onboarding vendor: {e}")
+          raise
 
+
+    
     @staticmethod
     def deboard_vendor(vendor_id):
         current_app.logger.info(f"Starting deboarding process for Vendor ID: {vendor_id}")
@@ -433,45 +507,72 @@ class VendorService:
     @staticmethod
     def generate_credentials_and_notify(vendor):
         """Generate credentials or link to existing ones, then notify vendor."""
-        email = vendor.account.email
+    
+    # Safe email retrieval with fallback
+        email = None
+    
+        if vendor.account and vendor.account.email:
+        # First try: get email from vendor account
+           email = vendor.account.email
+           current_app.logger.debug(f"Using vendor account email: {email}")
+        else:
+        # Fallback: get email from contact info
+            contact_info = ContactInfo.query.filter_by(
+               parent_id=vendor.id, 
+               parent_type="vendor"
+             ).first()
+        
+            if contact_info and contact_info.email:
+              email = contact_info.email
+              current_app.logger.debug(f"Using contact info email: {email}")
+            else:
+               current_app.logger.error(f"No email found for vendor {vendor.id}")
+               raise ValueError(f"No email found for vendor {vendor.id}")
+    
+        current_app.logger.debug(f"Processing credentials for vendor {vendor.id} with email: {email}")
 
-        # Step 1: Check if PasswordManager already exists for this email
+    # Step 1: Check if PasswordManager already exists for this email
         existing_password_manager = (
-            db.session.query(PasswordManager)
-            .join(Vendor, Vendor.id == PasswordManager.parent_id)
-            .join(ContactInfo, Vendor.contact_info)
-            .filter(ContactInfo.email == email)
-            .filter(PasswordManager.parent_type == 'vendor') 
-            .first()
+           db.session.query(PasswordManager)
+           .join(Vendor, Vendor.id == PasswordManager.parent_id)
+            .join(ContactInfo, and_(
+               ContactInfo.parent_id == Vendor.id,
+               ContactInfo.parent_type == 'vendor'
+           ))
+           .filter(ContactInfo.email == email)
+           .filter(PasswordManager.parent_type == 'vendor') 
+           .first()
         )
 
         if existing_password_manager:
-            # Already has credentials — link this vendor to same account
+        # Already has credentials — link this vendor to same account
             password_manager = existing_password_manager
             current_app.logger.info(f"Linked vendor {vendor.id} to existing credentials.")
         else:
-            # Generate new credentials
+        # Generate new credentials
             username, password = generate_credentials()
             password_manager = PasswordManager(
-                userid=vendor.id,
-                password=password,
-                parent_id=vendor.id,
-                parent_type="vendor"
+              userid=vendor.id,
+               password=password,
+               parent_id=vendor.id,
+               parent_type="vendor"
             )
             db.session.add(password_manager)
             db.session.flush()
             current_app.logger.info(f"Created new credentials for vendor {vendor.id}")
 
-
-        # Step 2: Create VendorStatus regardless
+    # Step 2: Create VendorStatus regardless
         vendor_status = VendorStatus(
             vendor_id=vendor.id,
             status="pending_verification"
-        )
+         )
         db.session.add(vendor_status)
         db.session.flush()
 
         db.session.commit()
+        VendorService.send_welcome_email(vendor, username, password, email)
+        current_app.logger.info(f"Completed credentials generation for vendor {vendor.id}")
+
 
 
     @staticmethod
@@ -1087,3 +1188,118 @@ class VendorService:
         import traceback
         current_app.logger.error(traceback.format_exc())
         return {vendor_id: {"Pay at Cafe": False, "Hash": False} for vendor_id in vendor_ids}
+    
+    
+    @staticmethod
+    def send_welcome_email(vendor, username, password, email):
+        """Send welcome email with vendor credentials and PIN."""
+        
+    
+        try:
+        # Get Vendor PIN
+           vendor_pin = VendorPin.query.filter_by(vendor_id=vendor.id).first()
+           pin_code = vendor_pin.pin_code if vendor_pin else "Not Available"
+
+        # Create email message
+           msg = Message(
+                subject='Welcome to Hash for Gamers - Your Vendor Credentials',
+                sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@hashforgamers.com'),
+                recipients=[email]
+            )
+
+        # Email HTML template
+           html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                .content {{ background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }}
+                .credentials-box {{ background: #ffffff; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #667eea; }}
+                .credential-item {{ margin: 10px 0; padding: 10px; background: #e9ecef; border-radius: 5px; }}
+                .credential-label {{ font-weight: bold; color: #495057; }}
+                .credential-value {{ color: #007bff; font-family: monospace; font-size: 16px; }}
+                .footer {{ text-align: center; margin-top: 20px; color: #6c757d; font-size: 12px; }}
+                .status-badge {{ display: inline-block; padding: 5px 15px; background: #ffc107; color: #212529; border-radius: 20px; font-size: 12px; font-weight: bold; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🎮 Welcome to Hash for Gamers!</h1>
+                    <p>Your gaming cafe has been successfully onboarded</p>
+                </div>
+                
+                <div class="content">
+                    <h2>Hello {vendor.owner_name}!</h2>
+                    <p>Congratulations! <strong>{vendor.cafe_name}</strong> has been successfully registered with Hash for Gamers.</p>
+                    
+                    <div class="credentials-box">
+                        <h3>Your Vendor Credentials:</h3>
+                        
+                        <div class="credential-item">
+                            <span class="credential-label">Username:</span><br>
+                            <span class="credential-value">{username}</span>
+                        </div>
+                        
+                        <div class="credential-item">
+                            <span class="credential-label">Password:</span><br>
+                            <span class="credential-value">{password}</span>
+                        </div>
+                        
+                        <div class="credential-item">
+                            <span class="credential-label">Vendor PIN:</span><br>
+                            <span class="credential-value">{pin_code}</span>
+                        </div>
+                        
+                        <div style="margin-top: 15px;">
+                            <span class="credential-label">Account Status:</span><br>
+                            <span class="status-badge">Pending Verification</span>
+                        </div>
+                    </div>
+                    
+                    <h3>Next Steps:</h3>
+                    <ul>
+                        <li>🔍 Our team will verify your submitted documents</li>
+                        <li>📧 You'll receive a confirmation email once verified</li>
+                        <li>🚀 After verification, you can start using our platform</li>
+                        <li>💡 Keep your credentials safe and secure</li>
+                    </ul>
+                    
+                    <h3>Important Information:</h3>
+                    <ul>
+                        <li><strong>Vendor ID:</strong> {vendor.id}</li>
+                        <li><strong>Registration Email:</strong> {email}</li>
+                        <li><strong>Cafe Name:</strong> {vendor.cafe_name}</li>
+                        <li><strong>Owner:</strong> {vendor.owner_name}</li>
+                    </ul>
+                    
+                    <p><strong>⚠️ Security Notice:</strong> Please keep your login credentials secure and do not share them with unauthorized personnel.</p>
+                </div>
+                
+                <div class="footer">
+                    <p>This is an automated message from Hash for Gamers</p>
+                    <p>If you have any questions, please contact our support team</p>
+                    <p>© 2025 Hash for Gamers. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+           msg.html = html_body
+
+        # Send the email
+           mail.send(msg)
+           current_app.logger.info(f"Welcome email sent successfully to {email} for vendor {vendor.id}")
+
+        except Exception as e:
+          current_app.logger.error(f"Failed to send welcome email to {email} for vendor {vendor.id}: {str(e)}")
+        # Don't raise the exception as email failure shouldn't stop onboarding
+          pass
+
+
+    
+  

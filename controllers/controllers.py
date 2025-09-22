@@ -155,6 +155,27 @@ def health_check():
 #                 return None, f'Missing file for {doc_type}'
 #     return files, None
 
+
+
+
+def safe_strptime(date_str, format_str):
+    """Safely parse date string, handling None and invalid values"""
+    if date_str is None or date_str == '':
+        return None
+    
+    if not isinstance(date_str, str):
+        current_app.logger.warning(f"Date string is not str type: {type(date_str)}")
+        return None
+    
+    try:
+        return datetime.strptime(date_str, format_str)
+    except ValueError as e:
+        current_app.logger.error(f"Error parsing date '{date_str}' with format '{format_str}': {e}")
+        return None
+    except Exception as e:
+        current_app.logger.error(f"Unexpected error parsing date '{date_str}': {e}")
+        return None
+
 @vendor_bp.route('/onboard', methods=['POST'])
 def onboard_vendor():
     current_app.logger.debug("Received onboarding request")
@@ -175,8 +196,102 @@ def onboard_vendor():
         current_app.logger.error("Invalid JSON format in form data")
         return jsonify({'message': 'Invalid JSON format'}), 400
 
-    # Validate required fields and log as needed
-    current_app.logger.debug("Validate required fields and log as needed")
+    # Extract vendor_account_email from contact_info
+    if 'contact_info' in data and data['contact_info'].get('email'):
+        data['vendor_account_email'] = data['contact_info']['email']
+        current_app.logger.debug(f"Set vendor_account_email: {data['vendor_account_email']}")
+
+    # Transform timing data from day-wise to single opening/closing times
+    if 'timing' in data:
+        current_app.logger.debug(f"Raw timing data: {data['timing']}")
+        
+        # Find the first open day to get opening and closing times
+        opening_time = None
+        closing_time = None
+        opening_days = {}
+        
+        for day, day_data in data['timing'].items():
+            if day_data.get('closed', False):
+                opening_days[day] = False
+            else:
+                opening_days[day] = True
+                open_time_str = day_data.get('open')
+                close_time_str = day_data.get('close')
+                
+                # Validate time strings
+                if open_time_str and close_time_str:
+                    open_parsed = safe_strptime(open_time_str, "%I:%M %p")
+                    close_parsed = safe_strptime(close_time_str, "%I:%M %p")
+                    
+                    if open_parsed and close_parsed:
+                        # Use the first valid timing as the general opening/closing time
+                        if not opening_time:
+                            opening_time = open_time_str
+                            closing_time = close_time_str
+                    else:
+                        current_app.logger.warning(f"Invalid time format for {day}: open={open_time_str}, close={close_time_str}")
+                        return jsonify({'message': f'Invalid time format for {day}'}), 400
+                else:
+                    current_app.logger.warning(f"Missing time data for {day}")
+                    return jsonify({'message': f'Missing time data for {day}'}), 400
+        
+        # Check if at least one day is open
+        if not any(opening_days.values()):
+            current_app.logger.warning("No open days found")
+            return jsonify({'message': 'At least one day must be open'}), 400
+            
+        if not opening_time or not closing_time:
+            current_app.logger.warning("No valid opening/closing times found")
+            return jsonify({'message': 'Valid opening and closing times are required'}), 400
+        
+        # Transform timing data to match VendorService expectations
+        data['timing'] = {
+            'opening_time': opening_time,
+            'closing_time': closing_time
+        }
+        
+        # Add opening_day data in the expected format
+        data['opening_day'] = opening_days
+        current_app.logger.debug(f"Transformed timing data: {data['timing']}")
+        current_app.logger.debug(f"Opening days data: {data['opening_day']}")
+
+    # Transform available_games data from list to dict
+    if 'available_games' in data and isinstance(data['available_games'], list):
+        games_dict = {}
+        for game in data['available_games']:
+            if game.get('name'):
+                games_dict[game['name']] = {
+                    'total_slot': game.get('total_slot', 0),
+                    'single_slot_price': game.get('rate_per_slot', 0)
+                }
+        data['available_games'] = games_dict
+        current_app.logger.debug(f"Transformed games data: {data['available_games']}")
+
+    # Transform physicalAddress data
+    if 'physicalAddress' in data:
+        address_data = data['physicalAddress']
+        transformed_address = {
+            'address_type': 'business',
+            'addressLine1': address_data.get('street', ''),
+            'addressLine2': '',
+            'pincode': address_data.get('zipCode', ''),
+            'state': address_data.get('state', ''),
+            'country': address_data.get('country', ''),
+            'latitude': None,
+            'longitude': None
+        }
+        data['physicalAddress'] = transformed_address
+        current_app.logger.debug(f"Transformed address data: {data['physicalAddress']}")
+
+    # Transform business_registration_details
+    if 'business_registration_details' in data:
+        reg_data = data['business_registration_details']
+        if 'registration_date' not in reg_data:
+            reg_data['registration_date'] = data.get('opening_day', datetime.now().strftime('%Y-%m-%d'))
+        current_app.logger.debug(f"Business registration data: {reg_data}")
+
+    # Validate required fields
+    current_app.logger.debug("Validating required fields")
     required_fields = [
         'cafe_name', 'owner_name', 'contact_info', 'physicalAddress',
         'business_registration_details', 'document_submitted',
@@ -187,14 +302,7 @@ def onboard_vendor():
         current_app.logger.warning(f"Missing fields: {missing_fields}")
         return jsonify({'message': f'Missing fields: {", ".join(missing_fields)}'}), 400
 
-    # Process files
-    #.logger.debug("Started Processing File")
-    #document_types = [
-#'business_registration', 'owner_identification_proof',
-#'tax_identification_number', 'bank_acc_details'
-#]
-
- # Process files for Cloudinary upload
+    # Process files for Cloudinary upload
     current_app.logger.debug("Started Processing Files for Cloudinary")
     document_types = [
         'business_registration', 'owner_identification_proof',
@@ -209,9 +317,10 @@ def onboard_vendor():
     try:
         # Onboard the vendor
         current_app.logger.debug("Onboarding vendor...")
+        current_app.logger.debug(f"Final data being sent to VendorService: {data}")
         vendor = VendorService.onboard_vendor(data, files)
 
-        # Upload documents to Cloudinary instead of Google Drive
+        # Upload documents to Cloudinary
         current_app.logger.debug("Uploading documents to Cloudinary...")
         document_urls = upload_documents_to_cloudinary(files, vendor.id, vendor.cafe_name)
         
@@ -231,6 +340,8 @@ def onboard_vendor():
         
     except Exception as e:
         current_app.logger.error(f"Onboarding error: {e}")
+        import traceback
+        current_app.logger.error(f"Full traceback: {traceback.format_exc()}")
         return jsonify({'message': 'An error occurred during onboarding', 'error': str(e)}), 500
 
 
