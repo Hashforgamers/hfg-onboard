@@ -48,6 +48,7 @@ class Vendor(db.Model):
     # Relationship to ContactInfo
     contact_info = relationship(
         "ContactInfo",
+        primaryjoin="and_(foreign(ContactInfo.parent_id) == Vendor.id, ContactInfo.parent_type == 'vendor')",
         back_populates="vendor",  # Ensure this matches the relationship in ContactInfo
         uselist=False,
         cascade="all, delete"
@@ -118,7 +119,9 @@ class Vendor(db.Model):
         cascade="all, delete-orphan"
     )
 
-
+    payment_methods = relationship('PaymentVendorMap', back_populates='vendor', cascade='all, delete-orphan')
+       
+       
     # One-to-Many relationship with VendorStatus
     statuses = relationship(
         'VendorStatus',

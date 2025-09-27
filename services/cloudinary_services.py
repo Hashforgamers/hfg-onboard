@@ -422,4 +422,81 @@ class CloudinaryGameImageService:
                 'url': None, 
                 'public_id': None
             }
+            
+
+    @staticmethod
+    def upload_collaborator_product_image(image_file, product_name, collaborator_name):
+        """
+        Upload collaborator product image to Cloudinary under folder 'COLLABORATOR_PRODUCTS/{collaborator_name}'
+        """
+        try:
+            if not image_file or image_file.filename == '':
+                return {
+                    'success': False,
+                    'error': 'No image file provided',
+                    'url': None,
+                    'public_id': None
+                }
+
+            if not CloudinaryGameImageService.configure_cloudinary():
+                return {
+                    'success': False,
+                    'error': 'Cloudinary not configured',
+                    'url': None,
+                    'public_id': None
+                }
+
+            from werkzeug.utils import secure_filename
+            safe_collaborator_name = secure_filename(collaborator_name.replace(' ', '_').lower()) if collaborator_name else 'unknown_collaborator'
+            safe_product_name = secure_filename(product_name.replace(' ', '_').lower()) if product_name else 'unknown_product'
+            
+            folder_path = f"COLLABORATOR_PRODUCTS/{safe_collaborator_name}"
+            public_id = f"product_{safe_product_name}_{int(datetime.utcnow().timestamp())}"
+
+            current_app.logger.info(f"Uploading collaborator product image to Cloudinary folder: {folder_path} with public_id: {public_id}")
+
+            upload_result = cloudinary.uploader.upload(
+                image_file,
+                folder=folder_path,
+                public_id=public_id,
+                resource_type="image",
+                overwrite=False,
+                quality="auto:best",
+                transformation=[
+                    {
+                        'width': 500,
+                        'height': 500,
+                        'crop': 'fit',
+                        'gravity': 'center'
+                    }
+                ]
+            )
+
+            if 'secure_url' in upload_result and 'public_id' in upload_result:
+                current_app.logger.info(f"Collaborator product image uploaded successfully: {upload_result['secure_url']}")
+                return {
+                    'success': True,
+                    'url': upload_result['secure_url'],
+                    'public_id': upload_result['public_id'],
+                    'error': None
+                }
+            else:
+                current_app.logger.error(f"Invalid response keys from Cloudinary upload: {upload_result}")
+                return {
+                    'success': False,
+                    'error': 'Invalid response from Cloudinary - missing URL or public_id',
+                    'url': None,
+                    'public_id': None
+                }
+        
+        except cloudinary.exceptions.Error as ce:
+            err_msg = f"Cloudinary API error: {str(ce)}"
+            current_app.logger.error(err_msg)
+            return {'success': False, 'error': err_msg, 'url': None, 'public_id': None}
+        
+        except Exception as e:
+            err_msg = f"Unexpected error uploading collaborator product image: {str(e)}"
+            current_app.logger.error(err_msg)
+            return {'success': False, 'error': err_msg, 'url': None, 'public_id': None}
+
 
