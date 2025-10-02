@@ -13,7 +13,7 @@ from controllers.order_controller import order_bp
 
 def create_app():
     app = Flask(__name__)
-    CORS(app, origins=["http://localhost:3000" ,"http://localhost:3001", "https://dashboard.hashforgamers.co.in" , "https://dev-dashboard.hashforgamers.co.in", "https://vendor-onboard-zeta.vercel.app" ],
+    CORS(app, origins=["http://localhost:3000", "http://localhost:3001", "https://dashboard.hashforgamers.co.in", "https://dev-dashboard.hashforgamers.co.in", "https://vendor-onboard-zeta.vercel.app" ],
           methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
      allow_headers=['Content-Type', 'Authorization']
          )

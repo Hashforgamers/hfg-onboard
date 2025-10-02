@@ -2,7 +2,7 @@ import random
 import string
 from flask import current_app
 from flask_mail import Message
-from db.extensions import mail, redis_client
+from db.extensions import mail, redis_client,db
 from models.vendor import Vendor
 from models.vendorAccount import VendorAccount
 import logging
@@ -20,19 +20,23 @@ class OTPService:
         """Send OTP to vendor's email for accessing restricted pages"""
         try:
             # Get vendor details
-            vendor = Vendor.query.get(vendor_id)
-            if not vendor:
-                return {'success': False, 'message': 'Vendor not found'}
-            
-            # Get vendor email from vendor_account through the relationship
-            # Since vendor.account gives us the VendorAccount instance
-            vendor_account = vendor.account  # This should work if relationship is properly set
-            
-            if not vendor_account or not vendor_account.email:
+            vendor_data = db.session.query(
+            Vendor.id,
+            Vendor.cafe_name,
+            VendorAccount.email,
+            VendorAccount.name
+        ).join(VendorAccount, Vendor.account_id == VendorAccount.id)\
+         .filter(Vendor.id == vendor_id)\
+         .first()
+        
+            if not vendor_data:
+               return {'success': False, 'message': 'Vendor not found'}
+        
+            if not vendor_data.email:
                 return {'success': False, 'message': 'Vendor email not found in account'}
             
-            vendor_email = vendor_account.email
-            vendor_name = vendor_account.name or vendor.cafe_name or 'Vendor'
+            vendor_email = vendor_data.email
+            vendor_name = vendor_data.name or vendor_data.cafe_name or 'Vendor'
             
             # Generate OTP
             otp = OTPService.generate_otp()
@@ -62,7 +66,7 @@ class OTPService:
                     <h2 style="color: #2563eb;">Security Verification Required</h2>
                     <p>Hello <strong>{vendor_name}</strong>,</p>
                     
-                    <p>You are trying to access the <strong>{page_name}</strong> section for <strong>{vendor.cafe_name or 'your cafe'}</strong>. For security purposes, please verify your identity with the OTP below:</p>
+                    <p>You are trying to access the <strong>{page_name}</strong> section for <strong>{vendor_data.cafe_name or 'your cafe'}</strong>. For security purposes, please verify your identity with the OTP below:</p>
                     
                     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 10px; text-align: center; margin: 30px 0;">
                         <p style="color: white; margin: 0 0 10px 0; font-size: 16px;">Your OTP Code</p>
@@ -102,7 +106,7 @@ class OTPService:
             
             Hello {vendor_name},
             
-            You are trying to access the {page_name} section for {vendor.cafe_name or 'your cafe'}. For security purposes, please verify your identity with the OTP below:
+            You are trying to access the {page_name} section for {vendor_data.cafe_name or 'your cafe'}. For security purposes, please verify your identity with the OTP below:
             
             OTP: {otp}
             
