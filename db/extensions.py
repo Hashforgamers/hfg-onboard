@@ -24,8 +24,12 @@ def create_redis_client():
             username=parsed.username,
             password=parsed.password,
             ssl=use_tls,
-            ssl_cert_reqs=None,  # For managed Redis services
-            decode_responses=True
+            ssl_cert_reqs=None,
+            decode_responses=True,
+            socket_connect_timeout=5,  # NEW: Connection timeout
+            socket_timeout=5,           # NEW: Socket timeout
+            retry_on_timeout=True,      # NEW: Auto retry on timeout
+            health_check_interval=30    # NEW: Health check every 30s
         )
     else:
         # Fallback for local development
@@ -33,7 +37,10 @@ def create_redis_client():
             host=os.getenv('REDIS_HOST', 'localhost'),
             port=int(os.getenv('REDIS_PORT', 6379)),
             db=int(os.getenv('REDIS_DB', 0)),
-            decode_responses=True
+            decode_responses=True,
+            socket_connect_timeout=5,
+            socket_timeout=5,
+            retry_on_timeout=True
         )
 
 redis_client = create_redis_client()
