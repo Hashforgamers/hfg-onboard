@@ -2,14 +2,31 @@ import random
 import string
 from flask import current_app
 from flask_mail import Message
-from db.extensions import mail, redis_client
+from db.extensions import mail, redis_client, db
 from models.vendor import Vendor
 from models.vendorAccount import VendorAccount
 import logging
+from threading import Thread
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+
+# CRITICAL FIX: Add this helper function for async email sending
+def send_async_email(app, msg):
+    """Send email asynchronously in background thread"""
+    with app.app_context():
+        try:
+            mail.send(msg)
+            app.logger.info("Email sent successfully in background")
+        except Exception as e:
+            app.logger.error(f"Failed to send email asynchronously: {str(e)}")
+
+
 class OTPService:
+    OTP_EXPIRY_SECONDS = 300  # 5 minutes
+    VERIFICATION_EXPIRY_SECONDS = 1800  # 30 minutes
+    
     @staticmethod
     def generate_otp(length=6):
         """Generate a random numeric OTP"""
@@ -17,29 +34,39 @@ class OTPService:
     
     @staticmethod
     def send_otp(vendor_id, page_type):
-        """Send OTP to vendor's email for accessing restricted pages"""
+        """
+        Send OTP to vendor's email for accessing restricted pages
+        OPTIMIZED: Returns immediately, email sent in background
+        """
         try:
-            # Get vendor details
-            vendor = Vendor.query.get(vendor_id)
-            if not vendor:
+            # OPTIMIZED: Use select specific columns only - faster query
+            vendor_data = db.session.query(
+                Vendor.id,
+                Vendor.cafe_name,
+                VendorAccount.email,
+                VendorAccount.name
+            ).join(VendorAccount, Vendor.account_id == VendorAccount.id)\
+             .filter(Vendor.id == vendor_id)\
+             .first()
+        
+            if not vendor_data:
+                logger.error(f"Vendor {vendor_id} not found")
                 return {'success': False, 'message': 'Vendor not found'}
-            
-            # Get vendor email from vendor_account through the relationship
-            # Since vendor.account gives us the VendorAccount instance
-            vendor_account = vendor.account  # This should work if relationship is properly set
-            
-            if not vendor_account or not vendor_account.email:
+        
+            if not vendor_data.email:
+                logger.error(f"Email not found for vendor {vendor_id}")
                 return {'success': False, 'message': 'Vendor email not found in account'}
             
-            vendor_email = vendor_account.email
-            vendor_name = vendor_account.name or vendor.cafe_name or 'Vendor'
+            vendor_email = vendor_data.email
+            vendor_name = vendor_data.name or vendor_data.cafe_name or 'Vendor'
+            cafe_name = vendor_data.cafe_name or 'your cafe'
             
             # Generate OTP
             otp = OTPService.generate_otp()
             
-            # Store OTP in Redis with 5-minute expiry
+            # OPTIMIZED: Store OTP in Redis with 5-minute expiry
             redis_key = f'vendor_otp:{vendor_id}:{page_type}'
-            redis_client.setex(redis_key, 300, otp)  # 300 seconds = 5 minutes
+            redis_client.setex(redis_key, OTPService.OTP_EXPIRY_SECONDS, otp)
             
             # Prepare email content
             page_name = "Bank Transfer" if page_type == "bank_transfer" else "Payout History"
@@ -62,7 +89,7 @@ class OTPService:
                     <h2 style="color: #2563eb;">Security Verification Required</h2>
                     <p>Hello <strong>{vendor_name}</strong>,</p>
                     
-                    <p>You are trying to access the <strong>{page_name}</strong> section for <strong>{vendor.cafe_name or 'your cafe'}</strong>. For security purposes, please verify your identity with the OTP below:</p>
+                    <p>You are trying to access the <strong>{page_name}</strong> section for <strong>{cafe_name}</strong>. For security purposes, please verify your identity with the OTP below:</p>
                     
                     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 10px; text-align: center; margin: 30px 0;">
                         <p style="color: white; margin: 0 0 10px 0; font-size: 16px;">Your OTP Code</p>
@@ -102,7 +129,7 @@ class OTPService:
             
             Hello {vendor_name},
             
-            You are trying to access the {page_name} section for {vendor.cafe_name or 'your cafe'}. For security purposes, please verify your identity with the OTP below:
+            You are trying to access the {page_name} section for {cafe_name}. For security purposes, please verify your identity with the OTP below:
             
             OTP: {otp}
             
@@ -122,17 +149,24 @@ class OTPService:
             This is an automated security email. Please do not reply.
             """
             
-            # Send email
-            mail.send(msg)
+            # CRITICAL FIX: Send email asynchronously - THIS IS THE KEY!
+            # The API returns immediately while email sends in background
+            Thread(
+                target=send_async_email,
+                args=(current_app._get_current_object(), msg),
+                daemon=True  # Daemon thread won't block app shutdown
+            ).start()
             
-            current_app.logger.info(f"OTP sent successfully to vendor {vendor_id} ({vendor_email}) for {page_type}")
+            logger.info(f"OTP generation initiated for vendor {vendor_id} ({vendor_email}) for {page_type}")
+            
+            # Return immediately without waiting for email to complete
             return {
                 'success': True, 
                 'message': 'OTP sent successfully to your registered email address'
             }
             
         except Exception as e:
-            current_app.logger.error(f"Error sending OTP to vendor {vendor_id}: {str(e)}")
+            logger.error(f"Error sending OTP to vendor {vendor_id}: {str(e)}", exc_info=True)
             return {
                 'success': False, 
                 'message': 'Failed to send OTP. Please try again later.'
@@ -140,14 +174,22 @@ class OTPService:
     
     @staticmethod
     def verify_otp(vendor_id, page_type, provided_otp):
-        """Verify the provided OTP"""
+        """
+        Verify the provided OTP
+        OPTIMIZED: Fast Redis lookup with proper string comparison
+        """
         try:
             redis_key = f'vendor_otp:{vendor_id}:{page_type}'
             stored_otp = redis_client.get(redis_key)
             
             if not stored_otp:
-                current_app.logger.warning(f"OTP not found or expired for vendor {vendor_id}, page {page_type}")
-                return {'success': False, 'message': 'OTP expired or not found'}
+                logger.warning(f"OTP not found or expired for vendor {vendor_id}, page {page_type}")
+                return {'success': False, 'message': 'OTP expired or not found. Please request a new one.'}
+            
+            # FIXED: Proper string comparison (works with decode_responses=True)
+            # If decode_responses is False, stored_otp will be bytes
+            if isinstance(stored_otp, bytes):
+                stored_otp = stored_otp.decode('utf-8')
             
             if provided_otp.strip() == stored_otp.strip():
                 # OTP is correct, delete it from Redis
@@ -155,26 +197,34 @@ class OTPService:
                 
                 # Set verification flag with longer expiry (30 minutes)
                 verification_key = f'vendor_verified:{vendor_id}:{page_type}'
-                redis_client.setex(verification_key, 1800, 'verified')  # 30 minutes
+                redis_client.setex(
+                    verification_key, 
+                    OTPService.VERIFICATION_EXPIRY_SECONDS, 
+                    'verified'
+                )
                 
-                current_app.logger.info(f"OTP verified successfully for vendor {vendor_id} for {page_type}")
+                logger.info(f"OTP verified successfully for vendor {vendor_id} for {page_type}")
                 return {'success': True, 'message': 'OTP verified successfully'}
             else:
-                current_app.logger.warning(f"Invalid OTP provided for vendor {vendor_id}, page {page_type}")
-                return {'success': False, 'message': 'Invalid OTP'}
+                logger.warning(f"Invalid OTP provided for vendor {vendor_id}, page {page_type}")
+                return {'success': False, 'message': 'Invalid OTP. Please try again.'}
                 
         except Exception as e:
-            current_app.logger.error(f"Error verifying OTP for vendor {vendor_id}: {str(e)}")
-            return {'success': False, 'message': 'OTP verification failed'}
+            logger.error(f"Error verifying OTP for vendor {vendor_id}: {str(e)}", exc_info=True)
+            return {'success': False, 'message': 'OTP verification failed. Please try again.'}
     
     @staticmethod
     def is_verified(vendor_id, page_type):
-        """Check if vendor is already verified for the page"""
+        """
+        Check if vendor is already verified for the page
+        OPTIMIZED: Instant Redis check - no database query
+        """
         try:
             verification_key = f'vendor_verified:{vendor_id}:{page_type}'
+            # This is INSTANT - just checks if key exists in Redis
             return redis_client.exists(verification_key) > 0
         except Exception as e:
-            current_app.logger.error(f"Error checking verification status for vendor {vendor_id}: {str(e)}")
+            logger.error(f"Error checking verification status for vendor {vendor_id}: {str(e)}")
             return False
     
     @staticmethod
@@ -183,10 +233,10 @@ class OTPService:
         try:
             verification_key = f'vendor_verified:{vendor_id}:{page_type}'
             redis_client.delete(verification_key)
-            current_app.logger.info(f"Verification cleared for vendor {vendor_id}, page {page_type}")
+            logger.info(f"Verification cleared for vendor {vendor_id}, page {page_type}")
             return True
         except Exception as e:
-            current_app.logger.error(f"Error clearing verification for vendor {vendor_id}: {str(e)}")
+            logger.error(f"Error clearing verification for vendor {vendor_id}: {str(e)}")
             return False
     
     @staticmethod
@@ -198,15 +248,15 @@ class OTPService:
                 verification_key = f'vendor_verified:{vendor_id}:{page_type}'
                 redis_client.delete(verification_key)
             
-            current_app.logger.info(f"All verification cleared for vendor {vendor_id}")
+            logger.info(f"All verification cleared for vendor {vendor_id}")
             return True
         except Exception as e:
-            current_app.logger.error(f"Error clearing all verification for vendor {vendor_id}: {str(e)}")
+            logger.error(f"Error clearing all verification for vendor {vendor_id}: {str(e)}")
             return False
     
     @staticmethod
     def get_verification_status(vendor_id):
-        """Get verification status for all pages"""
+        """Get verification status for all pages - FAST"""
         try:
             status = {}
             for page_type in ['bank_transfer', 'payout_history']:
@@ -215,22 +265,25 @@ class OTPService:
             
             return {'success': True, 'status': status}
         except Exception as e:
-            current_app.logger.error(f"Error getting verification status for vendor {vendor_id}: {str(e)}")
+            logger.error(f"Error getting verification status for vendor {vendor_id}: {str(e)}")
             return {'success': False, 'message': 'Failed to get verification status'}
     
     @staticmethod
     def resend_otp(vendor_id, page_type):
-        """Resend OTP (same as send_otp but with different logging)"""
+        """
+        Resend OTP (same as send_otp but with different logging)
+        OPTIMIZED: Returns immediately
+        """
         try:
             # Delete existing OTP if any
             redis_key = f'vendor_otp:{vendor_id}:{page_type}'
             redis_client.delete(redis_key)
             
-            # Send new OTP
+            # Send new OTP (async)
             result = OTPService.send_otp(vendor_id, page_type)
             
             if result['success']:
-                current_app.logger.info(f"OTP resent successfully to vendor {vendor_id} for {page_type}")
+                logger.info(f"OTP resent successfully to vendor {vendor_id} for {page_type}")
                 return {
                     'success': True,
                     'message': 'OTP resent successfully to your registered email address'
@@ -239,7 +292,7 @@ class OTPService:
                 return result
                 
         except Exception as e:
-            current_app.logger.error(f"Error resending OTP to vendor {vendor_id}: {str(e)}")
+            logger.error(f"Error resending OTP to vendor {vendor_id}: {str(e)}", exc_info=True)
             return {
                 'success': False,
                 'message': 'Failed to resend OTP. Please try again later.'
@@ -247,7 +300,7 @@ class OTPService:
     
     @staticmethod
     def get_otp_expiry(vendor_id, page_type):
-        """Get remaining time for OTP expiry"""
+        """Get remaining time for OTP expiry - FAST"""
         try:
             redis_key = f'vendor_otp:{vendor_id}:{page_type}'
             ttl = redis_client.ttl(redis_key)
@@ -260,5 +313,5 @@ class OTPService:
                 return {'success': True, 'expires_in': ttl}
                 
         except Exception as e:
-            current_app.logger.error(f"Error getting OTP expiry for vendor {vendor_id}: {str(e)}")
+            logger.error(f"Error getting OTP expiry for vendor {vendor_id}: {str(e)}")
             return {'success': False, 'message': 'Failed to get OTP expiry'}
