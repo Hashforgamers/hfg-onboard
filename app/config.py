@@ -14,7 +14,7 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # OPTIMIZED: Database connection pool configuration
+    # FIXED: Neon-compatible engine options (removed statement_timeout from options)
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,       # Validate connections before using
         "pool_recycle": 1800,        # Recycle every 30 minutes
@@ -22,8 +22,7 @@ class Config:
         "max_overflow": 20,          # Allow 20 extra connections
         "pool_timeout": 30,          # Wait 30s for available connection
         "connect_args": {
-            "connect_timeout": 10,   # PostgreSQL connection timeout
-            "options": "-c statement_timeout=30000"  # 30s query timeout
+            "connect_timeout": 10   # FIXED: Removed statement_timeout (not supported by Neon pooler)
         }
     }
 
@@ -42,7 +41,7 @@ class Config:
     MAIL_MAX_EMAILS = None
     MAIL_ASCII_ATTACHMENTS = False
     
-    # Redis Configuration (for direct access via redis_client)
+    # Redis Configuration
     REDIS_URL = os.getenv('REDIS_URL')
     REDIS_TLS_ENABLED = os.getenv('REDIS_TLS_ENABLED', 'false').lower() == 'true'
 
