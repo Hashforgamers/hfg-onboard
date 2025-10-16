@@ -1,46 +1,55 @@
 # app/config.py
 
 import os
-
+from datetime import timedelta
 
 class Config:
+    # Flask Secret Key
     SECRET_KEY = os.getenv('SECRET_KEY', 'your_secret_key')
 
+    # Database Configuration
     SQLALCHEMY_DATABASE_URI = os.getenv(
         'DATABASE_URI',
         'postgresql://postgres:postgres@db:5432/vendor_db'
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # Add safe engine options for Neon / Postgres
+    # FIXED: Neon-compatible engine options (removed statement_timeout from options)
     SQLALCHEMY_ENGINE_OPTIONS = {
-        "pool_pre_ping": True,    # Validate connections before using
-        "pool_recycle": 1800,     # Recycle every 30 minutes to avoid SSL timeouts
-        "pool_size": 5,           # Maintain small pool (good for Render dynos)
-        "max_overflow": 10        # Allow short bursts
+        "pool_pre_ping": True,       # Validate connections before using
+        "pool_recycle": 1800,        # Recycle every 30 minutes
+        "pool_size": 10,             # Maintain 10 connections
+        "max_overflow": 20,          # Allow 20 extra connections
+        "pool_timeout": 30,          # Wait 30s for available connection
+        "connect_args": {
+            "connect_timeout": 10   # FIXED: Removed statement_timeout (not supported by Neon pooler)
+        }
     }
 
+    # File Upload Configuration
     UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB upload limit
     
-    # Mail server settings
+    # Mail Configuration
     MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.hashforgamers.co.in")
-    MAIL_PORT = int(os.getenv("MAIL_PORT", 587))  # Use 587 for TLS
+    MAIL_PORT = int(os.getenv("MAIL_PORT", 587))
     MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() in ("true", "1", "t")
     MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", "false").lower() in ("true", "1", "t")
-    MAIL_USERNAME = os.getenv("MAIL_USERNAME")  # Your SMTP username
-    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")  # Your SMTP password
+    MAIL_USERNAME = os.getenv("MAIL_USERNAME")
+    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
     MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "no-reply@hashforgamers.co.in")
-
-    # Google Drive
-    GOOGLE_DRIVE_FOLDER_ID = os.getenv('GOOGLE_DRIVE_FOLDER_ID')
-    GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')  # Path to credentials JSON
+    MAIL_MAX_EMAILS = None
+    MAIL_ASCII_ATTACHMENTS = False
     
-    # Cloudinary
+    # Redis Configuration
+    REDIS_URL = os.getenv('REDIS_URL')
+    REDIS_TLS_ENABLED = os.getenv('REDIS_TLS_ENABLED', 'false').lower() == 'true'
+
+    # Google Drive Configuration
+    GOOGLE_DRIVE_FOLDER_ID = os.getenv('GOOGLE_DRIVE_FOLDER_ID')
+    GOOGLE_APPLICATION_CREDENTIALS = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+    
+    # Cloudinary Configuration
     CLOUDINARY_CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME')
     CLOUDINARY_API_KEY = os.getenv('CLOUDINARY_API_KEY')
     CLOUDINARY_API_SECRET = os.getenv('CLOUDINARY_API_SECRET')
-    
-     # Redis Configuration
-    REDIS_URL = os.getenv('REDIS_URL')
-    REDIS_TLS_ENABLED = os.getenv('REDIS_TLS_ENABLED', 'false').lower() == 'true'
