@@ -27,7 +27,7 @@ def create_redis_pool():
     if redis_url:
         parsed = urllib.parse.urlparse(redis_url)
         
-        # Connection pool configuration
+        # Base connection pool configuration
         pool_kwargs = {
             'host': parsed.hostname,
             'port': parsed.port or 6379,
@@ -38,23 +38,22 @@ def create_redis_pool():
             'socket_timeout': 5,
             'socket_keepalive': True,
             'retry_on_timeout': True,
-            'retry_on_error': [
-                redis.exceptions.ConnectionError,
-                redis.exceptions.TimeoutError
-            ],
             'health_check_interval': 30,
-            'max_connections': 50,          # Connection pool size
+            'max_connections': 50,
         }
         
-        # Add SSL configuration
+        # Add SSL configuration - CRITICAL FIX
+        # When using SSLConnection, don't pass 'ssl' parameter
         if use_tls or parsed.scheme == 'rediss':
             pool_kwargs.update({
                 'connection_class': SSLConnection,
-                'ssl': True,
-                'ssl_cert_reqs': None,
-                'ssl_check_hostname': False,
+                'ssl_cert_reqs': None,           # Don't verify SSL certificates
+                'ssl_check_hostname': False,     # Don't check hostname
             })
+            # DO NOT add 'ssl': True - it conflicts with SSLConnection
             logger.info("✅ Redis pool with SSL/TLS enabled")
+        else:
+            logger.info("✅ Redis pool without SSL")
         
         try:
             pool = ConnectionPool(**pool_kwargs)
@@ -81,7 +80,7 @@ def create_redis_pool():
 # Create connection pool ONCE at startup
 redis_pool = create_redis_pool()
 
-# Create Redis client using the pool (reuses connections)
+# Create Redis client using the pool
 redis_client = redis.Redis(connection_pool=redis_pool)
 
 
