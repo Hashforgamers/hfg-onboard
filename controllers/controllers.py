@@ -493,7 +493,7 @@ def insert_to_queue():
             return jsonify({'error': 'Missing fields'}), 400
 
         booking = Booking.query.filter_by(id=booking_id).first()
-        if not booking or booking.vendor_id != vendor_id:
+        if not booking:
             return jsonify({'error': 'Booking not found'}), 404
 
         user_id = booking.user_id
