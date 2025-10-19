@@ -33,7 +33,7 @@ from datetime import datetime, timedelta, date, time as dtime
 from datetime import timezone as dt_timezone  # ✅ add this import near the top
 
 
-INTERNAL_WS_URL = "https://hfg-dashboard-h9qq.onrender.com/api/internal/ws/unlock"
+INTERNAL_WS_URL = "https://hfg-dashboard-h9qq.onrender.com/internal/ws/unlock"
 
 
 vendor_bp = Blueprint('vendor', __name__)
