@@ -28,6 +28,12 @@ from sqlalchemy import text
 from datetime import datetime, timedelta, date, time as dtime
 from models.timing import Timing
 
+import uuid, requests
+from datetime import timezone
+
+INTERNAL_WS_URL = "https://hfg-dashboard-h9qq.onrender.com/api/internal/ws/unlock"
+
+
 vendor_bp = Blueprint('vendor', __name__)
 
 ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png', 'gif', 'doc', 'docx'}
@@ -487,7 +493,7 @@ def insert_to_queue():
             return jsonify({'error': 'Missing fields'}), 400
 
         booking = Booking.query.filter_by(id=booking_id).first()
-        if not booking:
+        if not booking or booking.vendor_id != vendor_id:
             return jsonify({'error': 'Booking not found'}), 404
 
         user_id = booking.user_id
@@ -497,11 +503,8 @@ def insert_to_queue():
         today = now_ist.date()
         now_time = now_ist.time()
 
-        # Fetch today's bookings
         today_transactions = Transaction.query.filter_by(
-            user_id=user_id,
-            vendor_id=vendor_id,
-            booked_date=today
+            user_id=user_id, vendor_id=vendor_id, booked_date=today
         ).all()
 
         today_booking_ids = [t.booking_id for t in today_transactions]
@@ -511,62 +514,73 @@ def insert_to_queue():
         today_bookings = Booking.query.filter(Booking.id.in_(today_booking_ids)).all()
         slot_ids = {b.slot_id for b in today_bookings}
         slots = Slot.query.filter(Slot.id.in_(slot_ids)).order_by(Slot.start_time).all()
-
         if not slots:
             return jsonify({'error': 'No slots found'}), 404
 
-        # Group consecutive slots
-        grouped_slots = []
-        current_group = [slots[0]]
-
+        # group consecutive
+        grouped_slots, current_group = [], [slots[0]]
         for i in range(1, len(slots)):
-            prev = current_group[-1]
-            curr = slots[i]
+            prev, curr = current_group[-1], slots[i]
             if curr.start_time == prev.end_time:
                 current_group.append(curr)
             else:
-                grouped_slots.append(current_group)
-                current_group = [curr]
+                grouped_slots.append(current_group); current_group = [curr]
         grouped_slots.append(current_group)
 
-        # Look for a group that is still valid (within or recently expired)
         from datetime import datetime as dt, timedelta
-
+        now_dt = dt.combine(today, now_time)
         active_group = None
         for group in grouped_slots:
             group_start = dt.combine(today, group[0].start_time)
             group_end = dt.combine(today, group[-1].end_time)
-            now_dt = dt.combine(today, now_time)
-
-            if group_start <= now_dt <= group_end + timedelta(minutes=30):  # 30-min grace
-                active_group = group
-                break
-
+            if group_start <= now_dt <= group_end + timedelta(minutes=30):
+                active_group = group; break
         if not active_group:
             return jsonify({'error': 'No active or recent booking block at this time'}), 400
 
         merged_start = datetime.combine(today, active_group[0].start_time)
         merged_end = datetime.combine(today, active_group[-1].end_time)
 
-        queue = BookingQueue(
-            booking_id=booking_id,
-            console_id=console_id,
-            game_id=game_id,
-            vendor_id=vendor_id,
-            user_id=user_id,
-            status='queued',
-            start_time=merged_start,
-            end_time=merged_end
-        )
+        # Idempotency: avoid duplicate queue rows per booking/console within same window
+        existing = BookingQueue.query.filter_by(
+            booking_id=booking_id, console_id=console_id, status='queued'
+        ).first()
+        if existing:
+            # still emit unlock if first one might have been lost
+            _emit_unlock(console_id, booking_id, merged_start, merged_end)
+            return jsonify({'message': 'Already queued; unlock re-sent'}), 200
 
+        queue = BookingQueue(
+            booking_id=booking_id, console_id=console_id, game_id=game_id,
+            vendor_id=vendor_id, user_id=user_id, status='queued',
+            start_time=merged_start, end_time=merged_end
+        )
         db.session.add(queue)
         db.session.commit()
 
-        return jsonify({'message': 'Queued successfully'}), 201
+        _emit_unlock(console_id, booking_id, merged_start, merged_end)
+        return jsonify({'message': 'Queued and unlock sent'}), 201
 
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+def _emit_unlock(console_id, booking_id, start_dt, end_dt):
+    payload = {
+        "console_id": int(console_id),
+        "booking_id": int(booking_id),
+        "start_time": start_dt.astimezone(timezone.utc).isoformat(),
+        "end_time": end_dt.astimezone(timezone.utc).isoformat()
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": f"{booking_id}:{console_id}"
+    }
+    try:
+        requests.post(INTERNAL_WS_URL, json=payload, headers=headers, timeout=2.5)
+    except Exception:
+        # log and continue; dashboard can retry from queue if needed
+        pass
 
 @vendor_bp.route('/bookingQueue', methods=['GET'])
 def poll_queue():
