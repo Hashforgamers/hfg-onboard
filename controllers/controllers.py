@@ -16,20 +16,21 @@ from models.bookingQueue import BookingQueue
 from models.booking import Booking
 from models.accessBookingCode import AccessBookingCode
 from db.extensions import db
-from datetime import datetime
 from services.otp_service import OTPService
 from models.transaction import Transaction
 from models.availableGame import AvailableGame
 from models.slots import Slot
 from models.vendorDaySlotConfig import VendorDaySlotConfig
-from pytz import timezone
+
 
 from sqlalchemy import text
-from datetime import datetime, timedelta, date, time as dtime
 from models.timing import Timing
 
 import uuid, requests
-from datetime import timezone
+
+from pytz import timezone
+from datetime import datetime, timedelta, date, time as dtime
+
 
 INTERNAL_WS_URL = "https://hfg-dashboard-h9qq.onrender.com/api/internal/ws/unlock"
 
