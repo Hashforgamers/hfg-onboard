@@ -30,6 +30,7 @@ import uuid, requests
 
 from pytz import timezone
 from datetime import datetime, timedelta, date, time as dtime
+from datetime import timezone as dt_timezone  # ✅ add this import near the top
 
 
 INTERNAL_WS_URL = "https://hfg-dashboard-h9qq.onrender.com/api/internal/ws/unlock"
@@ -570,8 +571,8 @@ def _emit_unlock(console_id, booking_id, start_dt, end_dt):
     payload = {
         "console_id": int(console_id),
         "booking_id": int(booking_id),
-        "start_time": start_dt.astimezone(timezone.utc).isoformat(),
-        "end_time": end_dt.astimezone(timezone.utc).isoformat()
+        "start_time": start_dt.astimezone(dt_timezone.utc).isoformat(),
+        "end_time": end_dt.astimezone(dt_timezone.utc).isoformat()
     }
     headers = {
         "Content-Type": "application/json",
@@ -580,8 +581,8 @@ def _emit_unlock(console_id, booking_id, start_dt, end_dt):
     try:
         requests.post(INTERNAL_WS_URL, json=payload, headers=headers, timeout=2.5)
     except Exception:
-        # log and continue; dashboard can retry from queue if needed
         pass
+
 
 @vendor_bp.route('/bookingQueue', methods=['GET'])
 def poll_queue():
