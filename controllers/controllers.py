@@ -32,14 +32,19 @@ from pytz import timezone
 from datetime import datetime, timedelta, date, time as dtime
 from datetime import timezone as dt_timezone  # ✅ add this import near the top
 
+try:
+    from zoneinfo import ZoneInfo
+    IST = ZoneInfo("Asia/Kolkata")
+except Exception:
+    import pytz
+    IST = pytz.timezone("Asia/Kolkata")
 
 INTERNAL_WS_URL = "https://hfg-dashboard-h9qq.onrender.com/internal/ws/unlock"
 
-
 vendor_bp = Blueprint('vendor', __name__)
 
+GRACE_MIN = 30
 ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png', 'gif', 'doc', 'docx'}
-
 WEEKDAY_MAP = {
     "mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6
 }
@@ -485,7 +490,7 @@ def get_vendor_photos(vendor_id):
 @vendor_bp.route('/bookingQueue', methods=['POST'])
 def insert_to_queue():
     try:
-        data = request.get_json()
+        data = request.get_json(force=True) or {}
         console_id = data.get('console_id')
         game_id = data.get('game_id')
         vendor_id = data.get('vendor_id')
@@ -497,58 +502,82 @@ def insert_to_queue():
         booking = Booking.query.filter_by(id=booking_id).first()
         if not booking:
             return jsonify({'error': 'Booking not found'}), 404
-
         user_id = booking.user_id
 
-        ist = timezone('Asia/Kolkata')
-        now_ist = datetime.now(ist)
+        now_ist = dt.now(IST)
         today = now_ist.date()
         now_time = now_ist.time()
 
-        today_transactions = Transaction.query.filter_by(
+        # All transactions for today for this user+vendor
+        today_txns = Transaction.query.filter_by(
             user_id=user_id, vendor_id=vendor_id, booked_date=today
         ).all()
-
-        today_booking_ids = [t.booking_id for t in today_transactions]
-        if not today_booking_ids:
+        if not today_txns:
             return jsonify({'error': 'No bookings found for today'}), 404
 
+        today_booking_ids = [t.booking_id for t in today_txns]
+        if int(booking_id) not in today_booking_ids:
+            return jsonify({'error': 'Scanned booking is not for today for this vendor'}, 400)
+
+        # Get all today bookings and their slots
         today_bookings = Booking.query.filter(Booking.id.in_(today_booking_ids)).all()
-        slot_ids = {b.slot_id for b in today_bookings}
-        slots = Slot.query.filter(Slot.id.in_(slot_ids)).order_by(Slot.start_time).all()
+        slot_ids = [b.slot_id for b in today_bookings]
+        slots = Slot.query.filter(Slot.id.in_(slot_ids)).order_by(Slot.start_time.asc()).all()
         if not slots:
-            return jsonify({'error': 'No slots found'}), 404
+            return jsonify({'error': 'No slots found'}, 404)
 
-        # group consecutive
-        grouped_slots, current_group = [], [slots[0]]
-        for i in range(1, len(slots)):
-            prev, curr = current_group[-1], slots[i]
-            if curr.start_time == prev.end_time:
-                current_group.append(curr)
+        # Build groups of consecutive slots
+        grouped, cur = [], [slots[0]]
+        for s in slots[1:]:
+            prev = cur[-1]
+            if s.start_time == prev.end_time:
+                cur.append(s)
             else:
-                grouped_slots.append(current_group); current_group = [curr]
-        grouped_slots.append(current_group)
+                grouped.append(cur); cur = [s]
+        grouped.append(cur)
 
-        from datetime import datetime as dt, timedelta
-        now_dt = dt.combine(today, now_time)
-        active_group = None
-        for group in grouped_slots:
-            group_start = dt.combine(today, group[0].start_time)
-            group_end = dt.combine(today, group[-1].end_time)
-            if group_start <= now_dt <= group_end + timedelta(minutes=30):
-                active_group = group; break
-        if not active_group:
-            return jsonify({'error': 'No active or recent booking block at this time'}), 400
+        # Identify the group that contains the scanned booking_id
+        # Map booking_id -> slot_id
+        b2slot = {b.id: b.slot_id for b in today_bookings}
+        target_slot_id = b2slot.get(int(booking_id))
+        if not target_slot_id:
+            return jsonify({'error': 'Booking-slot mapping missing'}), 400
 
-        merged_start = datetime.combine(today, active_group[0].start_time)
-        merged_end = datetime.combine(today, active_group[-1].end_time)
+        group_with_booking = None
+        for group in grouped:
+            ids = {g.id for g in group}
+            if target_slot_id in ids:
+                group_with_booking = group
+                break
+        if not group_with_booking:
+            return jsonify({'error': 'Booking not in a consecutive block'}, 400)
 
-        # Idempotency: avoid duplicate queue rows per booking/console within same window
+        # Time window for that block
+        group_start_naive = dt.combine(today, group_with_booking[0].start_time)
+        group_end_naive = dt.combine(today, group_with_booking[-1].end_time)
+
+        # Attach IST tz
+        if hasattr(IST, 'localize'):
+            group_start = IST.localize(group_start_naive)  # pytz path
+            group_end = IST.localize(group_end_naive)
+            now_dt = IST.localize(dt.combine(today, now_time))
+        else:
+            group_start = group_start_naive.replace(tzinfo=IST)  # zoneinfo path
+            group_end = group_end_naive.replace(tzinfo=IST)
+            now_dt = dt.combine(today, now_time).replace(tzinfo=IST)
+
+        # Enforce current time within window + grace
+        if not (group_start <= now_dt <= group_end + timedelta(minutes=GRACE_MIN)):
+            return jsonify({'error': 'Scan not within booking window'}, 400)
+
+        merged_start = group_start
+        merged_end = group_end
+
+        # Idempotency: if already queued for this booking+console, re-emit unlock
         existing = BookingQueue.query.filter_by(
             booking_id=booking_id, console_id=console_id, status='queued'
         ).first()
         if existing:
-            # still emit unlock if first one might have been lost
             _emit_unlock(console_id, booking_id, merged_start, merged_end)
             return jsonify({'message': 'Already queued; unlock re-sent'}), 200
 
