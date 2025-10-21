@@ -502,89 +502,127 @@ def insert_to_queue():
         booking = Booking.query.filter_by(id=booking_id).first()
         if not booking:
             return jsonify({'error': 'Booking not found'}), 404
-        user_id = booking.user_id
 
+        user_id = booking.user_id
         now_ist = dt.now(IST)
         today = now_ist.date()
         now_time = now_ist.time()
 
-        # All transactions for today for this user+vendor
+        # ✅ All today's transactions for this user & vendor
         today_txns = Transaction.query.filter_by(
             user_id=user_id, vendor_id=vendor_id, booked_date=today
         ).all()
         if not today_txns:
             return jsonify({'error': 'No bookings found for today'}), 404
 
-        today_booking_ids = [t.booking_id for t in today_txns]
+        today_booking_ids = [t.booking_id for t in today_txns if t.booking_id]
         if int(booking_id) not in today_booking_ids:
-            return jsonify({'error': 'Scanned booking is not for today for this vendor'}, 400)
+            return jsonify({'error': 'Scanned booking is not for today for this vendor'}), 400
 
-        # Get all today bookings and their slots
+        # ✅ Fetch today's bookings and slots
         today_bookings = Booking.query.filter(Booking.id.in_(today_booking_ids)).all()
         slot_ids = [b.slot_id for b in today_bookings]
         slots = Slot.query.filter(Slot.id.in_(slot_ids)).order_by(Slot.start_time.asc()).all()
         if not slots:
-            return jsonify({'error': 'No slots found'}, 404)
+            return jsonify({'error': 'No slots found'}), 404
 
-        # Build groups of consecutive slots
-        grouped, cur = [], [slots[0]]
+        # ✅ Dynamic grouping for variable slot durations
+        grouped = []
+        current_group = [slots[0]]
+
         for s in slots[1:]:
-            prev = cur[-1]
-            if s.start_time == prev.end_time:
-                cur.append(s)
-            else:
-                grouped.append(cur); cur = [s]
-        grouped.append(cur)
+            prev = current_group[-1]
 
-        # Identify the group that contains the scanned booking_id
-        # Map booking_id -> slot_id
+            prev_end = dt.combine(today, prev.end_time)
+            curr_start = dt.combine(today, s.start_time)
+            gap_minutes = (curr_start - prev_end).total_seconds() / 60.0
+
+            # Group consecutive slots with < 1-minute gap tolerance
+            if abs(gap_minutes) < 1:
+                current_group.append(s)
+            else:
+                grouped.append(current_group)
+                current_group = [s]
+
+        grouped.append(current_group)
+
+        # ✅ Identify booking's slot and active group
         b2slot = {b.id: b.slot_id for b in today_bookings}
         target_slot_id = b2slot.get(int(booking_id))
         if not target_slot_id:
             return jsonify({'error': 'Booking-slot mapping missing'}), 400
 
         group_with_booking = None
+        active_group = None
+
         for group in grouped:
             ids = {g.id for g in group}
+
+            group_start_naive = dt.combine(today, group[0].start_time)
+            group_end_naive = dt.combine(today, group[-1].end_time)
+
+            # Attach timezone (pytz or zoneinfo path)
+            if hasattr(IST, 'localize'):
+                group_start = IST.localize(group_start_naive)
+                group_end = IST.localize(group_end_naive)
+                now_dt = IST.localize(dt.combine(today, now_time))
+            else:
+                group_start = group_start_naive.replace(tzinfo=IST)
+                group_end = group_end_naive.replace(tzinfo=IST)
+                now_dt = dt.combine(today, now_time).replace(tzinfo=IST)
+
+            # Track booking group and active group
             if target_slot_id in ids:
                 group_with_booking = group
-                break
-        if not group_with_booking:
-            return jsonify({'error': 'Booking not in a consecutive block'}, 400)
+            if group_start <= now_dt <= group_end + timedelta(minutes=GRACE_MIN):
+                active_group = group
 
-        # Time window for that block
-        group_start_naive = dt.combine(today, group_with_booking[0].start_time)
-        group_end_naive = dt.combine(today, group_with_booking[-1].end_time)
-
-        # Attach IST tz
-        if hasattr(IST, 'localize'):
-            group_start = IST.localize(group_start_naive)  # pytz path
-            group_end = IST.localize(group_end_naive)
-            now_dt = IST.localize(dt.combine(today, now_time))
+        # ✅ Select best-matching group
+        if active_group and group_with_booking and (
+            set(g.id for g in active_group) & set(g.id for g in group_with_booking)
+        ):
+            chosen_group = active_group
         else:
-            group_start = group_start_naive.replace(tzinfo=IST)  # zoneinfo path
-            group_end = group_end_naive.replace(tzinfo=IST)
-            now_dt = dt.combine(today, now_time).replace(tzinfo=IST)
+            chosen_group = group_with_booking or active_group
 
-        # Enforce current time within window + grace
-        if not (group_start <= now_dt <= group_end + timedelta(minutes=GRACE_MIN)):
-            return jsonify({'error': 'Scan not within booking window'}, 400)
+        if not chosen_group:
+            return jsonify({'error': 'No valid consecutive booking window for scan'}), 400
 
-        merged_start = group_start
-        merged_end = group_end
+        merged_start_naive = dt.combine(today, chosen_group[0].start_time)
+        merged_end_naive = dt.combine(today, chosen_group[-1].end_time)
 
-        # Idempotency: if already queued for this booking+console, re-emit unlock
+        if hasattr(IST, 'localize'):
+            merged_start = IST.localize(merged_start_naive)
+            merged_end = IST.localize(merged_end_naive)
+        else:
+            merged_start = merged_start_naive.replace(tzinfo=IST)
+            merged_end = merged_end_naive.replace(tzinfo=IST)
+
+        # ✅ Validate current time within group + grace
+        now_dt = dt.combine(today, now_time)
+        now_dt = IST.localize(now_dt) if hasattr(IST, 'localize') else now_dt.replace(tzinfo=IST)
+        if not (merged_start <= now_dt <= merged_end + timedelta(minutes=GRACE_MIN)):
+            return jsonify({'error': 'Scan not within valid booking window'}, 400)
+
+        # ✅ Idempotent re-queue check
         existing = BookingQueue.query.filter_by(
             booking_id=booking_id, console_id=console_id, status='queued'
         ).first()
+
         if existing:
             _emit_unlock(console_id, booking_id, merged_start, merged_end)
             return jsonify({'message': 'Already queued; unlock re-sent'}), 200
 
+        # ✅ Create new queue entry
         queue = BookingQueue(
-            booking_id=booking_id, console_id=console_id, game_id=game_id,
-            vendor_id=vendor_id, user_id=user_id, status='queued',
-            start_time=merged_start, end_time=merged_end
+            booking_id=booking_id,
+            console_id=console_id,
+            game_id=game_id,
+            vendor_id=vendor_id,
+            user_id=user_id,
+            status='queued',
+            start_time=merged_start,
+            end_time=merged_end
         )
         db.session.add(queue)
         db.session.commit()
@@ -597,6 +635,7 @@ def insert_to_queue():
         return jsonify({'error': str(e)}), 500
 
 def _emit_unlock(console_id, booking_id, start_dt, end_dt):
+    """Emit unlock signal to internal WebSocket service"""
     payload = {
         "console_id": int(console_id),
         "booking_id": int(booking_id),
@@ -611,7 +650,6 @@ def _emit_unlock(console_id, booking_id, start_dt, end_dt):
         requests.post(INTERNAL_WS_URL, json=payload, headers=headers, timeout=2.5)
     except Exception:
         pass
-
 
 @vendor_bp.route('/bookingQueue', methods=['GET'])
 def poll_queue():
