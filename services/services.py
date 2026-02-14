@@ -1,4 +1,7 @@
+# services/services.py
+
 import os
+import re  # ✅ ADDED for PIN validation
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 from flask import current_app
@@ -38,8 +41,6 @@ from sqlalchemy import text
 
 from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
-
-
 
 
 class VendorService:
@@ -114,12 +115,34 @@ class VendorService:
               except Exception as e:
                  current_app.logger.warning(f"Vendor account relationship issue: {e}")
 
-        # Step 2: Vendor PIN
+        # ✅ UPDATED Step 2: Vendor PIN - Use provided or generate
+           provided_pin = data.get("vendor_pin")
+           if provided_pin and provided_pin.strip():
+               # Validate PIN format
+               if not re.match(r'^\d{6}$', provided_pin.strip()):
+                   raise ValueError("PIN must be exactly 6 digits")
+               pin_code = provided_pin.strip()
+               current_app.logger.info(f"Using provided PIN for vendor {vendor.id}")
+           else:
+               pin_code = generate_unique_vendor_pin()
+               current_app.logger.info(f"Generated PIN for vendor {vendor.id}")
+           
            vendor_pin = VendorPin(
                vendor_id=vendor.id,
-               pin_code=generate_unique_vendor_pin()
-        )
+               pin_code=pin_code
+           )
            db.session.add(vendor_pin)
+           
+           # ✅ ADDED: Store provided password temporarily if given
+           provided_password = data.get("vendor_password")
+           if provided_password and provided_password.strip():
+               if len(provided_password.strip()) < 6:
+                   raise ValueError("Password must be at least 6 characters")
+               vendor._temp_password = provided_password.strip()  # Temporary storage
+               current_app.logger.info(f"Manual password provided for vendor {vendor.id}")
+           else:
+               vendor._temp_password = None
+               current_app.logger.info(f"Will auto-generate password for vendor {vendor.id}")
 
         # Step 3: Contact Info
            contact = data.get("contact_info", {})
@@ -296,8 +319,6 @@ class VendorService:
           db.session.rollback()
           current_app.logger.error(f"Error onboarding vendor: {e}")
           raise
-
-
     
     @staticmethod
     def deboard_vendor(vendor_id):
@@ -483,8 +504,6 @@ class VendorService:
         db.session.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
         current_app.logger.info(f"Dropped promo table: {table_name}")
 
-
-
     @staticmethod
     def handle_documents(documents, files, drive_service, vendor_id):
         for doc_type, submitted in documents.items():
@@ -508,15 +527,15 @@ class VendorService:
     def generate_credentials_and_notify(vendor):
         """Generate credentials or link to existing ones, then notify vendor."""
     
-    # Safe email retrieval with fallback
+        # Safe email retrieval with fallback
         email = None
     
         if vendor.account and vendor.account.email:
-        # First try: get email from vendor account
-           email = vendor.account.email
-           current_app.logger.debug(f"Using vendor account email: {email}")
+            # First try: get email from vendor account
+            email = vendor.account.email
+            current_app.logger.debug(f"Using vendor account email: {email}")
         else:
-        # Fallback: get email from contact info
+            # Fallback: get email from contact info
             contact_info = ContactInfo.query.filter_by(
                parent_id=vendor.id, 
                parent_type="vendor"
@@ -531,7 +550,7 @@ class VendorService:
     
         current_app.logger.debug(f"Processing credentials for vendor {vendor.id} with email: {email}")
 
-    # Step 1: Check if PasswordManager already exists for this email
+        # Step 1: Check if PasswordManager already exists for this email
         existing_password_manager = (
            db.session.query(PasswordManager)
            .join(Vendor, Vendor.id == PasswordManager.parent_id)
@@ -545,12 +564,22 @@ class VendorService:
         )
 
         if existing_password_manager:
-        # Already has credentials — link this vendor to same account
+            # Already has credentials — link this vendor to same account
             password_manager = existing_password_manager
+            username = email
+            password = "****** (existing account - check previous email)"
             current_app.logger.info(f"Linked vendor {vendor.id} to existing credentials.")
         else:
-        # Generate new credentials
-            username, password = generate_credentials()
+            # ✅ UPDATED: Check if password was provided during onboarding
+            if hasattr(vendor, '_temp_password') and vendor._temp_password:
+                username = email
+                password = vendor._temp_password
+                current_app.logger.info(f"Using provided password for vendor {vendor.id}")
+            else:
+                # Generate new credentials
+                username, password = generate_credentials()
+                current_app.logger.info(f"Generated new password for vendor {vendor.id}")
+            
             password_manager = PasswordManager(
               userid=vendor.id,
                password=password,
@@ -561,7 +590,7 @@ class VendorService:
             db.session.flush()
             current_app.logger.info(f"Created new credentials for vendor {vendor.id}")
 
-    # Step 2: Create VendorStatus regardless
+        # Step 2: Create VendorStatus regardless
         vendor_status = VendorStatus(
             vendor_id=vendor.id,
             status="pending_verification"
@@ -570,10 +599,13 @@ class VendorService:
         db.session.flush()
 
         db.session.commit()
-        VendorService.send_welcome_email(vendor, username, password, email)
+        
+        # ✅ UPDATED: Get the PIN and pass to email
+        vendor_pin = VendorPin.query.filter_by(vendor_id=vendor.id).first()
+        pin_code = vendor_pin.pin_code if vendor_pin else "N/A"
+        
+        VendorService.send_welcome_email(vendor, username, password, email, pin_code)
         current_app.logger.info(f"Completed credentials generation for vendor {vendor.id}")
-
-
 
     @staticmethod
     def get_drive_service():
@@ -963,7 +995,6 @@ class VendorService:
         db.session.commit()
         return image
 
-
     @staticmethod
     def get_drive_service():
         """Initialize and return the Google Drive service."""
@@ -1091,7 +1122,6 @@ class VendorService:
 
         current_app.logger.info(f"Table {table_name} created and populated successfully.")
 
-    
     @staticmethod
     def create_vendor_dashboard_table(vendor_id):
         """Creates a table for tracking vendor dashboard details."""
@@ -1191,24 +1221,19 @@ class VendorService:
     
     
     @staticmethod
-    def send_welcome_email(vendor, username, password, email):
-        """Send welcome email with vendor credentials and PIN."""
+    def send_welcome_email(vendor, username, password, email, pin_code):
+        """✅ UPDATED: Send welcome email with vendor credentials and PIN."""
         
-    
         try:
-        # Get Vendor PIN
-           vendor_pin = VendorPin.query.filter_by(vendor_id=vendor.id).first()
-           pin_code = vendor_pin.pin_code if vendor_pin else "Not Available"
-
-        # Create email message
-           msg = Message(
+            # Create email message
+            msg = Message(
                 subject='Welcome to Hash for Gamers - Your Vendor Credentials',
                 sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@hashforgamers.com'),
                 recipients=[email]
             )
 
-        # Email HTML template
-           html_body = f"""
+            # Email HTML template
+            html_body = f"""
         <!DOCTYPE html>
         <html>
         <head>
@@ -1289,17 +1314,13 @@ class VendorService:
         </html>
         """
 
-           msg.html = html_body
+            msg.html = html_body
 
-        # Send the email
-           mail.send(msg)
-           current_app.logger.info(f"Welcome email sent successfully to {email} for vendor {vendor.id}")
+            # Send the email
+            mail.send(msg)
+            current_app.logger.info(f"Welcome email sent successfully to {email} for vendor {vendor.id}")
 
         except Exception as e:
           current_app.logger.error(f"Failed to send welcome email to {email} for vendor {vendor.id}: {str(e)}")
         # Don't raise the exception as email failure shouldn't stop onboarding
           pass
-
-
-    
-  

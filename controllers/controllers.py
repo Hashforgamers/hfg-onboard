@@ -210,9 +210,6 @@ def onboard_vendor():
         return jsonify({'message': 'Invalid JSON format'}), 400
 
     # Extract vendor_account_email from contact_info
-    if 'contact_info' in data and data['contact_info'].get('email'):
-        data['vendor_account_email'] = data['contact_info']['email']
-        current_app.logger.debug(f"Set vendor_account_email: {data['vendor_account_email']}")
 
     # Transform timing data from day-wise to single opening/closing times
     if 'timing' in data:
