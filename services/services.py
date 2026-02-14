@@ -119,8 +119,8 @@ class VendorService:
            provided_pin = data.get("vendor_pin")
            if provided_pin and provided_pin.strip():
                # Validate PIN format
-               if not re.match(r'^\d{6}$', provided_pin.strip()):
-                   raise ValueError("PIN must be exactly 6 digits")
+               if not re.match(r'^\d{4}$', provided_pin.strip()):
+                   raise ValueError("PIN must be exactly 4 digits")
                pin_code = provided_pin.strip()
                current_app.logger.info(f"Using provided PIN for vendor {vendor.id}")
            else:
