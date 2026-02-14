@@ -108,7 +108,7 @@ def save_vendor_documents(vendor_id, document_urls, document_submitted):
                     document_type=doc_type,
                     document_url=doc_info['url'],
                     public_id=doc_info['public_id'],
-                    uploaded_at=datetime.utcnow(),
+                    uploaded_at=dt.utcnow(),
                     status='unverified'  # Use 'status' instead of 'is_verified'
                 )
                 db.session.add(new_document)
@@ -134,7 +134,7 @@ def save_vendor_documents(vendor_id, document_urls, document_submitted):
                     document_url=doc_info['url'],
                     public_id=doc_info['public_id'],
                     status="unverified",  # Initially not verified
-                    uploaded_at=datetime.utcnow()
+                    uploaded_at=dt.utcnow()
                 )
                 db.session.add(new_document)
                 db.session.commit()
@@ -181,7 +181,7 @@ def safe_strptime(date_str, format_str):
         return None
     
     try:
-        return datetime.strptime(date_str, format_str)
+        return dt.strptime(date_str, format_str)
     except ValueError as e:
         current_app.logger.error(f"Error parsing date '{date_str}' with format '{format_str}': {e}")
         return None
@@ -297,7 +297,7 @@ def onboard_vendor():
     if 'business_registration_details' in data:
         reg_data = data['business_registration_details']
         if 'registration_date' not in reg_data:
-            reg_data['registration_date'] = data.get('opening_day', datetime.now().strftime('%Y-%m-%d'))
+            reg_data['registration_date'] = data.get('opening_day', dt.now().strftime('%Y-%m-%d'))
         current_app.logger.debug(f"Business registration data: {reg_data}")
 
     # Validate required fields
@@ -661,7 +661,7 @@ def poll_queue():
 
         # Update queue status and start time
         queue_entry.status = 'started'
-        queue_entry.start_time = datetime.utcnow()
+        queue_entry.start_time = dt.utcnow()
 
         vendor_id = queue_entry.vendor_id
         user_id = queue_entry.user_id
@@ -777,7 +777,7 @@ def unlock_with_code():
         vendor_id=vendor_id,
         console_id=console_id,
         status='started',
-        start_time=datetime.utcnow()
+        start_time=dt.utcnow()
     )
     db.session.add(queue)
     db.session.commit()
@@ -1199,8 +1199,8 @@ def update_slot(vendor_id):
 
         # Parse times (12h format)
         try:
-            start_time = datetime.strptime(start_time_str, "%I:%M %p").time()
-            end_time   = datetime.strptime(end_time_str, "%I:%M %p").time()
+            start_time = dt.strptime(start_time_str, "%I:%M %p").time()
+            end_time   = dt.strptime(end_time_str, "%I:%M %p").time()
         except ValueError:
             return jsonify({"message": "start_time/end_time must be in 'HH:MM AM/PM' format"}), 400
 
@@ -1267,8 +1267,8 @@ def update_slot(vendor_id):
 
         # Generate time blocks (cross-midnight safe)
         def generate_blocks(anchor_day: date):
-            start_dt = datetime.combine(anchor_day, start_time)
-            end_dt   = datetime.combine(anchor_day, end_time)
+            start_dt = dt.combine(anchor_day, start_time)
+            end_dt   = dt.combine(anchor_day, end_time)
             if end_dt <= start_dt:
                 end_dt += timedelta(days=1)  # cross-midnight window
 
