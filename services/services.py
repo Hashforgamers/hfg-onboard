@@ -242,6 +242,47 @@ class VendorService:
             ]
            db.session.add_all(available_games_instances)
            db.session.flush()
+           
+           # ✅ NEW Step 10.5: Create Console Records
+           current_app.logger.debug("Creating console records for the vendor.")
+           from models.console import Console  # Import at the top of file
+           console_brand_map = {
+               'pc': 'Custom Build',
+               'ps5': 'Sony',
+               'xbox': 'Microsoft',
+               'vr': 'Meta/Oculus'
+           }
+           
+           console_model_map = {
+               'pc': 'Gaming PC',
+               'ps5': 'PlayStation 5',
+               'xbox': 'Xbox Series X',
+               'vr': 'Quest 2/3'
+           }
+           
+           all_consoles = []
+           for game_name, details in available_games_data.items():
+               total_slots = details.get("total_slot", 0)
+               game_type = game_name.lower()
+               current_app.logger.debug(f"Creating {total_slots} consoles for game type: {game_type}")
+               for slot_num in range(1, total_slots + 1):
+                   console = Console(
+                       vendor_id=vendor.id,
+                       console_number=slot_num,
+                       model_number=console_model_map.get(game_type, 'Unknown'),
+                       serial_number=f"{vendor.id}-{game_type.upper()}-{slot_num:03d}-{datetime.now().strftime('%Y%m%d')}",
+                       brand=console_brand_map.get(game_type, 'Generic'),
+                       console_type=game_type,
+                       release_date=None,
+                       description=f"{game_type.upper()} Console #{slot_num} for {vendor.cafe_name}"
+                   )
+                   all_consoles.append(console)
+           if all_consoles:
+               db.session.add_all(all_consoles)
+               db.session.flush()
+               current_app.logger.info(f"Created {len(all_consoles)} console records for vendor {vendor.id}")
+           else:
+               current_app.logger.warning(f"No consoles created for vendor {vendor.id}")
 
         # Step 11: Slot Creation
            current_app.logger.debug("Creating slots for the vendor.")
