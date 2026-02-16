@@ -141,6 +141,14 @@ class Vendor(db.Model):
         back_populates='vendor',
         cascade="all, delete-orphan"
     )
+    
+    # ✅ ADD THIS - Relationship to Console
+    consoles = relationship(
+       'Console',
+        back_populates='vendor',
+        cascade="all, delete-orphan"
+    )
+
 
     def __str__(self):
         return f"Vendor(id={self.id}, cafe_name='{self.cafe_name}', owner_name='{self.owner_name}', description='{self.description}')"
