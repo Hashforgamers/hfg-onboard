@@ -10,6 +10,7 @@ from models.document import Document
 from models.contactInfo import ContactInfo
 from models.physicalAddress import PhysicalAddress
 from models.availableGame import AvailableGame
+from models.console import Console  # Import at the top of file
 from models.businessRegistration import BusinessRegistration
 from models.timing import Timing
 from models.amenity import Amenity
@@ -245,7 +246,6 @@ class VendorService:
            
            # ✅ NEW Step 10.5: Create Console Records
            current_app.logger.debug("Creating console records for the vendor.")
-           from models.console import Console  # Import at the top of file
            console_brand_map = {
                'pc': 'Custom Build',
                'ps5': 'Sony',
