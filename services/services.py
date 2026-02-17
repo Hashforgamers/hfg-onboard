@@ -445,7 +445,7 @@ class VendorService:
                                vendor_id=vendor.id,
                                game_id=game.id,
                                console_id=console.id,
-                               price_per_hour=50.0,  # Default price ₹50/hour, adjust as needed
+                               price_per_hour=100.0,  # Default price ₹50/hour, adjust as needed
                                is_available=True
                            )
                            db.session.add(vendor_game)

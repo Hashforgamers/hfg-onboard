@@ -148,6 +148,8 @@ class Vendor(db.Model):
         back_populates='vendor',
         cascade="all, delete-orphan"
     )
+    
+    vendor_games = relationship('VendorGame', back_populates='vendor', cascade="all, delete-orphan")
 
 
     def __str__(self):
