@@ -10,7 +10,11 @@ from models.document import Document
 from models.contactInfo import ContactInfo
 from models.physicalAddress import PhysicalAddress
 from models.availableGame import AvailableGame
-from models.console import Console  # Import at the top of file
+from models.console import Console 
+from models.hardwareSpecification import HardwareSpecification
+from models.maintenanceStatus import MaintenanceStatus
+from models.priceAndCost import PriceAndCost
+from models.additionalDetails import AdditionalDetails
 from models.businessRegistration import BusinessRegistration
 from models.timing import Timing
 from models.amenity import Amenity
@@ -244,7 +248,7 @@ class VendorService:
            db.session.add_all(available_games_instances)
            db.session.flush()
            
-           # ✅ NEW Step 10.5: Create Console Records
+            # ✅ UPDATED Step 10.5: Create Console Records WITH Child Tables
            current_app.logger.debug("Creating console records for the vendor.")
            console_brand_map = {
                'pc': 'Custom Build',
@@ -265,7 +269,9 @@ class VendorService:
                total_slots = details.get("total_slot", 0)
                game_type = game_name.lower()
                current_app.logger.debug(f"Creating {total_slots} consoles for game type: {game_type}")
+               
                for slot_num in range(1, total_slots + 1):
+                   # Create Console
                    console = Console(
                        vendor_id=vendor.id,
                        console_number=slot_num,
@@ -276,13 +282,60 @@ class VendorService:
                        release_date=None,
                        description=f"{game_type.upper()} Console #{slot_num} for {vendor.cafe_name}"
                    )
+                   db.session.add(console)
+                   db.session.flush()  # Get console.id
+                   
+                   # ✅ CREATE CHILD RECORDS FOR EACH CONSOLE
+                   
+                   # 1. HardwareSpecification
+                   hardware_spec = HardwareSpecification(
+                       console_id=console.id,
+                       processor_type="" if game_type == "pc" else None,
+                       graphics_card="" if game_type == "pc" else None,
+                       ram_size="" if game_type == "pc" else None,
+                       storage_capacity="" if game_type == "pc" else None,
+                       connectivity="" if game_type == "pc" else None,
+                       console_model_type=console_model_map.get(game_type, "")
+                   )
+                   db.session.add(hardware_spec)
+                   
+                   # 2. MaintenanceStatus
+                   maintenance_status = MaintenanceStatus(
+                       console_id=console.id,
+                       available_status="available",
+                       condition="new",
+                       last_maintenance=datetime.now().date(),
+                       next_maintenance=(datetime.now() + timedelta(days=90)).date(),
+                       maintenance_notes="Initial setup during onboarding"
+                   )
+                   db.session.add(maintenance_status)
+                   
+                   # 3. PriceAndCost
+                   price_and_cost = PriceAndCost(
+                       console_id=console.id,
+                       price=0,  # Default price, can be updated later
+                       rental_price=details.get("single_slot_price", 0),
+                       warranty_period="1 year",
+                       insurance_status="notInsured"
+                   )
+                   db.session.add(price_and_cost)
+                   
+                   # 4. AdditionalDetails
+                   additional_details = AdditionalDetails(
+                       console_id=console.id,
+                       supported_games="",
+                       accessories=""
+                   )
+                   db.session.add(additional_details)
+                   
                    all_consoles.append(console)
+                   
            if all_consoles:
-               db.session.add_all(all_consoles)
-               db.session.flush()
-               current_app.logger.info(f"Created {len(all_consoles)} console records for vendor {vendor.id}")
+               db.session.flush()  # Flush all child records
+               current_app.logger.info(f"Created {len(all_consoles)} console records with child tables for vendor {vendor.id}")
            else:
                current_app.logger.warning(f"No consoles created for vendor {vendor.id}")
+
 
         # Step 11: Slot Creation
            current_app.logger.debug("Creating slots for the vendor.")
