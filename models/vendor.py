@@ -135,12 +135,6 @@ class Vendor(db.Model):
 
     pin = relationship('VendorPin', back_populates='vendor', uselist=False, cascade="all, delete-orphan")
 
-    # Added new Vendor model
-    supported_games = relationship(
-        'SupportedGame',
-        back_populates='vendor',
-        cascade="all, delete-orphan"
-    )
     
     # ✅ ADD THIS - Relationship to Console
     consoles = relationship(
