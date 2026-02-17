@@ -248,7 +248,7 @@ class VendorService:
            db.session.add_all(available_games_instances)
            db.session.flush()
            
-            # ✅ UPDATED Step 10.5: Create Console Records WITH Child Tables
+                      # ✅ UPDATED Step 10.5: Create Console Records WITH Child Tables AND Link to AvailableGame
            current_app.logger.debug("Creating console records for the vendor.")
            console_brand_map = {
                'pc': 'Custom Build',
@@ -264,11 +264,20 @@ class VendorService:
                'vr': 'Quest 2/3'
            }
            
+           # ✅ Create a mapping of game_name to AvailableGame instance
+           available_games_map = {game.game_name.lower(): game for game in available_games_instances}
+           
            all_consoles = []
            for game_name, details in available_games_data.items():
                total_slots = details.get("total_slot", 0)
                game_type = game_name.lower()
                current_app.logger.debug(f"Creating {total_slots} consoles for game type: {game_type}")
+               
+               # ✅ Get the corresponding AvailableGame instance
+               available_game = available_games_map.get(game_type)
+               if not available_game:
+                   current_app.logger.warning(f"No AvailableGame found for game_type: {game_type}")
+                   continue
                
                for slot_num in range(1, total_slots + 1):
                    # Create Console
@@ -285,9 +294,10 @@ class VendorService:
                    db.session.add(console)
                    db.session.flush()  # Get console.id
                    
-                   # ✅ CREATE CHILD RECORDS FOR EACH CONSOLE
+                   # ✅ LINK Console to AvailableGame (Many-to-Many)
+                   available_game.consoles.append(console)
                    
-                   # 1. HardwareSpecification
+                   # Create child records
                    hardware_spec = HardwareSpecification(
                        console_id=console.id,
                        processor_type="" if game_type == "pc" else None,
@@ -299,7 +309,6 @@ class VendorService:
                    )
                    db.session.add(hardware_spec)
                    
-                   # 2. MaintenanceStatus
                    maintenance_status = MaintenanceStatus(
                        console_id=console.id,
                        available_status="available",
@@ -310,17 +319,15 @@ class VendorService:
                    )
                    db.session.add(maintenance_status)
                    
-                   # 3. PriceAndCost
                    price_and_cost = PriceAndCost(
                        console_id=console.id,
-                       price=0,  # Default price, can be updated later
+                       price=0,
                        rental_price=details.get("single_slot_price", 0),
                        warranty_period="1 year",
                        insurance_status="notInsured"
                    )
                    db.session.add(price_and_cost)
                    
-                   # 4. AdditionalDetails
                    additional_details = AdditionalDetails(
                        console_id=console.id,
                        supported_games="",
@@ -331,10 +338,11 @@ class VendorService:
                    all_consoles.append(console)
                    
            if all_consoles:
-               db.session.flush()  # Flush all child records
-               current_app.logger.info(f"Created {len(all_consoles)} console records with child tables for vendor {vendor.id}")
+               db.session.flush()  # Flush all changes including the association
+               current_app.logger.info(f"Created {len(all_consoles)} console records with associations for vendor {vendor.id}")
            else:
                current_app.logger.warning(f"No consoles created for vendor {vendor.id}")
+
 
 
         # Step 11: Slot Creation
