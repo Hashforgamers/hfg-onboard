@@ -24,6 +24,8 @@ from models.passwordManager import PasswordManager
 from models.vendorStatus import VendorStatus
 from models.uploadedImage import Image
 from models.slots import Slot
+from models.game import Game
+from models.vendorGame import VendorGame
 from models.vendorAccount import VendorAccount
 from models.vendorPin import VendorPin
 from models.booking import Booking
@@ -384,7 +386,7 @@ class VendorService:
                           start_time=current_time.time(),
                           end_time=end_time.time(),
                           available_slot=total_slots,
-                          is_available=False
+                          is_available=True
                        )
                        slot_data.append(slot)
 
@@ -396,6 +398,74 @@ class VendorService:
            except Exception as e:
               current_app.logger.error(f"Error creating slots: {e}")
               raise
+                     # ✅ NEW Step 11.5: Create VendorGame entries (Link games to consoles)
+           current_app.logger.debug("Creating vendor game associations for consoles.")
+           try:
+               
+               # Define default popular games for each console type
+               # Map console_type to platform names in your Game table
+               platform_mapping = {
+                   'pc': 'PC',
+                   'ps5': 'PlayStation 5',
+                   'xbox': 'Xbox One',
+                   'vr': 'PC'  # VR games often listed as PC platform
+               }
+               
+               # Define specific popular game IDs for each platform (from your database)
+               default_games_by_platform = {
+                   'PC': [3498, 3328, 2454],  # GTA V, Witcher 3, DOOM
+                   'PlayStation 5': [2462, 3328, 3498],  # Uncharted 4, Witcher 3, GTA V
+                   'Xbox One': [923, 864, 39],  # Titanfall 2, Dishonored 2, Prey
+               }
+               
+               vendor_games_created = 0
+               for console in all_consoles:
+                   # Get platform name for this console type
+                   platform_name = platform_mapping.get(console.console_type, 'PC')
+                   
+                   # Get default game IDs for this platform
+                   game_ids = default_games_by_platform.get(platform_name, [])
+                   
+                   # Fallback: Query 3 random popular games if no defaults defined
+                   if not game_ids:
+                       games = Game.query.filter_by(platform=platform_name).limit(3).all()
+                       game_ids = [g.id for g in games]
+                   
+                   # For each default game, create VendorGame association
+                   for game_id in game_ids:
+                       # Check if game exists
+                       game = Game.query.get(game_id)
+                       if not game:
+                           current_app.logger.warning(f"Game ID {game_id} not found, skipping")
+                           continue
+                       
+                       # Create VendorGame entry
+                       try:
+                           vendor_game = VendorGame(
+                               vendor_id=vendor.id,
+                               game_id=game.id,
+                               console_id=console.id,
+                               price_per_hour=50.0,  # Default price ₹50/hour, adjust as needed
+                               is_available=True
+                           )
+                           db.session.add(vendor_game)
+                           vendor_games_created += 1
+                       except Exception as e:
+                           # Skip if duplicate (unique constraint violation)
+                           current_app.logger.debug(f"Skipping duplicate game {game_id} for console {console.id}: {e}")
+                           continue
+               
+               if vendor_games_created > 0:
+                   db.session.flush()
+                   current_app.logger.info(f"Created {vendor_games_created} vendor game associations for vendor {vendor.id}")
+               else:
+                   current_app.logger.warning(f"No vendor games created for vendor {vendor.id}")
+                   
+           except Exception as e:
+               current_app.logger.error(f"Error creating vendor games: {e}")
+               # Don't raise - this is optional, vendor can add games later
+               pass
+
 
            db.session.commit()
 
@@ -407,6 +477,8 @@ class VendorService:
                current_app.logger.info(f"- VendorAccount exists: {final_account is not None}")
                current_app.logger.info(f"- Vendor account_id: {final_vendor.account_id}")
                current_app.logger.info(f"- Relationship works: {final_vendor.account.email if final_vendor.account else 'NO RELATIONSHIP'}")
+            
+            
 
         # Step 12: Vendor-specific table creations
            VendorService.create_vendor_slot_table(vendor.id)
