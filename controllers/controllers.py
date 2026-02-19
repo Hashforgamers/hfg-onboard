@@ -1356,3 +1356,18 @@ def update_slot(vendor_id):
         db.session.rollback()
         current_app.logger.error(f"[update_slot] Error for vendor {vendor_id}: {e}")
         return jsonify({"message": "Failed to update slot configuration", "error": str(e)}), 500
+
+
+@vendor_bp.route('/vendor/notify/<int:vendor_id>', methods=['POST'])
+def notify_vendor_deboard(vendor_id):
+    """Send a deboard warning notification email to the vendor."""
+    current_app.logger.debug(f"Received deboard notification request for vendor ID: {vendor_id}")
+    try:
+        result = VendorService.send_deboard_notification(vendor_id)
+        return jsonify(result), 200
+    except ValueError as e:
+        current_app.logger.warning(f"Notify deboard - vendor not found: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 404
+    except Exception as e:
+        current_app.logger.error(f"Notify deboard error for vendor {vendor_id}: {e}")
+        return jsonify({'success': False, 'message': 'Failed to send notification', 'error': str(e)}), 500
