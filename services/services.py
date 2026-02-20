@@ -767,8 +767,8 @@ class VendorService:
         vendor_pin = VendorPin.query.filter_by(vendor_id=vendor.id).first()
         pin_code = vendor_pin.pin_code if vendor_pin else "N/A"
         
-        parent_email = VendorAccount.email if VendorAccount else None
-        VendorService.send_welcome_email(vendor, password, email, pin_code, parent_email)
+        
+        VendorService.send_welcome_email(vendor, password, email, pin_code)
         current_app.logger.info(f"Completed credentials generation for vendor {vendor.id}")
 
     @staticmethod
@@ -1498,7 +1498,7 @@ class VendorService:
                           </span><br/>
                           <span style="color:#00cc44;font-family:monospace;
                                        font-size:15px;font-weight:600;">
-                            {parent_email}
+                            {email}
                           </span>
                         </td>
                       </tr>
@@ -1553,7 +1553,7 @@ class VendorService:
                           </span><br/>
                           <span style="color:#00cc44;font-family:monospace;
                                        font-size:15px;font-weight:600;">
-                            {parent_email}
+                            {vendor.email}
                           </span>
                         </td>
                       </tr>
