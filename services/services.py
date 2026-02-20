@@ -1265,25 +1265,40 @@ class VendorService:
     def create_vendor_console_availability_table(vendor_id):
         """Creates a table for tracking console availability for a vendor."""
         table_name = f"VENDOR_{vendor_id}_CONSOLE_AVAILABILITY"
-
+        
         # Drop the table if it already exists
         db.session.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
-
-        # Create the table
+        
+        # ✅ Create the table
         sql_create = text(f"""
-        CREATE TABLE {table_name} (
-            vendor_id INT NOT NULL,
-            console_id INT NOT NULL,
-            game_id INT NOT NULL,
-            is_available BOOLEAN NOT NULL,
-            PRIMARY KEY (vendor_id, console_id)
-        )
+            CREATE TABLE {table_name} (
+                vendor_id INT NOT NULL,
+                console_id INT NOT NULL,
+                game_id INT NOT NULL,
+                is_available BOOLEAN NOT NULL,
+                PRIMARY KEY (vendor_id, console_id)
+            )
         """)
-
         db.session.execute(sql_create)
+        
+        # ✅ POPULATE: Insert all consoles linked to this vendor into the table
+        sql_insert = text(f"""
+            INSERT INTO {table_name} (vendor_id, console_id, game_id, is_available)
+            SELECT 
+                :vendor_id,
+                c.id AS console_id,
+                ag.id AS game_id,
+                TRUE AS is_available
+            FROM consoles c
+            JOIN available_game_console agc ON agc.console_id = c.id
+            JOIN available_games ag ON ag.id = agc.available_game_id
+            WHERE c.vendor_id = :vendor_id
+        """)
+        db.session.execute(sql_insert, {"vendor_id": vendor_id})
+        
         db.session.commit()
-
         current_app.logger.info(f"Table {table_name} created and populated successfully.")
+
 
     @staticmethod
     def create_vendor_dashboard_table(vendor_id):
