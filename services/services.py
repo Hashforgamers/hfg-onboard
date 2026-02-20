@@ -767,7 +767,8 @@ class VendorService:
         vendor_pin = VendorPin.query.filter_by(vendor_id=vendor.id).first()
         pin_code = vendor_pin.pin_code if vendor_pin else "N/A"
         
-        VendorService.send_welcome_email(vendor, username, password, email, pin_code)
+        parent_email = VendorAccount.email if VendorAccount else None
+        VendorService.send_welcome_email(vendor, password, email, pin_code, parent_email)
         current_app.logger.info(f"Completed credentials generation for vendor {vendor.id}")
 
     @staticmethod
@@ -1399,109 +1400,265 @@ class VendorService:
     
     
     @staticmethod
-    def send_welcome_email(vendor, username, password, email, pin_code):
-        """✅ UPDATED: Send welcome email with vendor credentials and PIN."""
-        
+    def send_welcome_email(vendor, password, email, pin_code, parent_email=None):
+        """Send dark-themed welcome email with vendor credentials."""
         try:
-            # Create email message
+            html_body = VendorService.build_welcome_email_html(vendor, password, email, pin_code, parent_email)
             msg = Message(
-                subject='Welcome to Hash for Gamers - Your Vendor Credentials',
+                subject="Welcome to Hash for Gamers — Your Vendor Credentials",
                 sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@hashforgamers.com'),
                 recipients=[email]
             )
-
-            # Email HTML template
-            html_body = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
-                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
-                .content {{ background: #f8f9fa; padding: 30px; border-radius: 0 0 10px 10px; }}
-                .credentials-box {{ background: #ffffff; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #667eea; }}
-                .credential-item {{ margin: 10px 0; padding: 10px; background: #e9ecef; border-radius: 5px; }}
-                .credential-label {{ font-weight: bold; color: #495057; }}
-                .credential-value {{ color: #007bff; font-family: monospace; font-size: 16px; }}
-                .footer {{ text-align: center; margin-top: 20px; color: #6c757d; font-size: 12px; }}
-                .status-badge {{ display: inline-block; padding: 5px 15px; background: #ffc107; color: #212529; border-radius: 20px; font-size: 12px; font-weight: bold; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>🎮 Welcome to Hash for Gamers!</h1>
-                    <p>Your gaming cafe has been successfully onboarded</p>
-                </div>
-                
-                <div class="content">
-                    <h2>Hello {vendor.owner_name}!</h2>
-                    <p>Congratulations! <strong>{vendor.cafe_name}</strong> has been successfully registered with Hash for Gamers.</p>
-                    
-                    <div class="credentials-box">
-                        <h3>Your Vendor Credentials:</h3>
-                        
-                        <div class="credential-item">
-                            <span class="credential-label">Username:</span><br>
-                            <span class="credential-value">{username}</span>
-                        </div>
-                        
-                        <div class="credential-item">
-                            <span class="credential-label">Password:</span><br>
-                            <span class="credential-value">{password}</span>
-                        </div>
-                        
-                        <div class="credential-item">
-                            <span class="credential-label">Vendor PIN:</span><br>
-                            <span class="credential-value">{pin_code}</span>
-                        </div>
-                        
-                        <div style="margin-top: 15px;">
-                            <span class="credential-label">Account Status:</span><br>
-                            <span class="status-badge">Pending Verification</span>
-                        </div>
-                    </div>
-                    
-                    <h3>Next Steps:</h3>
-                    <ul>
-                        <li>🔍 Our team will verify your submitted documents</li>
-                        <li>📧 You'll receive a confirmation email once verified</li>
-                        <li>🚀 After verification, you can start using our platform</li>
-                        <li>💡 Keep your credentials safe and secure</li>
-                    </ul>
-                    
-                    <h3>Important Information:</h3>
-                    <ul>
-                        <li><strong>Vendor ID:</strong> {vendor.id}</li>
-                        <li><strong>Registration Email:</strong> {email}</li>
-                        <li><strong>Cafe Name:</strong> {vendor.cafe_name}</li>
-                        <li><strong>Owner:</strong> {vendor.owner_name}</li>
-                    </ul>
-                    
-                    <p><strong>⚠️ Security Notice:</strong> Please keep your login credentials secure and do not share them with unauthorized personnel.</p>
-                </div>
-                
-                <div class="footer">
-                    <p>This is an automated message from Hash for Gamers</p>
-                    <p>If you have any questions, please contact our support team</p>
-                    <p>© 2025 Hash for Gamers. All rights reserved.</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-
             msg.html = html_body
-
-            # Send the email
             mail.send(msg)
             current_app.logger.info(f"Welcome email sent successfully to {email} for vendor {vendor.id}")
-
         except Exception as e:
-          current_app.logger.error(f"Failed to send welcome email to {email} for vendor {vendor.id}: {str(e)}")
-        # Don't raise the exception as email failure shouldn't stop onboarding
-          pass
+            current_app.logger.error(f"Failed to send welcome email to {email} for vendor {vendor.id}: {str(e)}")
+            pass  # Don't raise — email failure shouldn't stop onboarding
+
+    @staticmethod
+    def build_welcome_email_html(vendor, password, email, pin_code, parent_email=None):
+        """Build the dark-themed welcome email HTML."""
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome - Hash for Gamers</title>
+</head>
+<body style="margin:0;padding:0;background-color:#080808;font-family:'Segoe UI',Arial,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0"
+         style="background-color:#080808;padding:40px 0;">
+    <tr>
+      <td align="center">
+
+        <table width="600" cellpadding="0" cellspacing="0" border="0"
+               style="background-color:#0f0f0f;border-radius:12px;border:1px solid #1f1f1f;
+                      overflow:hidden;box-shadow:0 4px 40px rgba(0,0,0,0.8);">
+
+          <!-- HEADER -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#0f0f0f 0%,#001a0a 50%,#0f0f0f 100%);
+                       border-bottom:1px solid #003300;padding:36px 40px;text-align:center;">
+              <div style="display:inline-block;background:#001a0a;border:1px solid #00cc44;
+                          border-radius:8px;padding:8px 20px;margin-bottom:20px;">
+                <span style="color:#00cc44;font-size:13px;font-weight:700;
+                             letter-spacing:3px;text-transform:uppercase;">
+                  Hash for Gamers
+                </span>
+              </div>
+              <div style="margin:0 auto 16px;width:64px;height:64px;background:#001a0a;
+                          border:2px solid #00cc44;border-radius:50%;line-height:64px;
+                          text-align:center;font-size:28px;">
+                🎮
+              </div>
+              <h1 style="color:#ffffff;font-size:22px;font-weight:700;
+                         margin:0;letter-spacing:0.5px;">
+                Welcome to Hash for Gamers!
+              </h1>
+              <p style="color:#888888;font-size:13px;margin:8px 0 0;letter-spacing:0.5px;">
+                Your gaming cafe has been successfully onboarded
+              </p>
+            </td>
+          </tr>
+
+          <!-- BODY -->
+          <tr>
+            <td style="padding:40px 40px 20px;">
+              <p style="color:#cccccc;font-size:15px;line-height:1.6;margin:0 0 24px;">
+                Dear <strong style="color:#ffffff;">{vendor.owner_name}</strong>,
+              </p>
+              <p style="color:#cccccc;font-size:15px;line-height:1.6;margin:0 0 32px;">
+                Congratulations! <strong style="color:#ffffff;">{vendor.cafe_name}</strong>
+                has been successfully registered with Hash for Gamers.
+                Below are your credentials — please keep them safe.
+              </p>
+
+              <!-- Credentials Box -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="background-color:#0a0a0a;border:1px solid #1a1a1a;
+                            border-left:4px solid #00cc44;border-radius:8px;margin-bottom:32px;">
+                <tr>
+                  <td style="padding:24px;">
+                    <p style="color:#00cc44;font-size:12px;font-weight:700;
+                               letter-spacing:2px;text-transform:uppercase;margin:0 0 20px;">
+                      Your Vendor Credentials
+                    </p>
+
+                    <!-- Login Email -->
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                           style="background:#111111;border-radius:6px;
+                                  border:1px solid #1f1f1f;margin-bottom:10px;">
+                      <tr>
+                        <td style="padding:14px 18px;">
+                          <span style="color:#888888;font-size:11px;
+                                       text-transform:uppercase;letter-spacing:1px;">
+                            Login Email
+                          </span><br/>
+                          <span style="color:#00cc44;font-family:monospace;
+                                       font-size:15px;font-weight:600;">
+                            {parent_email}
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Password -->
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                           style="background:#111111;border-radius:6px;
+                                  border:1px solid #1f1f1f;margin-bottom:10px;">
+                      <tr>
+                        <td style="padding:14px 18px;">
+                          <span style="color:#888888;font-size:11px;
+                                       text-transform:uppercase;letter-spacing:1px;">
+                            Password
+                          </span><br/>
+                          <span style="color:#00cc44;font-family:monospace;
+                                       font-size:15px;font-weight:600;">
+                            {password}
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Vendor PIN -->
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                           style="background:#111111;border-radius:6px;
+                                  border:1px solid #1f1f1f;margin-bottom:10px;">
+                      <tr>
+                        <td style="padding:14px 18px;">
+                          <span style="color:#888888;font-size:11px;
+                                       text-transform:uppercase;letter-spacing:1px;">
+                            Vendor PIN (Dashboard Access)
+                          </span><br/>
+                          <span style="color:#00cc44;font-family:monospace;
+                                       font-size:22px;font-weight:700;letter-spacing:6px;">
+                            {pin_code}
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Parent Account Email (if present) -->
+                    {f'''
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                           style="background:#111111;border-radius:6px;
+                                  border:1px solid #1f1f1f;margin-bottom:10px;">
+                      <tr>
+                        <td style="padding:14px 18px;">
+                          <span style="color:#888888;font-size:11px;
+                                       text-transform:uppercase;letter-spacing:1px;">
+                            Contact Account Email
+                          </span><br/>
+                          <span style="color:#00cc44;font-family:monospace;
+                                       font-size:15px;font-weight:600;">
+                            {parent_email}
+                          </span>
+                        </td>
+                      </tr>
+                    </table>
+                    ''' if parent_email else ''}
+
+                    <!-- Status Badge -->
+                    <div style="margin-top:16px;">
+                      <span style="color:#888888;font-size:11px;
+                                   text-transform:uppercase;letter-spacing:1px;">
+                        Account Status
+                      </span><br/>
+                      <span style="display:inline-block;margin-top:6px;
+                                   padding:5px 16px;background:#1a1a00;
+                                   color:#ffc107;border:1px solid #ffc107;
+                                   border-radius:20px;font-size:12px;font-weight:700;">
+                        Pending Verification
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Next Steps -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="background-color:#0a0a0a;border:1px solid #1a1a1a;
+                            border-radius:8px;margin-bottom:24px;">
+                <tr>
+                  <td style="padding:20px 24px;">
+                    <p style="color:#00cc44;font-size:12px;font-weight:700;
+                               letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">
+                      Next Steps
+                    </p>
+                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:6px 0;">
+                      &#9654;&nbsp; Our team will verify your submitted documents
+                    </p>
+                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:6px 0;">
+                      &#9654;&nbsp; You'll receive a confirmation email once verified
+                    </p>
+                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:6px 0;">
+                      &#9654;&nbsp; After verification, you can start using our platform
+                    </p>
+                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:6px 0;">
+                      &#9654;&nbsp; Keep your credentials safe and secure
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Important Info -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                     style="background-color:#0a0a0a;border:1px solid #1a1a1a;
+                            border-radius:8px;margin-bottom:24px;">
+                <tr>
+                  <td style="padding:20px 24px;">
+                    <p style="color:#00cc44;font-size:12px;font-weight:700;
+                               letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">
+                      Important Information
+                    </p>
+                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:4px 0;">
+                      <strong style="color:#ffffff;">Vendor ID:</strong> {vendor.id}
+                    </p>
+                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:4px 0;">
+                      <strong style="color:#ffffff;">Cafe Name:</strong> {vendor.cafe_name}
+                    </p>
+                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:4px 0;">
+                      <strong style="color:#ffffff;">Owner:</strong> {vendor.owner_name}
+                    </p>
+                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:4px 0;">
+                      <strong style="color:#ffffff;">Login Email:</strong> {email}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Security Notice -->
+              <p style="color:#555555;font-size:12px;line-height:1.6;margin:0 0 24px;">
+                <strong style="color:#888888;">Security Notice:</strong>
+                Please keep your login credentials secure and do not share them
+                with unauthorized personnel.
+              </p>
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td style="background-color:#0a0a0a;border-top:1px solid #1a1a1a;
+                       padding:24px 40px;text-align:center;">
+              <p style="color:#00cc44;font-size:12px;font-weight:700;
+                         letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">
+                Hash for Gamers
+              </p>
+              <p style="color:#333333;font-size:11px;margin:0;">
+                &copy; 2026 Hash for Gamers. All rights reserved.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>"""
+
       
     @staticmethod
     def send_deboard_notification(vendor_id):
