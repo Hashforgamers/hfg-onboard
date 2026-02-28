@@ -1006,17 +1006,19 @@ class VendorService:
         except Exception as e:
             current_app.logger.error(f"Error in get_all_vendors_with_status: {e}")
             raise
-
+        
     @staticmethod
-    def get_all_gaming_cafe():
+    def get_all_gaming_cafe(page=1, per_page=20):
         """
-        Retrieve all vendors with their statuses, timing info, amenities, and images for the salesperson dashboard.
+        Retrieve all vendors with their statuses, timing info, amenities, and images
+        for the salesperson dashboard. Supports pagination.
         """
         try:
             vendors_data = []
+            offset = (page - 1) * per_page
 
-            # Step 1: Fetch core vendor data
-            results = db.session.query(
+            # Step 1: Fetch core vendor data with a single JOIN query
+            base_query = db.session.query(
                 Vendor.id.label('vendor_id'),
                 Vendor.cafe_name,
                 Vendor.owner_name,
@@ -1044,10 +1046,7 @@ class VendorService:
                 Document, Document.vendor_id == Vendor.id
             ).outerjoin(
                 ContactInfo,
-                and_(
-                    ContactInfo.parent_id == Vendor.id,
-                    ContactInfo.parent_type == 'vendor'
-                )
+                and_(ContactInfo.parent_id == Vendor.id, ContactInfo.parent_type == 'vendor')
             ).outerjoin(
                 PhysicalAddress,
                 and_(
@@ -1056,18 +1055,45 @@ class VendorService:
                     PhysicalAddress.is_active == True
                 )
             ).group_by(
-                Vendor.id, Vendor.cafe_name, Vendor.owner_name,
-                VendorStatus.status, Vendor.created_at, Vendor.updated_at,
-                ContactInfo.email, ContactInfo.phone,
-                PhysicalAddress.addressLine1, PhysicalAddress.addressLine2,
-                PhysicalAddress.pincode, PhysicalAddress.state, PhysicalAddress.country,
-                PhysicalAddress.latitude, PhysicalAddress.longitude,
-                Timing.opening_time, Timing.closing_time
-            ).all()
+                Vendor.id,
+                Vendor.cafe_name,
+                Vendor.owner_name,
+                VendorStatus.status,
+                Vendor.created_at,
+                Vendor.updated_at,
+                ContactInfo.email,
+                ContactInfo.phone,
+                PhysicalAddress.addressLine1,
+                PhysicalAddress.addressLine2,
+                PhysicalAddress.pincode,
+                PhysicalAddress.state,
+                PhysicalAddress.country,
+                PhysicalAddress.latitude,
+                PhysicalAddress.longitude,
+                Timing.opening_time,
+                Timing.closing_time
+            )
+
+            # Get total count for pagination metadata
+            total_count = base_query.count()
+
+            # Apply pagination
+            results = base_query.order_by(Vendor.id).limit(per_page).offset(offset).all()
+
+            if not results:
+                return {
+                    "vendors": [],
+                    "pagination": {
+                        "page": page,
+                        "per_page": per_page,
+                        "total": total_count,
+                        "total_pages": 0
+                    }
+                }
 
             vendor_ids = [result.vendor_id for result in results]
 
-            # Step 2: Fetch all amenities for those vendors
+            # Step 2: Fetch all amenities for this page's vendors in ONE query
             amenities = db.session.query(
                 Amenity.vendor_id,
                 Amenity.name,
@@ -1081,7 +1107,7 @@ class VendorService:
                     "available": amenity.available
                 })
 
-            # Step 3: Fetch all images for those vendors
+            # Step 3: Fetch all images for this page's vendors in ONE query
             images = db.session.query(
                 Image.vendor_id,
                 Image.image_id,
@@ -1095,20 +1121,21 @@ class VendorService:
                 images_map.setdefault(img.vendor_id, []).append({
                     "image_id": img.image_id,
                     "url": img.url,
-                    "public_id":img.public_id
+                    "public_id": img.public_id
                 })
-                
+
+            # Step 4: Fetch payment methods for this page's vendors in ONE query (no N+1)
             payment_methods_map = VendorService.get_payment_methods_for_vendors(vendor_ids)
 
-            # Step 4: Combine all datasets
+            # Step 5: Combine all datasets
             for result in results:
                 vendors_data.append({
                     "vendor_id": result.vendor_id,
                     "cafe_name": result.cafe_name,
                     "owner_name": result.owner_name,
                     "status": result.status,
-                    "created_at": result.created_at,
-                    "updated_at": result.updated_at,
+                    "created_at": result.created_at.isoformat() if result.created_at else None,
+                    "updated_at": result.updated_at.isoformat() if result.updated_at else None,
                     "email": result.email,
                     "phone": result.phone,
                     "address": {
@@ -1132,11 +1159,20 @@ class VendorService:
                     })
                 })
 
-            return {"vendors": vendors_data}
+            return {
+                "vendors": vendors_data,
+                "pagination": {
+                    "page": page,
+                    "per_page": per_page,
+                    "total": total_count,
+                    "total_pages": (total_count + per_page - 1) // per_page
+                }
+            }
 
         except Exception as e:
             current_app.logger.error(f"Error in get_all_gaming_cafe: {e}")
             raise
+
 
     @staticmethod
     def save_image_to_db(vendor_id, image_id, path):
@@ -1362,41 +1398,46 @@ class VendorService:
         
     @staticmethod
     def get_payment_methods_for_vendors(vendor_ids):
-        """Payment Method"""
+        """
+        OPTIMIZED: Fetch payment methods for ALL vendors in a single query.
+        Previously did 2 DB queries per vendor (N+1 problem).
+        Now does exactly 1 query regardless of how many vendors.
+        """
         try:
-            payment_methods_map = {}
-        
-            for vendor_id in vendor_ids:
-                payment_status = {}
-            
-            # Method 1: Check Pay at Cafe using subquery
-                pay_cafe_exists = db.session.query(
-                    db.session.query(PaymentVendorMap).join(PaymentMethod).filter(
-                      PaymentVendorMap.vendor_id == vendor_id,
-                      PaymentMethod.method_name == 'Pay at Cafe'
-                ).exists()
-            ).scalar()
-                payment_status['Pay at Cafe'] = pay_cafe_exists
-            
-            # Method 2: Check Hash using subquery  
-                hash_exists = db.session.query(
-                    db.session.query(PaymentVendorMap).join(PaymentMethod).filter(
-                       PaymentVendorMap.vendor_id == vendor_id,
-                       PaymentMethod.method_name == 'Hash'
-                ).exists()
-            ).scalar()
-                payment_status['Hash'] = hash_exists
-            
-                payment_methods_map[vendor_id] = payment_status
-        
-            current_app.logger.info(f"Payment methods result: {payment_methods_map}")
+            if not vendor_ids:
+                return {}
+
+            # Single batch query for all vendors at once
+            results = db.session.query(
+                PaymentVendorMap.vendor_id,
+                PaymentMethod.method_name
+            ).join(
+                PaymentMethod
+            ).filter(
+                PaymentVendorMap.vendor_id.in_(vendor_ids),
+                PaymentMethod.method_name.in_(['Pay at Cafe', 'Hash'])
+            ).all()
+
+            # Pre-fill all vendors with False defaults
+            payment_methods_map = {
+                vendor_id: {"Pay at Cafe": False, "Hash": False}
+                for vendor_id in vendor_ids
+            }
+
+            # Set True only for what actually exists in DB
+            for row in results:
+                if row.vendor_id in payment_methods_map:
+                    payment_methods_map[row.vendor_id][row.method_name] = True
+
+            current_app.logger.info(f"Payment methods fetched for {len(vendor_ids)} vendors in 1 query.")
             return payment_methods_map
 
         except Exception as e:
-          current_app.logger.error(f"Error in get_payment_methods_for_vendors: {e}")
-        import traceback
-        current_app.logger.error(traceback.format_exc())
-        return {vendor_id: {"Pay at Cafe": False, "Hash": False} for vendor_id in vendor_ids}
+            current_app.logger.error(f"Error in get_payment_methods_for_vendors: {e}")
+            import traceback
+            current_app.logger.error(traceback.format_exc())
+            return {vendor_id: {"Pay at Cafe": False, "Hash": False} for vendor_id in vendor_ids}
+
     
     
     @staticmethod

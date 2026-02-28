@@ -411,13 +411,19 @@ def get_vendor_dashboard():
 def get_all_gaming_cafe():
     """
     API to retrieve all vendors with their statuses and relevant information for the salesperson dashboard.
+    Supports pagination via ?page=1&per_page=20
     """
     try:
-        response_data = VendorService.get_all_gaming_cafe()
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        per_page = min(per_page, 100)  # Hard cap to prevent abuse
+
+        response_data = VendorService.get_all_gaming_cafe(page=page, per_page=per_page)
         return jsonify(response_data), 200
     except Exception as e:
         current_app.logger.error(f"Error fetching vendor dashboard: {e}")
         return jsonify({'message': 'An error occurred while fetching vendor data', 'error': str(e)}), 500
+
 
 
 @vendor_bp.route('/upload-photos/<int:vendor_id>', methods=['POST'])
