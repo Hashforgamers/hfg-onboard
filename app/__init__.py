@@ -26,7 +26,8 @@ def create_app():
              "http://localhost:3001", 
              "https://dashboard.hashforgamers.co.in", 
              "https://dev-dashboard.hashforgamers.co.in", 
-             "https://vendor-onboard-zeta.vercel.app"
+             "https://vendor-onboard-zeta.vercel.app",
+             "https://dashboard.hashforgamers.com"
          ],
          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
          allow_headers=['Content-Type', 'Authorization'],
