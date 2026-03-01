@@ -231,11 +231,18 @@ class VendorService:
            db.session.add_all(opening_days)
 
         # Step 9: Amenities
+                   # Step 9: Amenities
            amenities = [
-                Amenity(name=amenity, vendor_id=vendor.id)
-                for amenity, available in data.get("amenities", {}).items() if available
+                Amenity(
+                    name=amenity,
+                    available=available,
+                    vendor_id=vendor.id
+                )
+                for amenity, available in data.get("amenities", {}).items()
             ]
            db.session.add_all(amenities)
+           current_app.logger.info(f"Created {len(amenities)} amenity records for vendor {vendor.id}")
+
 
         # Step 10: Available Games
            available_games_data = data.get("available_games", {})
