@@ -230,18 +230,33 @@ class VendorService:
             ]
            db.session.add_all(opening_days)
 
-        # Step 9: Amenities
-                   # Step 9: Amenities
+                # Step 9: Amenities
+           # ✅ All default amenities — always created, default False
+           DEFAULT_AMENITIES = [
+               "24/7",
+               "Parking",
+               "seating_area",
+               "sound_system",
+               "washroom",
+               "air_conditioner",
+               "food",
+           ]
+
+           # Get amenities from payload (if any)
+           payload_amenities = data.get("amenities", {})
+
+           # Merge: default list + payload values, fallback to False
            amenities = [
-                Amenity(
-                    name=amenity,
-                    available=available,
-                    vendor_id=vendor.id
-                )
-                for amenity, available in data.get("amenities", {}).items()
-            ]
+               Amenity(
+                   name=amenity_name,
+                   available=payload_amenities.get(amenity_name, False),
+                   vendor_id=vendor.id
+               )
+               for amenity_name in DEFAULT_AMENITIES
+           ]
            db.session.add_all(amenities)
            current_app.logger.info(f"Created {len(amenities)} amenity records for vendor {vendor.id}")
+
 
 
         # Step 10: Available Games
