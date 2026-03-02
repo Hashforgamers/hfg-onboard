@@ -1030,17 +1030,16 @@ class VendorService:
             raise
         
     @staticmethod
-    def get_all_gaming_cafe(page=1, per_page=20):
+    def get_all_gaming_cafe():
         """
-        Retrieve all vendors with their statuses, timing info, amenities, and images
-        for the salesperson dashboard. Supports pagination.
+        Retrieve all vendors with their statuses, timing info, amenities, images,
+        and payment methods for the salesperson dashboard. Returns ALL cafes.
         """
         try:
             vendors_data = []
-            offset = (page - 1) * per_page
 
-            # Step 1: Fetch core vendor data with a single JOIN query
-            base_query = db.session.query(
+            # Step 1: Fetch core vendor data with a single JOIN query (no pagination)
+            results = db.session.query(
                 Vendor.id.label('vendor_id'),
                 Vendor.cafe_name,
                 Vendor.owner_name,
@@ -1094,28 +1093,16 @@ class VendorService:
                 PhysicalAddress.longitude,
                 Timing.opening_time,
                 Timing.closing_time
-            )
-
-            # Get total count for pagination metadata
-            total_count = base_query.count()
-
-            # Apply pagination
-            results = base_query.order_by(Vendor.id).limit(per_page).offset(offset).all()
+            ).order_by(
+                Vendor.id
+            ).all()
 
             if not results:
-                return {
-                    "vendors": [],
-                    "pagination": {
-                        "page": page,
-                        "per_page": per_page,
-                        "total": total_count,
-                        "total_pages": 0
-                    }
-                }
+                return {"vendors": []}
 
             vendor_ids = [result.vendor_id for result in results]
 
-            # Step 2: Fetch all amenities for this page's vendors in ONE query
+            # Step 2: Fetch all amenities in ONE query
             amenities = db.session.query(
                 Amenity.vendor_id,
                 Amenity.name,
@@ -1129,7 +1116,7 @@ class VendorService:
                     "available": amenity.available
                 })
 
-            # Step 3: Fetch all images for this page's vendors in ONE query
+            # Step 3: Fetch all images in ONE query
             images = db.session.query(
                 Image.vendor_id,
                 Image.image_id,
@@ -1146,7 +1133,7 @@ class VendorService:
                     "public_id": img.public_id
                 })
 
-            # Step 4: Fetch payment methods for this page's vendors in ONE query (no N+1)
+            # Step 4: Fetch payment methods for ALL vendors in ONE query (no N+1)
             payment_methods_map = VendorService.get_payment_methods_for_vendors(vendor_ids)
 
             # Step 5: Combine all datasets
@@ -1181,15 +1168,7 @@ class VendorService:
                     })
                 })
 
-            return {
-                "vendors": vendors_data,
-                "pagination": {
-                    "page": page,
-                    "per_page": per_page,
-                    "total": total_count,
-                    "total_pages": (total_count + per_page - 1) // per_page
-                }
-            }
+            return {"vendors": vendors_data}
 
         except Exception as e:
             current_app.logger.error(f"Error in get_all_gaming_cafe: {e}")
