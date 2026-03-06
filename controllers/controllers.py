@@ -1245,12 +1245,39 @@ def update_slot(vendor_id):
         if not slot_duration or not day_key:
             return jsonify({"message": "slot_duration and day are required"}), 400
 
-        # Parse times (12h format)
         try:
-            start_time = datetime.strptime(start_time_str, "%I:%M %p").time()
-            end_time   = datetime.strptime(end_time_str, "%I:%M %p").time()
-        except ValueError:
-            return jsonify({"message": "start_time/end_time must be in 'HH:MM AM/PM' format"}), 400
+            slot_duration = int(slot_duration)
+        except (TypeError, ValueError):
+            return jsonify({"message": "slot_duration must be an integer (minutes)"}), 400
+        if slot_duration < 15 or slot_duration > 240:
+            return jsonify({"message": "slot_duration must be between 15 and 240 minutes"}), 400
+
+        try:
+            window_days = int(window_days)
+        except (TypeError, ValueError):
+            return jsonify({"message": "window_days must be an integer between 1 and 365"}), 400
+        if window_days < 1 or window_days > 365:
+            return jsonify({"message": "window_days must be between 1 and 365"}), 400
+
+        if start_date_raw:
+            try:
+                start_anchor = dt.strptime(str(start_date_raw), "%Y-%m-%d").date()
+            except ValueError:
+                return jsonify({"message": "start_date must be YYYY-MM-DD"}), 400
+        else:
+            start_anchor = date.today()
+
+        # Parse times (12h/24h mode)
+        if is_24_hours:
+            start_time = dtime(0, 0)
+            end_time = dtime(0, 0)
+        else:
+            if not start_time_str or not end_time_str:
+                return jsonify({"message": "start_time and end_time are required unless is_24_hours=true"}), 400
+            start_time = parse_time_flexible(start_time_str)
+            end_time = parse_time_flexible(end_time_str)
+            if not start_time or not end_time:
+                return jsonify({"message": "start_time/end_time must be in 'HH:MM AM/PM' or 'HH:MM' format"}), 400
 
         # Validate/normalize day
         day_key = normalize_day_key(day_key)
