@@ -1,6 +1,7 @@
 # app/controllers.py
 
 from flask import Blueprint, request, jsonify, current_app
+import os
 from services.services import VendorService
 from werkzeug.utils import secure_filename
 import json
@@ -31,6 +32,7 @@ import uuid, requests
 from pytz import timezone
 from datetime import datetime as dt, timedelta, date, time as dtime
 from datetime import timezone as dt_timezone  # ✅ add this import near the top
+datetime = dt
 
 try:
     from zoneinfo import ZoneInfo
@@ -48,9 +50,43 @@ ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png', 'gif', 'doc', 'docx'}
 WEEKDAY_MAP = {
     "mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6
 }
+FULL_DAY_TO_SHORT = {
+    "monday": "mon",
+    "tuesday": "tue",
+    "wednesday": "wed",
+    "thursday": "thu",
+    "friday": "fri",
+    "saturday": "sat",
+    "sunday": "sun",
+}
 
 # Adjust this window as needed (e.g., 365 for a year)
-FUTURE_WINDOW_DAYS = 180
+FUTURE_WINDOW_DAYS = int(os.getenv("SLOT_ROLLING_WINDOW_DAYS", "60"))
+
+
+def normalize_day_key(day_value):
+    raw = str(day_value or "").strip().lower()
+    if raw in WEEKDAY_MAP:
+        return raw
+    if raw in FULL_DAY_TO_SHORT:
+        return FULL_DAY_TO_SHORT[raw]
+    if len(raw) >= 3:
+        short = raw[:3]
+        if short in WEEKDAY_MAP:
+            return short
+    return None
+
+
+def parse_time_flexible(value):
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    for fmt in ("%I:%M %p", "%H:%M"):
+        try:
+            return dt.strptime(raw, fmt).time()
+        except ValueError:
+            continue
+    return None
 
 def allowed_file(filename):
     """Check if the file has an allowed extension."""
@@ -181,6 +217,7 @@ def safe_strptime(date_str, format_str):
         return None
     
     try:
+        return dt.strptime(date_str, format_str)
         return dt.strptime(date_str, format_str)
     except ValueError as e:
         current_app.logger.error(f"Error parsing date '{date_str}' with format '{format_str}': {e}")
@@ -1185,7 +1222,11 @@ def update_slot(vendor_id):
       "start_time": "09:00 AM",   // required, 12h format
       "end_time":   "11:00 PM",   // required, 12h format
       "slot_duration": 30,        // required minutes
-      "day": "sun"                // required, one of mon..sun
+      "day": "sun"                // required, one of mon..sun or full day name
+      "is_enabled": true,         // optional, default true
+      "is_24_hours": false,       // optional, if true uses 00:00-00:00 full-day window
+      "window_days": 60,          // optional, rolling window for generation (1..365)
+      "start_date": "2026-03-31"  // optional YYYY-MM-DD, useful for EOM extension
     }
     """
     try:
@@ -1196,21 +1237,25 @@ def update_slot(vendor_id):
         end_time_str   = payload.get("end_time")
         slot_duration  = payload.get("slot_duration")
         day_key        = payload.get("day")
+        is_enabled     = bool(payload.get("is_enabled", True))
+        is_24_hours    = bool(payload.get("is_24_hours", False))
+        window_days    = payload.get("window_days", FUTURE_WINDOW_DAYS)
+        start_date_raw = payload.get("start_date")
 
-        if not start_time_str or not end_time_str or not slot_duration or not day_key:
-            return jsonify({"message": "start_time, end_time, slot_duration, and day are required"}), 400
+        if not slot_duration or not day_key:
+            return jsonify({"message": "slot_duration and day are required"}), 400
 
         # Parse times (12h format)
         try:
-            start_time = dt.strptime(start_time_str, "%I:%M %p").time()
-            end_time   = dt.strptime(end_time_str, "%I:%M %p").time()
+            start_time = datetime.strptime(start_time_str, "%I:%M %p").time()
+            end_time   = datetime.strptime(end_time_str, "%I:%M %p").time()
         except ValueError:
             return jsonify({"message": "start_time/end_time must be in 'HH:MM AM/PM' format"}), 400
 
-        # Validate day
-        day_key = str(day_key).strip().lower()
-        if day_key not in WEEKDAY_MAP:
-            return jsonify({"message": f"Invalid day '{day_key}'. Use one of mon..sun"}), 400
+        # Validate/normalize day
+        day_key = normalize_day_key(day_key)
+        if not day_key:
+            return jsonify({"message": "Invalid day. Use mon..sun or full day name"}), 400
         target_weekday = WEEKDAY_MAP[day_key]
 
         # Fetch all AvailableGame for vendor (apply to all)
@@ -1219,7 +1264,7 @@ def update_slot(vendor_id):
             return jsonify({"message": "No console types (AvailableGame) found for vendor"}), 404
 
         # Upsert vendor_day_slot_config
-        opening_str_for_config = start_time.strftime("%I:%M %p")  # store same format as input
+        opening_str_for_config = start_time.strftime("%I:%M %p")
         closing_str_for_config = end_time.strftime("%I:%M %p")
 
         # Try update, else insert (simple upsert)
@@ -1237,7 +1282,7 @@ def update_slot(vendor_id):
                 "day": day_key,
                 "opening_time": opening_str_for_config,
                 "closing_time": closing_str_for_config,
-                "slot_duration": int(slot_duration)
+                "slot_duration": slot_duration
             }
         )
         if update_result.rowcount == 0:
@@ -1251,22 +1296,40 @@ def update_slot(vendor_id):
                     "day": day_key,
                     "opening_time": opening_str_for_config,
                     "closing_time": closing_str_for_config,
-                    "slot_duration": int(slot_duration)
+                    "slot_duration": slot_duration
                 }
             )
 
+        # Keep opening_days in sync with operating-hours toggle
+        od_update = db.session.execute(
+            text("""
+                UPDATE opening_days
+                   SET is_open = :is_open
+                 WHERE vendor_id = :vendor_id
+                   AND lower(substr(day,1,3)) = :day
+            """),
+            {"vendor_id": vendor_id, "day": day_key, "is_open": is_enabled}
+        )
+        if od_update.rowcount == 0:
+            db.session.execute(
+                text("""
+                    INSERT INTO opening_days (vendor_id, day, is_open)
+                    VALUES (:vendor_id, :day, :is_open)
+                """),
+                {"vendor_id": vendor_id, "day": day_key, "is_open": is_enabled}
+            )
+
         # Build future dates for this weekday
-        today = date.today()
-        end_window = today + timedelta(days=FUTURE_WINDOW_DAYS)
+        end_window = start_anchor + timedelta(days=window_days)
         target_dates = []
-        cur = today
+        cur = start_anchor
         while cur <= end_window:
             if cur.weekday() == target_weekday:
                 target_dates.append(cur)
             cur += timedelta(days=1)
 
         if not target_dates:
-            return jsonify({"message": "No matching future dates found in the configured window"}), 400
+            return jsonify({"message": "No matching dates found in the configured window"}), 400
 
         # Generate time blocks (cross-midnight safe)
         def generate_blocks(anchor_day: date):
@@ -1293,6 +1356,15 @@ def update_slot(vendor_id):
 
         for d in target_dates:
             blocks = generate_blocks(d)
+            # Day disabled: keep config but remove generated slots for those dates
+            if not is_enabled:
+                db.session.execute(
+                    text(f"DELETE FROM VENDOR_{vendor_id}_SLOT WHERE vendor_id = :vendor_id AND date = :d"),
+                    {"vendor_id": vendor_id, "d": d}
+                )
+                updated_days += 1
+                continue
+
             if not blocks:
                 current_app.logger.warning(f"[update_slot] No blocks generated for {d} with provided times/duration.")
             else:
@@ -1350,7 +1422,10 @@ def update_slot(vendor_id):
             "message": "Day-wise slot configuration saved and applied",
             "vendor_id": vendor_id,
             "day": day_key,
-            "future_window_days": FUTURE_WINDOW_DAYS,
+            "is_enabled": is_enabled,
+            "is_24_hours": is_24_hours,
+            "window_start": start_anchor.isoformat(),
+            "future_window_days": window_days,
             "updated_days": updated_days,
             "inserted_rows": inserted_rows
         }), 200
@@ -1359,18 +1434,3 @@ def update_slot(vendor_id):
         db.session.rollback()
         current_app.logger.error(f"[update_slot] Error for vendor {vendor_id}: {e}")
         return jsonify({"message": "Failed to update slot configuration", "error": str(e)}), 500
-
-
-@vendor_bp.route('/vendor/notify/<int:vendor_id>', methods=['POST'])
-def notify_vendor_deboard(vendor_id):
-    """Send a deboard warning notification email to the vendor."""
-    current_app.logger.debug(f"Received deboard notification request for vendor ID: {vendor_id}")
-    try:
-        result = VendorService.send_deboard_notification(vendor_id)
-        return jsonify(result), 200
-    except ValueError as e:
-        current_app.logger.warning(f"Notify deboard - vendor not found: {e}")
-        return jsonify({'success': False, 'message': str(e)}), 404
-    except Exception as e:
-        current_app.logger.error(f"Notify deboard error for vendor {vendor_id}: {e}")
-        return jsonify({'success': False, 'message': 'Failed to send notification', 'error': str(e)}), 500
