@@ -5,6 +5,7 @@ import os
 import time
 from flask import Flask, request
 from flask_cors import CORS
+from werkzeug.exceptions import HTTPException
 from .config import Config
 from db.extensions import db, migrate, mail, redis_client
 from controllers.controllers import vendor_bp
@@ -86,11 +87,22 @@ def create_app():
     # Global error handler
     @app.errorhandler(Exception)
     def handle_exception(e):
+        # Keep HTTP errors (404/405/etc.) as-is instead of masking as 500.
+        if isinstance(e, HTTPException):
+            return {
+                'success': False,
+                'message': e.description,
+                'code': e.code,
+            }, e.code
         app.logger.error(f"❌ Unhandled exception: {str(e)}", exc_info=True)
         return {
             'success': False,
             'message': 'Internal server error. Please try again.'
         }, 500
+
+    @app.route('/', methods=['GET', 'HEAD'])
+    def root():
+        return {'status': 'ok', 'service': 'hfg-onboard'}, 200
     
     # Health check endpoint
     @app.route('/api/health', methods=['GET'])

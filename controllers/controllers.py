@@ -2,8 +2,6 @@
 
 from flask import Blueprint, request, jsonify, current_app
 import os
-import threading
-from concurrent.futures import ThreadPoolExecutor
 from services.services import VendorService
 from werkzeug.utils import secure_filename
 import json
@@ -29,7 +27,7 @@ from models.vendorDaySlotConfig import VendorDaySlotConfig
 from sqlalchemy import text, tuple_, func
 from models.timing import Timing
 
-import uuid, requests
+import requests
 
 from pytz import timezone
 from datetime import datetime as dt, timedelta, date, time as dtime
@@ -64,10 +62,6 @@ FULL_DAY_TO_SHORT = {
 
 # Adjust this window as needed (e.g., 365 for a year)
 FUTURE_WINDOW_DAYS = int(os.getenv("SLOT_ROLLING_WINDOW_DAYS", "60"))
-SLOT_UPDATE_WORKERS = int(os.getenv("SLOT_UPDATE_WORKERS", "2"))
-_slot_update_executor = ThreadPoolExecutor(max_workers=max(1, SLOT_UPDATE_WORKERS))
-_slot_update_jobs = {}
-_slot_update_jobs_lock = threading.Lock()
 
 
 def normalize_day_key(day_value):
@@ -93,13 +87,6 @@ def parse_time_flexible(value):
         except ValueError:
             continue
     return None
-
-
-def _update_slot_job(job_id, **fields):
-    with _slot_update_jobs_lock:
-        current = _slot_update_jobs.get(job_id, {})
-        current.update(fields)
-        _slot_update_jobs[job_id] = current
 
 
 def _generate_blocks(anchor_day, start_time, end_time, slot_duration):
@@ -220,29 +207,6 @@ def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
 
     return {"updated_days": updated_days, "inserted_rows": inserted_rows}
 
-
-def _slot_update_job_runner(app, job_id, vendor_id, day_key, target_dates, blocks, is_enabled):
-    with app.app_context():
-        try:
-            games = AvailableGame.query.filter_by(vendor_id=vendor_id).all()
-            result = _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
-            db.session.commit()
-            _update_slot_job(
-                job_id,
-                status="completed",
-                completed_at=dt.utcnow().isoformat(),
-                updated_days=result["updated_days"],
-                inserted_rows=result["inserted_rows"],
-            )
-        except Exception as e:
-            db.session.rollback()
-            current_app.logger.error(f"[update_slot_job] vendor={vendor_id} day={day_key} error={e}")
-            _update_slot_job(
-                job_id,
-                status="failed",
-                completed_at=dt.utcnow().isoformat(),
-                error=str(e),
-            )
 
 def allowed_file(filename):
     """Check if the file has an allowed extension."""
@@ -1515,52 +1479,6 @@ def update_slot(vendor_id):
             return jsonify({"message": "No matching dates found in the configured window"}), 400
 
         blocks = _generate_blocks(start_anchor, start_time, end_time, slot_duration)
-        prefer_async = bool(payload.get("async", True))
-
-        # Commit config updates first so API remains responsive and idempotent.
-        db.session.commit()
-
-        if prefer_async:
-            job_id = str(uuid.uuid4())
-            now_iso = dt.utcnow().isoformat()
-            _update_slot_job(
-                job_id,
-                job_id=job_id,
-                vendor_id=vendor_id,
-                day=day_key,
-                status="queued",
-                queued_at=now_iso,
-                is_enabled=is_enabled,
-                is_24_hours=is_24_hours,
-                window_start=start_anchor.isoformat(),
-                future_window_days=window_days,
-            )
-
-            app_obj = current_app._get_current_object()
-            _slot_update_executor.submit(
-                _slot_update_job_runner,
-                app_obj,
-                job_id,
-                vendor_id,
-                day_key,
-                target_dates,
-                blocks,
-                is_enabled,
-            )
-            _update_slot_job(job_id, status="running", started_at=dt.utcnow().isoformat())
-
-            return jsonify({
-                "message": "Slot update accepted and running in background",
-                "vendor_id": vendor_id,
-                "day": day_key,
-                "job_id": job_id,
-                "status": "running",
-                "is_enabled": is_enabled,
-                "is_24_hours": is_24_hours,
-                "window_start": start_anchor.isoformat(),
-                "future_window_days": window_days,
-            }), 202
-
         games = AvailableGame.query.filter_by(vendor_id=vendor_id).all()
         result = _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
         db.session.commit()
@@ -1580,17 +1498,6 @@ def update_slot(vendor_id):
         db.session.rollback()
         current_app.logger.error(f"[update_slot] Error for vendor {vendor_id}: {e}")
         return jsonify({"message": "Failed to update slot configuration", "error": str(e)}), 500
-
-
-@vendor_bp.route('/vendor/<int:vendor_id>/updateSlot/jobs/<string:job_id>', methods=['GET'])
-def get_update_slot_job(vendor_id, job_id):
-    with _slot_update_jobs_lock:
-        job = dict(_slot_update_jobs.get(job_id) or {})
-    if not job:
-        return jsonify({"message": "Job not found"}), 404
-    if int(job.get("vendor_id", -1)) != int(vendor_id):
-        return jsonify({"message": "Job does not belong to vendor"}), 403
-    return jsonify(job), 200
 
 
 @vendor_bp.route('/vendor/<int:vendor_id>/extendSlotWindow', methods=['POST'])
