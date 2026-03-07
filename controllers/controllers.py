@@ -24,7 +24,7 @@ from models.slots import Slot
 from models.vendorDaySlotConfig import VendorDaySlotConfig
 
 
-from sqlalchemy import text, tuple_, func
+from sqlalchemy import text, tuple_, func, bindparam
 from models.timing import Timing
 
 import requests
@@ -118,24 +118,26 @@ def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
     if not target_dates:
         return {"updated_days": 0, "inserted_rows": 0}
 
+    delete_dates_sql = text(f"""
+        DELETE FROM VENDOR_{vendor_id}_SLOT
+        WHERE vendor_id = :vendor_id
+          AND date IN :target_dates
+    """).bindparams(bindparam("target_dates", expanding=True))
+
     # Clear day rows first if this day is disabled.
     if not is_enabled:
-        for d in target_dates:
-            db.session.execute(
-                text(f"DELETE FROM VENDOR_{vendor_id}_SLOT WHERE vendor_id = :vendor_id AND date = :d"),
-                {"vendor_id": vendor_id, "d": d},
-            )
-            updated_days += 1
-        return {"updated_days": updated_days, "inserted_rows": 0}
+        db.session.execute(
+            delete_dates_sql,
+            {"vendor_id": vendor_id, "target_dates": target_dates},
+        )
+        return {"updated_days": len(target_dates), "inserted_rows": 0}
 
     if not blocks:
-        for d in target_dates:
-            db.session.execute(
-                text(f"DELETE FROM VENDOR_{vendor_id}_SLOT WHERE vendor_id = :vendor_id AND date = :d"),
-                {"vendor_id": vendor_id, "d": d},
-            )
-            updated_days += 1
-        return {"updated_days": updated_days, "inserted_rows": 0}
+        db.session.execute(
+            delete_dates_sql,
+            {"vendor_id": vendor_id, "target_dates": target_dates},
+        )
+        return {"updated_days": len(target_dates), "inserted_rows": 0}
 
     game_totals = {int(g.id): int(g.total_slot or 0) for g in games if int(g.total_slot or 0) > 0}
     if not game_totals:
@@ -179,13 +181,13 @@ def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
         VALUES (:vendor_id, :slot_id, :date, :available_slot, :is_available)
     """)
 
-    for d in target_dates:
-        db.session.execute(
-            text(f"DELETE FROM VENDOR_{vendor_id}_SLOT WHERE vendor_id = :vendor_id AND date = :d"),
-            {"vendor_id": vendor_id, "d": d},
-        )
+    db.session.execute(
+        delete_dates_sql,
+        {"vendor_id": vendor_id, "target_dates": target_dates},
+    )
 
-        batch = []
+    batch = []
+    for d in target_dates:
         for game_id, total in game_totals.items():
             for st, et in blocks:
                 slot_id = slot_id_map.get((game_id, st, et))
@@ -200,12 +202,12 @@ def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
                         "is_available": True,
                     }
                 )
-        if batch:
-            db.session.execute(insert_sql, batch)
-            inserted_rows += len(batch)
-        updated_days += 1
 
-    return {"updated_days": updated_days, "inserted_rows": inserted_rows}
+    if batch:
+        db.session.execute(insert_sql, batch)
+        inserted_rows = len(batch)
+
+    return {"updated_days": len(target_dates), "inserted_rows": inserted_rows}
 
 
 def allowed_file(filename):
