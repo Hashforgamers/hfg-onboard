@@ -1278,9 +1278,12 @@ class VendorService:
         db.session.execute(sql_create)
         db.session.commit()
 
-        # Populate the table initially
+        # Populate the table initially with a rolling window (default 60 days).
+        seed_days = int(os.getenv("ONBOARD_SLOT_SEED_DAYS", "60"))
+        if seed_days < 1:
+            seed_days = 60
         start_date = datetime.utcnow().date()
-        end_date = start_date + timedelta(days=365)
+        end_date = start_date + timedelta(days=seed_days)
 
         sql_insert = text(f"""
         INSERT INTO {table_name} (vendor_id, date, slot_id, is_available, available_slot)
@@ -1297,7 +1300,38 @@ class VendorService:
         db.session.execute(sql_insert, {"start_date": start_date, "end_date": end_date, "vendor_id": vendor_id})
         db.session.commit()
 
-        current_app.logger.info(f"Table {table_name} created and populated successfully.")
+        current_app.logger.info(
+            f"Table {table_name} created and populated successfully. seed_days={seed_days}"
+        )
+
+    @staticmethod
+    def extend_vendor_slot_window(vendor_id, start_date, end_date):
+        """
+        Extend VENDOR_<id>_SLOT date coverage without deleting existing rows.
+        Inserts only missing (date, slot_id) combinations for vendor games.
+        """
+        table_name = f"VENDOR_{vendor_id}_SLOT"
+        sql_insert = text(f"""
+        INSERT INTO {table_name} (vendor_id, date, slot_id, is_available, available_slot)
+        SELECT 
+            :vendor_id, gs.date::date, s.id, s.is_available, s.available_slot
+        FROM 
+            (SELECT generate_series(:start_date, :end_date, '1 day'::INTERVAL) AS date) gs
+        CROSS JOIN slots s
+        WHERE s.is_available = TRUE
+          AND s.gaming_type_id IN (SELECT id FROM available_games WHERE vendor_id = :vendor_id)
+          AND NOT EXISTS (
+              SELECT 1
+              FROM {table_name} v
+              WHERE v.vendor_id = :vendor_id
+                AND v.date = gs.date::date
+                AND v.slot_id = s.id
+          );
+        """)
+        db.session.execute(
+            sql_insert,
+            {"start_date": start_date, "end_date": end_date, "vendor_id": vendor_id},
+        )
 
     @staticmethod
     def create_vendor_console_availability_table(vendor_id):
