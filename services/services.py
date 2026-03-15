@@ -19,6 +19,7 @@ from models.businessRegistration import BusinessRegistration
 from models.timing import Timing
 from models.amenity import Amenity
 from models.openingDay import OpeningDay
+from models.vendorDaySlotConfig import VendorDaySlotConfig
 from models.vendorCredentials import VendorCredential
 from models.passwordManager import PasswordManager
 from models.vendorStatus import VendorStatus
@@ -40,6 +41,7 @@ from googleapiclient.http import MediaIoBaseUpload
 from google.oauth2 import service_account
 import io
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from flask_mail import Message
 from db.extensions import mail
 
@@ -1037,6 +1039,23 @@ class VendorService:
         """
         try:
             vendors_data = []
+            ist = ZoneInfo("Asia/Kolkata")
+            today_key = datetime.now(ist).strftime("%a").lower()[:3]
+
+            def _normalize_time(value):
+                if value is None:
+                    return None
+                try:
+                    return value.strftime("%H:%M:%S")
+                except Exception:
+                    pass
+                text = str(value).strip()
+                for fmt in ("%H:%M:%S", "%H:%M", "%I:%M %p", "%I:%M%p"):
+                    try:
+                        return datetime.strptime(text, fmt).strftime("%H:%M:%S")
+                    except ValueError:
+                        continue
+                return text or None
 
             # Step 1: Fetch core vendor data with a single JOIN query (no pagination)
             results = db.session.query(
@@ -1102,6 +1121,25 @@ class VendorService:
 
             vendor_ids = [result.vendor_id for result in results]
 
+            # Step 1.5: Fetch per-day operating hours (dashboard config)
+            config_rows = (
+                db.session.query(
+                    VendorDaySlotConfig.vendor_id,
+                    VendorDaySlotConfig.day,
+                    VendorDaySlotConfig.opening_time,
+                    VendorDaySlotConfig.closing_time
+                )
+                .filter(VendorDaySlotConfig.vendor_id.in_(vendor_ids))
+                .all()
+            )
+            config_map = {}
+            for row in config_rows:
+                dkey = str(row.day or "").strip().lower()
+                config_map.setdefault(row.vendor_id, {})[dkey] = {
+                    "open": row.opening_time,
+                    "close": row.closing_time,
+                }
+
             # Step 2: Fetch all amenities in ONE query
             amenities = db.session.query(
                 Amenity.vendor_id,
@@ -1156,8 +1194,16 @@ class VendorService:
                         "longitude": result.longitude,
                         "latitude": result.latitude
                     },
-                    "opening_time": result.opening_time.strftime("%H:%M:%S") if result.opening_time else None,
-                    "closing_time": result.closing_time.strftime("%H:%M:%S") if result.closing_time else None,
+                    "opening_time": _normalize_time(
+                        (config_map.get(result.vendor_id, {}).get(today_key) or {}).get("open")
+                        if config_map.get(result.vendor_id)
+                        else result.opening_time
+                    ) or _normalize_time(result.opening_time),
+                    "closing_time": _normalize_time(
+                        (config_map.get(result.vendor_id, {}).get(today_key) or {}).get("close")
+                        if config_map.get(result.vendor_id)
+                        else result.closing_time
+                    ) or _normalize_time(result.closing_time),
                     "total_documents": result.total_documents,
                     "verified_documents": result.verified_documents,
                     "amenities": amenities_map.get(result.vendor_id, []),
