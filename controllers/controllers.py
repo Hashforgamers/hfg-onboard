@@ -42,6 +42,7 @@ except Exception:
     IST = pytz.timezone("Asia/Kolkata")
 
 INTERNAL_WS_URL = "https://hfg-dashboard-h9qq.onrender.com/internal/ws/unlock"
+DASHBOARD_SERVICE_URL = os.getenv("DASHBOARD_SERVICE_URL", "https://hfg-dashboard.onrender.com")
 
 vendor_bp = Blueprint('vendor', __name__)
 
@@ -649,148 +650,44 @@ def get_vendor_photos(vendor_id):
 @vendor_bp.route('/bookingQueue', methods=['POST'])
 def insert_to_queue():
     try:
-        data = request.get_json(force=True) or {}
+        data = request.get_json(silent=True) or {}
         console_id = data.get('console_id')
-        game_id = data.get('game_id')
-        vendor_id = data.get('vendor_id')
         booking_id = data.get('booking_id')
+        access_code = data.get('access_code') or data.get('accessCode')
+        vendor_id = data.get('vendor_id')
+        game_id = data.get('game_id')
+        additional_console_ids = data.get('additional_console_ids') or []
 
-        if not all([console_id, game_id, vendor_id, booking_id]):
-            return jsonify({'error': 'Missing fields'}), 400
+        if not console_id:
+            return jsonify({'error': 'console_id is required'}), 400
+        if not booking_id and not access_code:
+            return jsonify({'error': 'booking_id or access_code is required'}), 400
 
-        booking = Booking.query.filter_by(id=booking_id).first()
-        if not booking:
-            return jsonify({'error': 'Booking not found'}), 404
+        payload = {
+            "console_id": console_id,
+            "additional_console_ids": additional_console_ids,
+        }
+        if booking_id:
+            payload["booking_id"] = booking_id
+        if access_code:
+            payload["access_code"] = access_code
+        if vendor_id:
+            payload["vendor_id"] = vendor_id
+        if game_id:
+            payload["game_id"] = game_id
 
-        user_id = booking.user_id
-        now_ist = dt.now(IST)
-        today = now_ist.date()
-        now_time = now_ist.time()
-
-        # ✅ All today's transactions for this user & vendor
-        today_txns = Transaction.query.filter_by(
-            user_id=user_id, vendor_id=vendor_id, booked_date=today
-        ).all()
-        if not today_txns:
-            return jsonify({'error': 'No bookings found for today'}), 404
-
-        today_booking_ids = [t.booking_id for t in today_txns if t.booking_id]
-        if int(booking_id) not in today_booking_ids:
-            return jsonify({'error': 'Scanned booking is not for today for this vendor'}), 400
-
-        # ✅ Fetch today's bookings and slots
-        today_bookings = Booking.query.filter(Booking.id.in_(today_booking_ids)).all()
-        slot_ids = [b.slot_id for b in today_bookings]
-        slots = Slot.query.filter(Slot.id.in_(slot_ids)).order_by(Slot.start_time.asc()).all()
-        if not slots:
-            return jsonify({'error': 'No slots found'}), 404
-
-        # ✅ Dynamic grouping for variable slot durations
-        grouped = []
-        current_group = [slots[0]]
-
-        for s in slots[1:]:
-            prev = current_group[-1]
-
-            prev_end = dt.combine(today, prev.end_time)
-            curr_start = dt.combine(today, s.start_time)
-            gap_minutes = (curr_start - prev_end).total_seconds() / 60.0
-
-            # Group consecutive slots with < 1-minute gap tolerance
-            if abs(gap_minutes) < 1:
-                current_group.append(s)
-            else:
-                grouped.append(current_group)
-                current_group = [s]
-
-        grouped.append(current_group)
-
-        # ✅ Identify booking's slot and active group
-        b2slot = {b.id: b.slot_id for b in today_bookings}
-        target_slot_id = b2slot.get(int(booking_id))
-        if not target_slot_id:
-            return jsonify({'error': 'Booking-slot mapping missing'}), 400
-
-        group_with_booking = None
-        active_group = None
-
-        for group in grouped:
-            ids = {g.id for g in group}
-
-            group_start_naive = dt.combine(today, group[0].start_time)
-            group_end_naive = dt.combine(today, group[-1].end_time)
-
-            # Attach timezone (pytz or zoneinfo path)
-            if hasattr(IST, 'localize'):
-                group_start = IST.localize(group_start_naive)
-                group_end = IST.localize(group_end_naive)
-                now_dt = IST.localize(dt.combine(today, now_time))
-            else:
-                group_start = group_start_naive.replace(tzinfo=IST)
-                group_end = group_end_naive.replace(tzinfo=IST)
-                now_dt = dt.combine(today, now_time).replace(tzinfo=IST)
-
-            # Track booking group and active group
-            if target_slot_id in ids:
-                group_with_booking = group
-            if group_start <= now_dt <= group_end + timedelta(minutes=GRACE_MIN):
-                active_group = group
-
-        # ✅ Select best-matching group
-        if active_group and group_with_booking and (
-            set(g.id for g in active_group) & set(g.id for g in group_with_booking)
-        ):
-            chosen_group = active_group
-        else:
-            chosen_group = group_with_booking or active_group
-
-        if not chosen_group:
-            return jsonify({'error': 'No valid consecutive booking window for scan'}), 400
-
-        merged_start_naive = dt.combine(today, chosen_group[0].start_time)
-        merged_end_naive = dt.combine(today, chosen_group[-1].end_time)
-
-        if hasattr(IST, 'localize'):
-            merged_start = IST.localize(merged_start_naive)
-            merged_end = IST.localize(merged_end_naive)
-        else:
-            merged_start = merged_start_naive.replace(tzinfo=IST)
-            merged_end = merged_end_naive.replace(tzinfo=IST)
-
-        # ✅ Validate current time within group + grace
-        now_dt = dt.combine(today, now_time)
-        now_dt = IST.localize(now_dt) if hasattr(IST, 'localize') else now_dt.replace(tzinfo=IST)
-        if not (merged_start <= now_dt <= merged_end + timedelta(minutes=GRACE_MIN)):
-            return jsonify({'error': 'Scan not within valid booking window'}, 400)
-
-        # ✅ Idempotent re-queue check
-        existing = BookingQueue.query.filter_by(
-            booking_id=booking_id, console_id=console_id, status='queued'
-        ).first()
-
-        if existing:
-            _emit_unlock(console_id, booking_id, merged_start, merged_end)
-            return jsonify({'message': 'Already queued; unlock re-sent'}), 200
-
-        # ✅ Create new queue entry
-        queue = BookingQueue(
-            booking_id=booking_id,
-            console_id=console_id,
-            game_id=game_id,
-            vendor_id=vendor_id,
-            user_id=user_id,
-            status='queued',
-            start_time=merged_start,
-            end_time=merged_end
+        resp = requests.post(
+            f"{DASHBOARD_SERVICE_URL}/api/kiosk/start-session",
+            json=payload,
+            timeout=6,
         )
-        db.session.add(queue)
-        db.session.commit()
-
-        _emit_unlock(console_id, booking_id, merged_start, merged_end)
-        return jsonify({'message': 'Queued and unlock sent'}), 201
+        try:
+            body = resp.json()
+        except Exception:
+            body = {"message": resp.text}
+        return jsonify(body), resp.status_code
 
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 def _emit_unlock(console_id, booking_id, start_dt, end_dt):
@@ -917,34 +814,39 @@ def poll_queue():
 
 @vendor_bp.route('/accessCodeUnlock', methods=['POST'])
 def unlock_with_code():
-    data = request.get_json()
-    access_code = data.get('access_code')
+    data = request.get_json(silent=True) or {}
+    access_code = data.get('access_code') or data.get('accessCode')
     console_id = data.get('console_id')
     game_id = data.get('game_id')
     vendor_id = data.get('vendor_id')
+    additional_console_ids = data.get('additional_console_ids') or []
 
     if not access_code or not console_id:
         return jsonify({'error': 'Missing access_code or console_id'}), 400
 
-    entry = AccessBookingCode.query.filter_by(access_code=access_code).first()
-    if not entry:
-        return jsonify({'error': 'Invalid access code'}), 404
+    payload = {
+        "console_id": console_id,
+        "access_code": access_code,
+        "additional_console_ids": additional_console_ids,
+    }
+    if vendor_id:
+        payload["vendor_id"] = vendor_id
+    if game_id:
+        payload["game_id"] = game_id
 
-    booking = entry.booking
-
-    queue = BookingQueue(
-        booking_id=booking.id,
-        user_id=booking.user_id,
-        game_id=booking.game_id,
-        vendor_id=vendor_id,
-        console_id=console_id,
-        status='started',
-        start_time=dt.utcnow()
-    )
-    db.session.add(queue)
-    db.session.commit()
-
-    return jsonify({'message': 'Booking started via access code'}), 200
+    try:
+        resp = requests.post(
+            f"{DASHBOARD_SERVICE_URL}/api/kiosk/start-session",
+            json=payload,
+            timeout=6,
+        )
+        try:
+            body = resp.json()
+        except Exception:
+            body = {"message": resp.text}
+        return jsonify(body), resp.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 
