@@ -1041,6 +1041,7 @@ class VendorService:
             vendors_data = []
             ist = ZoneInfo("Asia/Kolkata")
             today_key = datetime.now(ist).strftime("%a").lower()[:3]
+            today_full = datetime.now(ist).strftime("%A").lower()
 
             def _normalize_time(value):
                 if value is None:
@@ -1050,6 +1051,10 @@ class VendorService:
                 except Exception:
                     pass
                 text = str(value).strip()
+                if text in {"24:00", "24:00:00"}:
+                    return "24:00:00"
+                if text in {"00:00", "00:00:00"}:
+                    return "00:00:00"
                 for fmt in ("%H:%M:%S", "%H:%M", "%I:%M %p", "%I:%M%p"):
                     try:
                         return datetime.strptime(text, fmt).strftime("%H:%M:%S")
@@ -1135,10 +1140,17 @@ class VendorService:
             config_map = {}
             for row in config_rows:
                 dkey = str(row.day or "").strip().lower()
-                config_map.setdefault(row.vendor_id, {})[dkey] = {
-                    "open": row.opening_time,
-                    "close": row.closing_time,
-                }
+                if not dkey:
+                    continue
+                vendor_cfg = config_map.setdefault(row.vendor_id, {})
+                if dkey not in vendor_cfg:
+                    vendor_cfg[dkey] = {
+                        "open": row.opening_time,
+                        "close": row.closing_time,
+                    }
+                short_key = dkey[:3] if len(dkey) > 3 else dkey
+                if short_key and short_key not in vendor_cfg:
+                    vendor_cfg[short_key] = vendor_cfg[dkey]
 
             # Step 2: Fetch all amenities in ONE query
             amenities = db.session.query(
@@ -1176,6 +1188,21 @@ class VendorService:
 
             # Step 5: Combine all datasets
             for result in results:
+                vendor_cfg = config_map.get(result.vendor_id, {})
+                cfg = (
+                    vendor_cfg.get(today_key)
+                    or vendor_cfg.get(today_full)
+                    or vendor_cfg.get(today_full[:3])
+                    or None
+                )
+                cfg_open_raw = cfg.get("open") if cfg else None
+                cfg_close_raw = cfg.get("close") if cfg else None
+                cfg_open_norm = _normalize_time(cfg_open_raw) if cfg else None
+                cfg_close_norm = _normalize_time(cfg_close_raw) if cfg else None
+                if cfg_open_norm and cfg_close_norm and cfg_open_norm == cfg_close_norm:
+                    cfg_open_norm = "00:00:00"
+                    cfg_close_norm = "24:00:00"
+
                 vendors_data.append({
                     "vendor_id": result.vendor_id,
                     "cafe_name": result.cafe_name,
@@ -1194,16 +1221,8 @@ class VendorService:
                         "longitude": result.longitude,
                         "latitude": result.latitude
                     },
-                    "opening_time": _normalize_time(
-                        (config_map.get(result.vendor_id, {}).get(today_key) or {}).get("open")
-                        if config_map.get(result.vendor_id)
-                        else result.opening_time
-                    ) or _normalize_time(result.opening_time),
-                    "closing_time": _normalize_time(
-                        (config_map.get(result.vendor_id, {}).get(today_key) or {}).get("close")
-                        if config_map.get(result.vendor_id)
-                        else result.closing_time
-                    ) or _normalize_time(result.closing_time),
+                    "opening_time": cfg_open_norm or _normalize_time(result.opening_time),
+                    "closing_time": cfg_close_norm or _normalize_time(result.closing_time),
                     "total_documents": result.total_documents,
                     "verified_documents": result.verified_documents,
                     "amenities": amenities_map.get(result.vendor_id, []),
