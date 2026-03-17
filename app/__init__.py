@@ -20,21 +20,15 @@ def create_app():
     # Load configuration
     app.config.from_object(Config)
     
-    # CRITICAL: CORS with credentials support
-    CORS(app, 
-         origins=[
-             "http://localhost:3000", 
-             "http://localhost:3001", 
-             "https://dashboard.hashforgamers.co.in", 
-             "https://dev-dashboard.hashforgamers.co.in", 
-             "https://vendor-onboard-zeta.vercel.app",
-             "https://dashboard.hashforgamers.com"
-         ],
-         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-         allow_headers=['Content-Type', 'Authorization'],
-         supports_credentials=True,  # Enable credentials for auth
-         expose_headers=['Content-Type', 'Authorization'],
-         max_age=3600
+    # CORS: allow any origin (no credentials) for dashboard/app clients
+    CORS(
+        app,
+        resources={r"/*": {"origins": "*"}},
+        methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        allow_headers=['Content-Type', 'Authorization'],
+        supports_credentials=False,
+        expose_headers=['Content-Type', 'Authorization'],
+        max_age=3600
     )
     
     # Initialize extensions
