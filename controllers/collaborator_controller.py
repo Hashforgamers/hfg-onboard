@@ -5,8 +5,22 @@ from datetime import datetime
 from models.collaborator import Collaborator
 from models.product import Product
 from services.cloudinary_services import CloudinaryGameImageService
+import os
+import requests
 
 collaborator_bp = Blueprint('collaborator', __name__)
+
+DASHBOARD_SERVICE_URL = os.getenv("DASHBOARD_SERVICE_URL", "https://hfg-dashboard.onrender.com")
+
+def _notify_store_updated() -> None:
+    try:
+        requests.post(
+            f"{DASHBOARD_SERVICE_URL}/internal/ws/store-updated",
+            json={},
+            timeout=3,
+        )
+    except Exception as e:
+        current_app.logger.warning("store_updated notify failed: %s", e)
 
 @collaborator_bp.route('/collaborators', methods=['POST'])
 def create_collaborator():
@@ -108,6 +122,7 @@ def add_product(collaborator_id):
     )
     db.session.add(p)
     db.session.commit()
+    _notify_store_updated()
     return jsonify({'product_id': str(p.product_id)}), 201
 
 @collaborator_bp.route('/collaborators/<uuid:collaborator_id>/products', methods=['GET'])
@@ -139,6 +154,7 @@ def update_product(product_id):
         if field in data: setattr(p, field, data[field])
     p.updated_at = datetime.utcnow()
     db.session.commit()
+    _notify_store_updated()
     return jsonify({'message': 'Updated'}), 200
 
 @collaborator_bp.route('/products/<uuid:product_id>', methods=['DELETE'])
@@ -148,4 +164,5 @@ def delete_product(product_id):
         return jsonify({'error': 'Not found'}), 404
     db.session.delete(p)
     db.session.commit()
+    _notify_store_updated()
     return jsonify({'message': 'Deleted'}), 200
