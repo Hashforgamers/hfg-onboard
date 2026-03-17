@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify , current_app
 from db.extensions import db
 import uuid
 from datetime import datetime
+import os
+import requests
 from models.collaborator import Collaborator
 from models.product import Product
 from models.vendor import Vendor
@@ -15,6 +17,19 @@ from services.order_notification import NotificationService
 from flask_mail import Message
 
 order_bp = Blueprint('order', __name__)
+
+DASHBOARD_SERVICE_URL = os.getenv("DASHBOARD_SERVICE_URL", "https://hfg-dashboard.onrender.com")
+
+def _notify_store_updated(vendor_id: int | None = None) -> None:
+    try:
+        payload = {"vendor_id": int(vendor_id)} if vendor_id else {}
+        requests.post(
+            f"{DASHBOARD_SERVICE_URL}/internal/ws/store-updated",
+            json=payload,
+            timeout=3,
+        )
+    except Exception as e:
+        current_app.logger.warning("store_updated notify failed: %s", e)
 
 @order_bp.route('/vendor/products', methods=['GET'])
 def vendor_all_products():
@@ -100,6 +115,7 @@ def place_order():
     ))
     db.session.commit()
     NotificationService.send_order_notification_email(order.order_id)
+    _notify_store_updated(cafe_id)
     return jsonify({'order_id': str(order.order_id)}), 201
 
 
