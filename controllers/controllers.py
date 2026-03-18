@@ -299,50 +299,34 @@ def upload_documents_to_cloudinary(files, vendor_id, cafe_name):
     return document_urls
 
 def save_vendor_documents(vendor_id, document_urls, document_submitted):
-    """
-    Save document information to database (fixed for your Document model)
-    """
+    """Save uploaded document metadata once; avoid duplicate inserts and loop commits."""
     try:
+        saved_count = 0
         for doc_type, doc_info in document_urls.items():
-            # Check if document was submitted
-            if document_submitted.get(doc_type, False):
-                new_document = Document(
-                    vendor_id=vendor_id,
-                    document_type=doc_type,
-                    document_url=doc_info['url'],
-                    public_id=doc_info['public_id'],
-                    uploaded_at=dt.utcnow(),
-                    status='unverified'  # Use 'status' instead of 'is_verified'
-                )
-                db.session.add(new_document)
-        
-        db.session.commit()
-        current_app.logger.info(f"Saved {len(document_urls)} documents for vendor {vendor_id}")
-        
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"Error saving documents to database: {str(e)}")
-        raise e
+            if not document_submitted.get(doc_type, False):
+                continue
 
-    """
-    Save document information to database
-    """
-    try:
-        for doc_type, doc_info in document_urls.items():
-            # Check if document was submitted
-            if document_submitted.get(doc_type, False):
-                new_document = Document(
-                    vendor_id=vendor_id,
-                    document_type=doc_type,
-                    document_url=doc_info['url'],
-                    public_id=doc_info['public_id'],
-                    status="unverified",  # Initially not verified
-                    uploaded_at=dt.utcnow()
+            existing = Document.query.filter_by(vendor_id=vendor_id, document_type=doc_type).first()
+            if existing:
+                existing.document_url = doc_info['url']
+                existing.public_id = doc_info['public_id']
+                existing.status = 'unverified'
+                existing.uploaded_at = dt.utcnow()
+            else:
+                db.session.add(
+                    Document(
+                        vendor_id=vendor_id,
+                        document_type=doc_type,
+                        document_url=doc_info['url'],
+                        public_id=doc_info['public_id'],
+                        uploaded_at=dt.utcnow(),
+                        status='unverified'
+                    )
                 )
-                db.session.add(new_document)
-                db.session.commit()
-        current_app.logger.info(f"Saved {len(document_urls)} documents for vendor {vendor_id}")
-        
+            saved_count += 1
+
+        db.session.commit()
+        current_app.logger.info(f"Saved {saved_count} documents for vendor {vendor_id}")
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error saving documents to database: {str(e)}")

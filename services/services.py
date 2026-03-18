@@ -42,6 +42,7 @@ from google.oauth2 import service_account
 import io
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+from threading import Thread
 from flask_mail import Message
 from db.extensions import mail
 
@@ -82,26 +83,28 @@ class VendorService:
     
         try:
            vendor_account = None
-           vendor_account_email = data.get("vendor_account_email")
-        
-        # Create or get VendorAccount
-           if vendor_account_email:
-              vendor_account = VendorAccount.query.filter_by(email=vendor_account_email).first()
-              if not vendor_account:
-                  vendor_account = VendorAccount(email=vendor_account_email)
-                  db.session.add(vendor_account)
-                  db.session.commit()  # Commit immediately to ensure it's saved
-                  current_app.logger.info(f"Created and committed new VendorAccount for {vendor_account_email} with ID: {vendor_account.id}")
-                
-                # Verify it was saved
-                  saved_account = VendorAccount.query.get(vendor_account.id)
-                  if saved_account:
-                     current_app.logger.info(f"VendorAccount verified saved: ID={saved_account.id}, Email={saved_account.email}")
-                  else:
-                     current_app.logger.error(f"VendorAccount NOT saved properly")
-                     raise Exception("Failed to save VendorAccount")
-              else:
-                  current_app.logger.info(f"Found existing VendorAccount with ID: {vendor_account.id}")
+           contact_payload = data.get("contact_info", {}) or {}
+           vendor_account_email = (data.get("vendor_account_email") or contact_payload.get("email") or "").strip().lower()
+
+           if not vendor_account_email:
+               raise ValueError("vendor_account_email (or contact email) is required")
+
+           # Create or get VendorAccount (case-insensitive)
+           vendor_account = (
+               VendorAccount.query
+               .filter(func.lower(VendorAccount.email) == vendor_account_email)
+               .first()
+           )
+           if not vendor_account:
+               vendor_account = VendorAccount(email=vendor_account_email)
+               db.session.add(vendor_account)
+               db.session.flush()
+               current_app.logger.info(f"Created VendorAccount for {vendor_account_email} with ID: {vendor_account.id}")
+           else:
+               current_app.logger.info(f"Found existing VendorAccount with ID: {vendor_account.id}")
+
+           # Keep normalized value for downstream workflows and transparency
+           data["vendor_account_email"] = vendor_account_email
 
         # Step 1: Vendor creation with explicit account_id
            vendor = Vendor(
@@ -154,9 +157,10 @@ class VendorService:
                current_app.logger.info(f"Will auto-generate password for vendor {vendor.id}")
 
         # Step 3: Contact Info
-           contact = data.get("contact_info", {})
+           contact = data.get("contact_info", {}) or {}
+           contact_email = (contact.get("email") or vendor_account_email).strip().lower()
            contact_info = ContactInfo(
-              email=contact.get("email"),
+              email=contact_email,
               phone=contact.get("phone"),
               parent_id=vendor.id,
               parent_type="vendor"
@@ -712,63 +716,60 @@ class VendorService:
 
     @staticmethod
     def generate_credentials_and_notify(vendor):
-        """Generate credentials or link to existing ones, then notify vendor."""
-    
-        # Safe email retrieval with fallback
-        email = None
-    
-        if vendor.account and vendor.account.email:
-            # First try: get email from vendor account
-            email = vendor.account.email
-            current_app.logger.debug(f"Using vendor account email: {email}")
-        else:
-            # Fallback: get email from contact info
-            contact_info = ContactInfo.query.filter_by(
-               parent_id=vendor.id, 
-               parent_type="vendor"
-             ).first()
-        
-            if contact_info and contact_info.email:
-              email = contact_info.email
-              current_app.logger.debug(f"Using contact info email: {email}")
-            else:
-               current_app.logger.error(f"No email found for vendor {vendor.id}")
-               raise ValueError(f"No email found for vendor {vendor.id}")
-    
-        current_app.logger.debug(f"Processing credentials for vendor {vendor.id} with email: {email}")
+        """Generate account credentials and notify vendor with login details."""
 
-        # Step 1: Check if PasswordManager already exists for this email
-        existing_password_manager = (
-           db.session.query(PasswordManager)
-           .join(Vendor, Vendor.id == PasswordManager.parent_id)
-            .join(ContactInfo, and_(
-               ContactInfo.parent_id == Vendor.id,
-               ContactInfo.parent_type == 'vendor'
-           ))
-           .filter(ContactInfo.email == email)
-           .filter(PasswordManager.parent_type == 'vendor') 
-           .first()
-        )
+        contact_info = ContactInfo.query.filter_by(
+            parent_id=vendor.id,
+            parent_type="vendor"
+        ).first()
+        contact_email = (contact_info.email or "").strip().lower() if contact_info and contact_info.email else None
+        parent_email = (vendor.account.email or "").strip().lower() if vendor.account and vendor.account.email else None
+        email = parent_email or contact_email
+
+        if not email:
+            current_app.logger.error(f"No email found for vendor {vendor.id}")
+            raise ValueError(f"No email found for vendor {vendor.id}")
+
+        if parent_email:
+            current_app.logger.debug(f"Using parent vendor account email for credentials: {parent_email}")
+        else:
+            current_app.logger.debug(f"Using contact email for credentials: {email}")
+
+        current_app.logger.debug(f"Processing credentials for vendor {vendor.id} with login email: {email}")
+
+        # Step 1: Reuse credentials only when this vendor is part of an existing account.
+        existing_password_manager = None
+        if vendor.account_id:
+            existing_password_manager = (
+                db.session.query(PasswordManager)
+                .join(
+                    Vendor,
+                    and_(
+                        Vendor.id == PasswordManager.parent_id,
+                        PasswordManager.parent_type == 'vendor'
+                    )
+                )
+                .filter(Vendor.account_id == vendor.account_id, Vendor.id != vendor.id)
+                .order_by(PasswordManager.id.asc())
+                .first()
+            )
 
         if existing_password_manager:
             # Already has credentials — link this vendor to same account
-            password_manager = existing_password_manager
-            username = email
-            password = "****** (existing account - check previous email)"
-            current_app.logger.info(f"Linked vendor {vendor.id} to existing credentials.")
+            password = existing_password_manager.password or ""
+            current_app.logger.info(f"Linked vendor {vendor.id} to existing account credentials.")
         else:
             # ✅ UPDATED: Check if password was provided during onboarding
             if hasattr(vendor, '_temp_password') and vendor._temp_password:
-                username = email
                 password = vendor._temp_password
                 current_app.logger.info(f"Using provided password for vendor {vendor.id}")
             else:
                 # Generate new credentials
-                username, password = generate_credentials()
+                _, password = generate_credentials()
                 current_app.logger.info(f"Generated new password for vendor {vendor.id}")
             
             password_manager = PasswordManager(
-              userid=vendor.id,
+               userid=vendor.id,
                password=password,
                parent_id=vendor.id,
                parent_type="vendor"
@@ -790,9 +791,16 @@ class VendorService:
         # ✅ UPDATED: Get the PIN and pass to email
         vendor_pin = VendorPin.query.filter_by(vendor_id=vendor.id).first()
         pin_code = vendor_pin.pin_code if vendor_pin else "N/A"
-        
-        
-        VendorService.send_welcome_email(vendor, password, email, pin_code)
+
+        # If password is hashed (existing account), don't send hashed value over email.
+        password_to_email = password
+        if isinstance(password_to_email, str) and (
+            password_to_email.startswith("pbkdf2:") or
+            password_to_email.startswith("scrypt:")
+        ):
+            password_to_email = None
+
+        VendorService.send_welcome_email(vendor, password_to_email, email, pin_code, parent_email=parent_email)
         current_app.logger.info(f"Completed credentials generation for vendor {vendor.id}")
 
     @staticmethod
@@ -1542,262 +1550,133 @@ class VendorService:
     
     @staticmethod
     def send_welcome_email(vendor, password, email, pin_code, parent_email=None):
-        """Send dark-themed welcome email with vendor credentials."""
+        """Send standardized onboarding email with vendor credentials."""
         try:
             html_body = VendorService.build_welcome_email_html(vendor, password, email, pin_code, parent_email)
+            text_body = VendorService.build_welcome_email_text(vendor, password, email, pin_code, parent_email)
             msg = Message(
-                subject="Welcome to Hash for Gamers — Your Vendor Credentials",
+                subject=f"Hash Onboarding Complete | {vendor.cafe_name} | Credentials",
                 sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@hashforgamers.com'),
                 recipients=[email]
             )
+            msg.body = text_body
             msg.html = html_body
-            mail.send(msg)
-            current_app.logger.info(f"Welcome email sent successfully to {email} for vendor {vendor.id}")
+            app_obj = current_app._get_current_object()
+            Thread(
+                target=VendorService._send_email_async,
+                args=(app_obj, msg, email, vendor.id),
+                daemon=True,
+            ).start()
+            current_app.logger.info(f"Welcome email queued for {email} (vendor {vendor.id})")
         except Exception as e:
             current_app.logger.error(f"Failed to send welcome email to {email} for vendor {vendor.id}: {str(e)}")
             pass  # Don't raise — email failure shouldn't stop onboarding
 
     @staticmethod
+    def _send_email_async(app, msg, email, vendor_id):
+        with app.app_context():
+            try:
+                mail.send(msg)
+                app.logger.info(f"Welcome email sent successfully to {email} for vendor {vendor_id}")
+            except Exception as exc:
+                app.logger.error(f"Failed to send welcome email to {email} for vendor {vendor_id}: {str(exc)}")
+
+    @staticmethod
+    def build_welcome_email_text(vendor, password, email, pin_code, parent_email=None):
+        dashboard_url = os.getenv("HASH_DASHBOARD_URL", "https://dashboard.hashforgamers.com")
+        password_line = (
+            f"Password: {password}"
+            if password
+            else "Password: Use your existing password. If forgotten, reset from login."
+        )
+
+        lines = [
+            "Hash for Gamers - Onboarding Complete",
+            "",
+            f"Hello {vendor.owner_name},",
+            "",
+            f"Your cafe '{vendor.cafe_name}' has been onboarded successfully.",
+            "",
+            "Login Credentials",
+            f"Login Email: {email}",
+            password_line,
+            f"Vendor PIN: {pin_code}",
+            "",
+            f"Dashboard: {dashboard_url}",
+            f"Vendor ID: {vendor.id}",
+            "Status: Pending Verification",
+        ]
+        if parent_email and parent_email != email:
+            lines.append(f"Parent Account Email: {parent_email}")
+        lines.extend([
+            "",
+            "Please keep credentials confidential.",
+            "If you did not request this onboarding, contact Hash support immediately.",
+            "",
+            "Team Hash"
+        ])
+        return "\n".join(lines)
+
+    @staticmethod
     def build_welcome_email_html(vendor, password, email, pin_code, parent_email=None):
-        """Build the dark-themed welcome email HTML."""
-        return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Welcome - Hash for Gamers</title>
-</head>
-<body style="margin:0;padding:0;background-color:#080808;font-family:'Segoe UI',Arial,sans-serif;">
+        """Build simple, standards-based HTML email to reduce spam risk."""
+        dashboard_url = os.getenv("HASH_DASHBOARD_URL", "https://dashboard.hashforgamers.com")
+        password_html = (
+            f"<strong>{password}</strong>"
+            if password
+            else "Use your existing password. If forgotten, reset from login."
+        )
+        parent_row = (
+            f"<tr><td style='padding:8px 0;color:#111827;'>Parent Account Email</td>"
+            f"<td style='padding:8px 0;color:#111827;'><strong>{parent_email}</strong></td></tr>"
+            if parent_email and parent_email != email else ""
+        )
 
-  <table width="100%" cellpadding="0" cellspacing="0" border="0"
-         style="background-color:#080808;padding:40px 0;">
-    <tr>
-      <td align="center">
-
-        <table width="600" cellpadding="0" cellspacing="0" border="0"
-               style="background-color:#0f0f0f;border-radius:12px;border:1px solid #1f1f1f;
-                      overflow:hidden;box-shadow:0 4px 40px rgba(0,0,0,0.8);">
-
-          <!-- HEADER -->
-          <tr>
-            <td style="background:linear-gradient(135deg,#0f0f0f 0%,#001a0a 50%,#0f0f0f 100%);
-                       border-bottom:1px solid #003300;padding:36px 40px;text-align:center;">
-              <div style="display:inline-block;background:#001a0a;border:1px solid #00cc44;
-                          border-radius:8px;padding:8px 20px;margin-bottom:20px;">
-                <span style="color:#00cc44;font-size:13px;font-weight:700;
-                             letter-spacing:3px;text-transform:uppercase;">
-                  Hash for Gamers
-                </span>
-              </div>
-              <div style="margin:0 auto 16px;width:64px;height:64px;background:#001a0a;
-                          border:2px solid #00cc44;border-radius:50%;line-height:64px;
-                          text-align:center;font-size:28px;">
-                🎮
-              </div>
-              <h1 style="color:#ffffff;font-size:22px;font-weight:700;
-                         margin:0;letter-spacing:0.5px;">
-                Welcome to Hash for Gamers!
-              </h1>
-              <p style="color:#888888;font-size:13px;margin:8px 0 0;letter-spacing:0.5px;">
-                Your gaming cafe has been successfully onboarded
-              </p>
-            </td>
-          </tr>
-
-          <!-- BODY -->
-          <tr>
-            <td style="padding:40px 40px 20px;">
-              <p style="color:#cccccc;font-size:15px;line-height:1.6;margin:0 0 24px;">
-                Dear <strong style="color:#ffffff;">{vendor.owner_name}</strong>,
-              </p>
-              <p style="color:#cccccc;font-size:15px;line-height:1.6;margin:0 0 32px;">
-                Congratulations! <strong style="color:#ffffff;">{vendor.cafe_name}</strong>
-                has been successfully registered with Hash for Gamers.
-                Below are your credentials — please keep them safe.
-              </p>
-
-              <!-- Credentials Box -->
-              <table width="100%" cellpadding="0" cellspacing="0" border="0"
-                     style="background-color:#0a0a0a;border:1px solid #1a1a1a;
-                            border-left:4px solid #00cc44;border-radius:8px;margin-bottom:32px;">
-                <tr>
-                  <td style="padding:24px;">
-                    <p style="color:#00cc44;font-size:12px;font-weight:700;
-                               letter-spacing:2px;text-transform:uppercase;margin:0 0 20px;">
-                      Your Vendor Credentials
-                    </p>
-
-                    <!-- Login Email -->
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0"
-                           style="background:#111111;border-radius:6px;
-                                  border:1px solid #1f1f1f;margin-bottom:10px;">
-                      <tr>
-                        <td style="padding:14px 18px;">
-                          <span style="color:#888888;font-size:11px;
-                                       text-transform:uppercase;letter-spacing:1px;">
-                            Login Email
-                          </span><br/>
-                          <span style="color:#00cc44;font-family:monospace;
-                                       font-size:15px;font-weight:600;">
-                            {email}
-                          </span>
-                        </td>
-                      </tr>
-                    </table>
-
-                    <!-- Password -->
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0"
-                           style="background:#111111;border-radius:6px;
-                                  border:1px solid #1f1f1f;margin-bottom:10px;">
-                      <tr>
-                        <td style="padding:14px 18px;">
-                          <span style="color:#888888;font-size:11px;
-                                       text-transform:uppercase;letter-spacing:1px;">
-                            Password
-                          </span><br/>
-                          <span style="color:#00cc44;font-family:monospace;
-                                       font-size:15px;font-weight:600;">
-                            {password}
-                          </span>
-                        </td>
-                      </tr>
-                    </table>
-
-                    <!-- Vendor PIN -->
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0"
-                           style="background:#111111;border-radius:6px;
-                                  border:1px solid #1f1f1f;margin-bottom:10px;">
-                      <tr>
-                        <td style="padding:14px 18px;">
-                          <span style="color:#888888;font-size:11px;
-                                       text-transform:uppercase;letter-spacing:1px;">
-                            Vendor PIN (Dashboard Access)
-                          </span><br/>
-                          <span style="color:#00cc44;font-family:monospace;
-                                       font-size:22px;font-weight:700;letter-spacing:6px;">
-                            {pin_code}
-                          </span>
-                        </td>
-                      </tr>
-                    </table>
-
-                    <!-- Parent Account Email (if present) -->
-                    {f'''
-                    <table width="100%" cellpadding="0" cellspacing="0" border="0"
-                           style="background:#111111;border-radius:6px;
-                                  border:1px solid #1f1f1f;margin-bottom:10px;">
-                      <tr>
-                        <td style="padding:14px 18px;">
-                          <span style="color:#888888;font-size:11px;
-                                       text-transform:uppercase;letter-spacing:1px;">
-                            Contact Account Email
-                          </span><br/>
-                          <span style="color:#00cc44;font-family:monospace;
-                                       font-size:15px;font-weight:600;">
-                            {vendor.email}
-                          </span>
-                        </td>
-                      </tr>
-                    </table>
-                    ''' if parent_email else ''}
-
-                    <!-- Status Badge -->
-                    <div style="margin-top:16px;">
-                      <span style="color:#888888;font-size:11px;
-                                   text-transform:uppercase;letter-spacing:1px;">
-                        Account Status
-                      </span><br/>
-                      <span style="display:inline-block;margin-top:6px;
-                                   padding:5px 16px;background:#1a1a00;
-                                   color:#ffc107;border:1px solid #ffc107;
-                                   border-radius:20px;font-size:12px;font-weight:700;">
-                        Pending Verification
-                      </span>
-                    </div>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Next Steps -->
-              <table width="100%" cellpadding="0" cellspacing="0" border="0"
-                     style="background-color:#0a0a0a;border:1px solid #1a1a1a;
-                            border-radius:8px;margin-bottom:24px;">
-                <tr>
-                  <td style="padding:20px 24px;">
-                    <p style="color:#00cc44;font-size:12px;font-weight:700;
-                               letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">
-                      Next Steps
-                    </p>
-                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:6px 0;">
-                      &#9654;&nbsp; Our team will verify your submitted documents
-                    </p>
-                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:6px 0;">
-                      &#9654;&nbsp; You'll receive a confirmation email once verified
-                    </p>
-                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:6px 0;">
-                      &#9654;&nbsp; After verification, you can start using our platform
-                    </p>
-                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:6px 0;">
-                      &#9654;&nbsp; Keep your credentials safe and secure
-                    </p>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Important Info -->
-              <table width="100%" cellpadding="0" cellspacing="0" border="0"
-                     style="background-color:#0a0a0a;border:1px solid #1a1a1a;
-                            border-radius:8px;margin-bottom:24px;">
-                <tr>
-                  <td style="padding:20px 24px;">
-                    <p style="color:#00cc44;font-size:12px;font-weight:700;
-                               letter-spacing:2px;text-transform:uppercase;margin:0 0 14px;">
-                      Important Information
-                    </p>
-                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:4px 0;">
-                      <strong style="color:#ffffff;">Vendor ID:</strong> {vendor.id}
-                    </p>
-                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:4px 0;">
-                      <strong style="color:#ffffff;">Cafe Name:</strong> {vendor.cafe_name}
-                    </p>
-                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:4px 0;">
-                      <strong style="color:#ffffff;">Owner:</strong> {vendor.owner_name}
-                    </p>
-                    <p style="color:#aaaaaa;font-size:13px;line-height:1.7;margin:4px 0;">
-                      <strong style="color:#ffffff;">Login Email:</strong> {email}
-                    </p>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Security Notice -->
-              <p style="color:#555555;font-size:12px;line-height:1.6;margin:0 0 24px;">
-                <strong style="color:#888888;">Security Notice:</strong>
-                Please keep your login credentials secure and do not share them
-                with unauthorized personnel.
-              </p>
-            </td>
-          </tr>
-
-          <!-- FOOTER -->
-          <tr>
-            <td style="background-color:#0a0a0a;border-top:1px solid #1a1a1a;
-                       padding:24px 40px;text-align:center;">
-              <p style="color:#00cc44;font-size:12px;font-weight:700;
-                         letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">
-                Hash for Gamers
-              </p>
-              <p style="color:#333333;font-size:11px;margin:0;">
-                &copy; 2026 Hash for Gamers. All rights reserved.
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
+        return f"""<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hash Onboarding Complete</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;">
+            <tr>
+              <td style="padding:22px 24px;border-bottom:1px solid #e5e7eb;">
+                <p style="margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#16a34a;">Hash for Gamers</p>
+                <h1 style="margin:10px 0 0 0;font-size:20px;line-height:1.3;">Onboarding Complete</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;">
+                <p style="margin:0 0 12px 0;">Hello <strong>{vendor.owner_name}</strong>,</p>
+                <p style="margin:0 0 16px 0;line-height:1.6;">
+                  Your cafe <strong>{vendor.cafe_name}</strong> has been onboarded successfully.
+                </p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;padding:12px;">
+                  <tr><td style="padding:8px 0;color:#111827;">Login Email</td><td style="padding:8px 0;color:#111827;"><strong>{email}</strong></td></tr>
+                  <tr><td style="padding:8px 0;color:#111827;">Password</td><td style="padding:8px 0;color:#111827;">{password_html}</td></tr>
+                  <tr><td style="padding:8px 0;color:#111827;">Vendor PIN</td><td style="padding:8px 0;color:#111827;"><strong>{pin_code}</strong></td></tr>
+                  <tr><td style="padding:8px 0;color:#111827;">Vendor ID</td><td style="padding:8px 0;color:#111827;"><strong>{vendor.id}</strong></td></tr>
+                  {parent_row}
+                </table>
+                <p style="margin:16px 0 6px 0;line-height:1.6;">
+                  Dashboard: <a href="{dashboard_url}" style="color:#2563eb;text-decoration:none;">{dashboard_url}</a>
+                </p>
+                <p style="margin:6px 0 0 0;line-height:1.6;">Status: <strong>Pending Verification</strong></p>
+                <p style="margin:20px 0 0 0;font-size:12px;color:#6b7280;line-height:1.6;">
+                  Keep your credentials confidential. If you did not request this onboarding, contact Hash support immediately.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
 </html>"""
 
       
