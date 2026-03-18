@@ -9,6 +9,7 @@ from werkzeug.exceptions import HTTPException
 from .config import Config
 from db.extensions import db, migrate, mail, redis_client
 from controllers.controllers import vendor_bp
+from controllers.super_admin_controller import super_admin_bp
 from controllers.vendor_games import vendor_games_bp
 from controllers.collaborator_controller import collaborator_bp
 from controllers.order_controller import order_bp
@@ -39,6 +40,7 @@ def create_app():
     
     # Register blueprints
     app.register_blueprint(vendor_bp, url_prefix='/api')
+    app.register_blueprint(super_admin_bp, url_prefix='/api')
     app.register_blueprint(vendor_games_bp, url_prefix='/api')
     app.register_blueprint(collaborator_bp, url_prefix='/api')
     app.register_blueprint(order_bp, url_prefix='/api')
