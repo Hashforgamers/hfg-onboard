@@ -2,9 +2,13 @@
 
 from flask import Blueprint, request, jsonify, current_app
 import os
+import re
+import random
+import string
 from services.services import VendorService
 from werkzeug.utils import secure_filename
 import json
+from flask_mail import Message
 from services.cloudinary_services import CloudinaryGameImageService
 from models.document import Document
 
@@ -16,7 +20,7 @@ from models.uploadedImage import Image
 from models.bookingQueue import BookingQueue
 from models.booking import Booking
 from models.accessBookingCode import AccessBookingCode
-from db.extensions import db
+from db.extensions import db, mail, redis_client
 from services.otp_service import OTPService
 from models.transaction import Transaction
 from models.availableGame import AvailableGame
@@ -63,6 +67,46 @@ FULL_DAY_TO_SHORT = {
 
 # Adjust this window as needed (e.g., 365 for a year)
 FUTURE_WINDOW_DAYS = int(os.getenv("SLOT_ROLLING_WINDOW_DAYS", "60"))
+SELF_ONBOARD_OTP_EXPIRY_SECONDS = int(os.getenv("SELF_ONBOARD_OTP_EXPIRY_SECONDS", "300"))
+SELF_ONBOARD_VERIFY_EXPIRY_SECONDS = int(os.getenv("SELF_ONBOARD_VERIFY_EXPIRY_SECONDS", "1800"))
+SELF_ONBOARD_OTP_COOLDOWN_SECONDS = int(os.getenv("SELF_ONBOARD_OTP_COOLDOWN_SECONDS", "45"))
+
+
+def _normalize_email(value):
+    return str(value or "").strip().lower()
+
+
+def _is_valid_email(value):
+    return re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", value or "") is not None
+
+
+def _self_onboard_otp_key(email):
+    return f"self_onboard:otp:{email}"
+
+
+def _self_onboard_otp_cooldown_key(email):
+    return f"self_onboard:otp_cooldown:{email}"
+
+
+def _self_onboard_verify_key(email):
+    return f"self_onboard:verified:{email}"
+
+
+def _self_onboard_verify_token_key(token):
+    return f"self_onboard:verify_token:{token}"
+
+
+def _consume_self_onboard_verification_token(token, email):
+    token_key = _self_onboard_verify_token_key(token)
+    stored_email = _normalize_email(redis_client.get(token_key))
+    normalized_email = _normalize_email(email)
+    if not stored_email:
+        return False, "Email verification token expired. Please verify email again."
+    if stored_email != normalized_email:
+        return False, "Email verification token does not match the owner email."
+    redis_client.delete(token_key)
+    redis_client.setex(_self_onboard_verify_key(normalized_email), SELF_ONBOARD_VERIFY_EXPIRY_SECONDS, "1")
+    return True, None
 
 
 def normalize_day_key(day_value):
@@ -349,6 +393,103 @@ def safe_strptime(date_str, format_str):
         current_app.logger.error(f"Unexpected error parsing date '{date_str}': {e}")
         return None
 
+
+@vendor_bp.route('/self-onboard/send-email-otp', methods=['POST'])
+def send_self_onboard_email_otp():
+    try:
+        data = request.get_json(silent=True) or {}
+        email = _normalize_email(data.get("email"))
+        cafe_name = str(data.get("cafe_name") or "your gaming cafe").strip()
+
+        if not _is_valid_email(email):
+            return jsonify({"success": False, "message": "Valid email is required"}), 400
+
+        cooldown_key = _self_onboard_otp_cooldown_key(email)
+        if redis_client.exists(cooldown_key):
+            return jsonify({
+                "success": False,
+                "message": "Please wait before requesting another OTP."
+            }), 429
+
+        otp = ''.join(random.choices(string.digits, k=6))
+        redis_client.setex(_self_onboard_otp_key(email), SELF_ONBOARD_OTP_EXPIRY_SECONDS, otp)
+        redis_client.setex(cooldown_key, SELF_ONBOARD_OTP_COOLDOWN_SECONDS, "1")
+        redis_client.delete(_self_onboard_verify_key(email))
+
+        msg = Message(
+            subject="Hash Self Onboarding - Email Verification OTP",
+            recipients=[email],
+            sender=current_app.config.get("MAIL_DEFAULT_SENDER"),
+        )
+        msg.body = (
+            f"Hello,\n\n"
+            f"Use OTP {otp} to verify your email for Hash cafe onboarding.\n"
+            f"Cafe: {cafe_name}\n\n"
+            f"This OTP expires in {SELF_ONBOARD_OTP_EXPIRY_SECONDS // 60} minutes.\n"
+            f"If you did not request this, you can ignore this email.\n\n"
+            "Team Hash"
+        )
+        msg.html = f"""
+        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:560px;margin:0 auto;">
+          <h2 style="margin:0 0 12px;">Hash Cafe Self Onboarding</h2>
+          <p style="margin:0 0 8px;">Use this OTP to verify your email:</p>
+          <div style="font-size:32px;font-weight:700;letter-spacing:8px;padding:12px 16px;border:1px solid #d1d5db;border-radius:8px;display:inline-block;">
+            {otp}
+          </div>
+          <p style="margin:16px 0 8px;">Cafe: <strong>{cafe_name}</strong></p>
+          <p style="margin:0 0 8px;">This OTP expires in {SELF_ONBOARD_OTP_EXPIRY_SECONDS // 60} minutes.</p>
+          <p style="color:#6b7280;margin:0;">If you did not request this, ignore this email.</p>
+        </div>
+        """
+
+        mail.send(msg)
+
+        return jsonify({
+            "success": True,
+            "message": "OTP sent successfully.",
+            "otp_expires_in_seconds": SELF_ONBOARD_OTP_EXPIRY_SECONDS
+        }), 200
+    except Exception as exc:
+        current_app.logger.error(f"send_self_onboard_email_otp failed: {str(exc)}", exc_info=True)
+        return jsonify({"success": False, "message": "Failed to send OTP"}), 500
+
+
+@vendor_bp.route('/self-onboard/verify-email-otp', methods=['POST'])
+def verify_self_onboard_email_otp():
+    try:
+        data = request.get_json(silent=True) or {}
+        email = _normalize_email(data.get("email"))
+        otp = str(data.get("otp") or "").strip()
+
+        if not _is_valid_email(email) or not otp:
+            return jsonify({"success": False, "message": "Email and OTP are required"}), 400
+
+        stored_otp = str(redis_client.get(_self_onboard_otp_key(email)) or "").strip()
+        if not stored_otp:
+            return jsonify({"success": False, "message": "OTP expired. Please request again."}), 400
+        if stored_otp != otp:
+            return jsonify({"success": False, "message": "Invalid OTP"}), 400
+
+        redis_client.delete(_self_onboard_otp_key(email))
+        redis_client.setex(_self_onboard_verify_key(email), SELF_ONBOARD_VERIFY_EXPIRY_SECONDS, "1")
+        verification_token = ''.join(random.choices(string.ascii_letters + string.digits, k=40))
+        redis_client.setex(
+            _self_onboard_verify_token_key(verification_token),
+            SELF_ONBOARD_VERIFY_EXPIRY_SECONDS,
+            email,
+        )
+
+        return jsonify({
+            "success": True,
+            "message": "Email verified successfully.",
+            "verification_token": verification_token,
+            "verification_expires_in_seconds": SELF_ONBOARD_VERIFY_EXPIRY_SECONDS
+        }), 200
+    except Exception as exc:
+        current_app.logger.error(f"verify_self_onboard_email_otp failed: {str(exc)}", exc_info=True)
+        return jsonify({"success": False, "message": "OTP verification failed"}), 500
+
+
 @vendor_bp.route('/onboard', methods=['POST'])
 def onboard_vendor():
     current_app.logger.debug("Received onboarding request")
@@ -368,6 +509,16 @@ def onboard_vendor():
     except json.JSONDecodeError:
         current_app.logger.error("Invalid JSON format in form data")
         return jsonify({'message': 'Invalid JSON format'}), 400
+
+    verification_token = str(data.pop("self_onboard_email_verification_token", "") or "").strip()
+    contact_email = _normalize_email((data.get("contact_info") or {}).get("email"))
+    if verification_token:
+        valid, verify_error = _consume_self_onboard_verification_token(verification_token, contact_email)
+        if not valid:
+            current_app.logger.warning(f"Self-onboard email verification failed: {verify_error}")
+            return jsonify({'message': verify_error}), 400
+    elif str(data.get("onboarding_source", "")).strip().lower() == "self_onboard":
+        return jsonify({'message': 'Email verification is required before onboarding'}), 400
 
     # Extract vendor_account_email from contact_info
 
@@ -443,12 +594,12 @@ def onboard_vendor():
         transformed_address = {
             'address_type': 'business',
             'addressLine1': address_data.get('street', ''),
-            'addressLine2': '',
+            'addressLine2': address_data.get('city', ''),
             'pincode': address_data.get('zipCode', ''),
             'state': address_data.get('state', ''),
             'country': address_data.get('country', ''),
-            'latitude': None,
-            'longitude': None
+            'latitude': address_data.get('latitude'),
+            'longitude': address_data.get('longitude')
         }
         data['physicalAddress'] = transformed_address
         current_app.logger.debug(f"Transformed address data: {data['physicalAddress']}")
