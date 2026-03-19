@@ -1040,7 +1040,7 @@ class VendorService:
             raise
         
     @staticmethod
-    def get_all_gaming_cafe():
+    def get_all_gaming_cafe(include_inactive: bool = False):
         """
         Retrieve all vendors with their statuses, timing info, amenities, images,
         and payment methods for the salesperson dashboard. Returns ALL cafes.
@@ -1070,12 +1070,35 @@ class VendorService:
                         continue
                 return text or None
 
+            latest_status_ts = (
+                db.session.query(
+                    VendorStatus.vendor_id.label("vendor_id"),
+                    func.max(VendorStatus.updated_at).label("updated_at"),
+                )
+                .group_by(VendorStatus.vendor_id)
+                .subquery()
+            )
+            latest_status = (
+                db.session.query(
+                    VendorStatus.vendor_id.label("vendor_id"),
+                    VendorStatus.status.label("status"),
+                )
+                .join(
+                    latest_status_ts,
+                    and_(
+                        latest_status_ts.c.vendor_id == VendorStatus.vendor_id,
+                        latest_status_ts.c.updated_at == VendorStatus.updated_at,
+                    ),
+                )
+                .subquery()
+            )
+
             # Step 1: Fetch core vendor data with a single JOIN query (no pagination)
-            results = db.session.query(
+            query = db.session.query(
                 Vendor.id.label('vendor_id'),
                 Vendor.cafe_name,
                 Vendor.owner_name,
-                VendorStatus.status,
+                latest_status.c.status,
                 Vendor.created_at,
                 Vendor.updated_at,
                 ContactInfo.email,
@@ -1091,8 +1114,8 @@ class VendorService:
                 Timing.closing_time,
                 func.count(Document.id).label('total_documents'),
                 func.sum(case((Document.status == 'verified', 1), else_=0)).label('verified_documents')
-            ).join(
-                VendorStatus, VendorStatus.vendor_id == Vendor.id
+            ).outerjoin(
+                latest_status, latest_status.c.vendor_id == Vendor.id
             ).join(
                 Timing, Timing.id == Vendor.timing_id
             ).outerjoin(
@@ -1107,11 +1130,16 @@ class VendorService:
                     PhysicalAddress.parent_type == 'vendor',
                     PhysicalAddress.is_active == True
                 )
-            ).group_by(
+            )
+
+            if not include_inactive:
+                query = query.filter(func.lower(func.coalesce(latest_status.c.status, "pending_verification")) == "active")
+
+            results = query.group_by(
                 Vendor.id,
                 Vendor.cafe_name,
                 Vendor.owner_name,
-                VendorStatus.status,
+                latest_status.c.status,
                 Vendor.created_at,
                 Vendor.updated_at,
                 ContactInfo.email,
@@ -1133,6 +1161,14 @@ class VendorService:
                 return {"vendors": []}
 
             vendor_ids = [result.vendor_id for result in results]
+            subscription_map = {}
+            enforce_subscription_filter = False
+            try:
+                from services.super_admin_service import SuperAdminService
+                subscription_map = SuperAdminService._subscription_snapshot_map(vendor_ids)  # noqa: SLF001
+                enforce_subscription_filter = not include_inactive
+            except Exception as sub_exc:
+                current_app.logger.warning("Failed to load subscription snapshot for app listing: %s", sub_exc)
 
             # Step 1.5: Fetch per-day operating hours (dashboard config)
             config_rows = (
@@ -1196,6 +1232,10 @@ class VendorService:
 
             # Step 5: Combine all datasets
             for result in results:
+                sub_snapshot = subscription_map.get(result.vendor_id)
+                if enforce_subscription_filter and not bool((sub_snapshot or {}).get("is_active", False)):
+                    continue
+
                 vendor_cfg = config_map.get(result.vendor_id, {})
                 cfg = (
                     vendor_cfg.get(today_key)
@@ -1235,6 +1275,7 @@ class VendorService:
                     "verified_documents": result.verified_documents,
                     "amenities": amenities_map.get(result.vendor_id, []),
                     "images": images_map.get(result.vendor_id, []),
+                    "subscription": sub_snapshot,
                     "payment_methods": payment_methods_map.get(result.vendor_id, {
                         "Pay at Cafe": False,
                         "Hash": False

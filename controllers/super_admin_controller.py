@@ -63,6 +63,14 @@ def list_vendors():
     search = (request.args.get('search') or '').strip()
     verified_only = _parse_bool(request.args.get('verified_only'), False)
     subscription_state = (request.args.get('subscription_state') or '').strip().lower()
+    inactive_over_days = request.args.get('inactive_over_days')
+    if inactive_over_days not in {None, ""}:
+        try:
+            inactive_over_days = max(0, int(inactive_over_days))
+        except ValueError:
+            return jsonify({"success": False, "message": "inactive_over_days must be an integer"}), 400
+    else:
+        inactive_over_days = None
 
     payload = SuperAdminService.list_vendors(
         page=page,
@@ -71,6 +79,7 @@ def list_vendors():
         search=search,
         verified_only=verified_only,
         subscription_state=subscription_state,
+        inactive_over_days=inactive_over_days,
     )
     return jsonify({"success": True, **payload}), 200
 
@@ -135,6 +144,29 @@ def list_subscriptions():
     search = (request.args.get('search') or '').strip()
     payload = SuperAdminService.list_subscriptions(page=page, per_page=per_page, status=status, search=search)
     return jsonify({"success": True, **payload}), 200
+
+
+@super_admin_bp.route('/admin/subscription-models', methods=['GET'])
+@require_super_admin
+def list_subscription_models():
+    ok, payload = SuperAdminService.list_subscription_models()
+    if not ok:
+        return jsonify({"success": False, "message": "Failed to fetch subscription models", "details": payload}), 400
+    return jsonify({"success": True, "models": payload}), 200
+
+
+@super_admin_bp.route('/admin/subscription-models', methods=['PUT'])
+@require_super_admin
+def update_subscription_models():
+    data = request.get_json(silent=True) or {}
+    models = data.get("models")
+    if not isinstance(models, list) or not models:
+        return jsonify({"success": False, "message": "models must be a non-empty list"}), 400
+
+    ok, payload = SuperAdminService.update_subscription_models(models)
+    if not ok:
+        return jsonify({"success": False, "message": "Failed to update subscription models", "details": payload}), 400
+    return jsonify({"success": True, "models": payload}), 200
 
 
 @super_admin_bp.route('/admin/vendors/<int:vendor_id>/subscriptions/change', methods=['POST'])
@@ -244,6 +276,25 @@ def reset_vendor_password(vendor_id):
     if not ok:
         return jsonify({"success": False, "message": message}), 400
     return jsonify({"success": True, "message": message, "data": payload}), 200
+
+
+@super_admin_bp.route('/admin/vendors/<int:vendor_id>/notifications/deactivation', methods=['POST'])
+@require_super_admin
+def send_vendor_deactivation_notification(vendor_id):
+    data = request.get_json(silent=True) or {}
+    reason = (data.get("reason") or "").strip() or None
+    sent_by = (data.get("sent_by") or "super_admin").strip()
+    ok, message, payload = SuperAdminService.send_deactivation_notice(vendor_id, reason=reason, sent_by=sent_by)
+    if not ok:
+        return jsonify({"success": False, "message": message}), 400
+    return jsonify({"success": True, "message": message, "data": payload}), 200
+
+
+@super_admin_bp.route('/admin/vendors/<int:vendor_id>/notifications/deactivation', methods=['GET'])
+@require_super_admin
+def vendor_deactivation_notification_summary(vendor_id):
+    summary = SuperAdminService.get_deactivation_notice_summary(vendor_id)
+    return jsonify({"success": True, "vendor_id": vendor_id, "summary": summary}), 200
 
 
 @super_admin_bp.route('/admin/settlements/daily', methods=['GET'])

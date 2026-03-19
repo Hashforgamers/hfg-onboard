@@ -1,7 +1,7 @@
 import os
 import random
 import string
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional, Dict, List
 
 import requests
@@ -50,6 +50,74 @@ class SuperAdminService:
     @staticmethod
     def _dashboard_service_url() -> str:
         return (os.getenv("DASHBOARD_SERVICE_URL") or "https://hfg-dashboard.onrender.com").rstrip("/")
+
+    @staticmethod
+    def _admin_proxy_headers() -> Dict[str, str]:
+        headers = {"Content-Type": "application/json"}
+        admin_key = (os.getenv("SUPER_ADMIN_API_KEY") or "").strip()
+        if admin_key:
+            headers["x-admin-key"] = admin_key
+        return headers
+
+    @staticmethod
+    def _ensure_deactivation_notice_table():
+        if SuperAdminService._has_table("vendor_deactivation_notifications"):
+            return
+        try:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS vendor_deactivation_notifications (
+                      id BIGSERIAL PRIMARY KEY,
+                      vendor_id INTEGER NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+                      sent_to_email VARCHAR(255),
+                      reason TEXT,
+                      loss_summary TEXT,
+                      sent_by VARCHAR(128) DEFAULT 'super_admin',
+                      sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    )
+                    """
+                )
+            )
+            db.session.execute(
+                text(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_vendor_deactivation_notice_vendor_sent
+                    ON vendor_deactivation_notifications (vendor_id, sent_at DESC)
+                    """
+                )
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        SuperAdminService._table_cache["vendor_deactivation_notifications"] = True
+
+    @staticmethod
+    def _deactivation_notice_summary_map(vendor_ids: List[int]) -> Dict[int, Dict[str, Any]]:
+        if not vendor_ids:
+            return {}
+        SuperAdminService._ensure_deactivation_notice_table()
+        if not SuperAdminService._has_table("vendor_deactivation_notifications"):
+            return {}
+
+        sql = text(
+            """
+            SELECT vendor_id,
+                   COUNT(*) AS sent_count,
+                   MAX(sent_at) AS last_sent_at
+            FROM vendor_deactivation_notifications
+            WHERE vendor_id IN :vendor_ids
+            GROUP BY vendor_id
+            """
+        ).bindparams(bindparam("vendor_ids", expanding=True))
+        rows = db.session.execute(sql, {"vendor_ids": vendor_ids}).mappings().all()
+        out: Dict[int, Dict[str, Any]] = {}
+        for row in rows:
+            out[int(row["vendor_id"])] = {
+                "sent_count": int(row["sent_count"] or 0),
+                "last_sent_at": row["last_sent_at"],
+            }
+        return out
 
     @staticmethod
     def _has_table(table_name: str) -> bool:
@@ -174,9 +242,14 @@ class SuperAdminService:
                 end_dt = end_dt.replace(tzinfo=timezone.utc)
             status = str(row["status"] or "").lower()
             is_active = status in {"active", "trialing", "past_due"} and (end_dt is None or end_dt >= now_utc)
+            inactive_for_days = None
+            if not is_active and end_dt is not None:
+                inactive_for_days = max((now_utc.date() - end_dt.date()).days, 0)
             result[int(row["vendor_id"])] = {
                 "status": status or "none",
                 "is_active": bool(is_active),
+                "inactive_for_days": inactive_for_days,
+                "inactive_over_90_days": bool((inactive_for_days or 0) >= 90),
                 "package": {
                     "id": row["package_id"],
                     "code": row["package_code"],
@@ -248,7 +321,15 @@ class SuperAdminService:
         return mapped
 
     @staticmethod
-    def list_vendors(page=1, per_page=20, status=None, search=None, verified_only=False, subscription_state=None):
+    def list_vendors(
+        page=1,
+        per_page=20,
+        status=None,
+        search=None,
+        verified_only=False,
+        subscription_state=None,
+        inactive_over_days: Optional[int] = None,
+    ):
         latest_status = SuperAdminService._latest_status_subquery()
 
         total_docs_subq = (
@@ -331,6 +412,7 @@ class SuperAdminService:
         pin_map = SuperAdminService._vendor_pin_map(vendor_ids)
         password_map = SuperAdminService._password_snapshot_map(vendor_ids)
         team_map = SuperAdminService._team_snapshot_map(vendor_ids)
+        notice_map = SuperAdminService._deactivation_notice_summary_map(vendor_ids)
 
         vendors = []
         for row in rows:
@@ -342,9 +424,17 @@ class SuperAdminService:
                     continue
                 if requested == "inactive" and is_active:
                     continue
+            if inactive_over_days is not None:
+                days_inactive = int((sub or {}).get("inactive_for_days") or 0)
+                if days_inactive < int(inactive_over_days):
+                    continue
 
             total_docs = int(row.total_documents or 0)
             verified_docs = int(row.verified_documents or 0)
+            raw_status = str(row.status or "pending_verification")
+            effective_status = raw_status
+            if raw_status in {"active", "inactive"}:
+                effective_status = "active" if bool((sub or {}).get("is_active", False)) else "inactive"
 
             vendors.append(
                 {
@@ -352,7 +442,8 @@ class SuperAdminService:
                     "cafe_name": row.cafe_name,
                     "owner_name": row.owner_name,
                     "account_id": row.account_id,
-                    "status": row.status or "pending_verification",
+                    "status": effective_status,
+                    "raw_status": raw_status,
                     "status_updated_at": row.status_updated_at,
                     "created_at": row.created_at,
                     "updated_at": row.updated_at,
@@ -377,6 +468,8 @@ class SuperAdminService:
                     or {
                         "status": "none",
                         "is_active": False,
+                        "inactive_for_days": None,
+                        "inactive_over_90_days": False,
                         "package": None,
                         "amount_paid": 0,
                         "period_start": None,
@@ -393,6 +486,7 @@ class SuperAdminService:
                         }),
                     },
                     "team_access": team_map.get(int(row.vendor_id), {"total": 0, "active": 0}),
+                    "deactivation_notifications": notice_map.get(int(row.vendor_id), {"sent_count": 0, "last_sent_at": None}),
                 }
             )
 
@@ -1125,6 +1219,98 @@ class SuperAdminService:
         }
 
     @staticmethod
+    def list_subscription_models():
+        url = f"{SuperAdminService._dashboard_service_url()}/api/packages/admin/catalog"
+        response = requests.get(url, headers=SuperAdminService._admin_proxy_headers(), timeout=10)
+        if response.status_code >= 400:
+            try:
+                payload = response.json()
+            except Exception:
+                payload = {"error": response.text}
+            return False, payload
+        body = response.json()
+        return True, body.get("models", [])
+
+    @staticmethod
+    def update_subscription_models(models: List[Dict[str, Any]]):
+        payload = {"models": models}
+        url = f"{SuperAdminService._dashboard_service_url()}/api/packages/admin/catalog"
+        response = requests.put(url, json=payload, headers=SuperAdminService._admin_proxy_headers(), timeout=12)
+        if response.status_code >= 400:
+            try:
+                out = response.json()
+            except Exception:
+                out = {"error": response.text}
+            return False, out
+        body = response.json()
+        return True, body.get("models", [])
+
+    @staticmethod
+    def send_deactivation_notice(vendor_id: int, reason: Optional[str] = None, sent_by: str = "super_admin"):
+        vendor = Vendor.query.get(vendor_id)
+        if not vendor:
+            return False, "Vendor not found", None
+
+        recipient = None
+        if vendor.account and vendor.account.email:
+            recipient = (vendor.account.email or "").strip().lower()
+        if not recipient:
+            contact = ContactInfo.query.filter_by(parent_id=vendor_id, parent_type="vendor").first()
+            recipient = (contact.email or "").strip().lower() if contact and contact.email else None
+        if not recipient:
+            return False, "No vendor email available for notification", None
+
+        losses = [
+            "Your cafe will be hidden from Hash consumer app listing.",
+            "New app-origin bookings will stop while inactive.",
+            "Active subscription benefits and campaign traffic will pause.",
+            "Realtime discoverability and wallet users cannot find your cafe."
+        ]
+        reason_text = (reason or "").strip()
+        msg = Message(
+            subject=f"Hash For Gamers · Cafe Status Update ({vendor.cafe_name})",
+            recipients=[recipient],
+        )
+        msg.body = (
+            f"Hello {vendor.owner_name or 'Partner'},\n\n"
+            f"We are notifying you that cafe '{vendor.cafe_name}' may be marked inactive on Hash For Gamers.\n\n"
+            f"{'Reason: ' + reason_text + '\\n\\n' if reason_text else ''}"
+            "What you lose while inactive:\n"
+            f"- {losses[0]}\n- {losses[1]}\n- {losses[2]}\n- {losses[3]}\n\n"
+            "To avoid deactivation, please renew subscription and complete pending compliance items.\n\n"
+            "Regards,\nHash For Gamers Ops"
+        )
+        mail.send(msg)
+
+        SuperAdminService._ensure_deactivation_notice_table()
+        if SuperAdminService._has_table("vendor_deactivation_notifications"):
+            db.session.execute(
+                text(
+                    """
+                    INSERT INTO vendor_deactivation_notifications
+                    (vendor_id, sent_to_email, reason, loss_summary, sent_by, sent_at)
+                    VALUES (:vendor_id, :sent_to_email, :reason, :loss_summary, :sent_by, now())
+                    """
+                ),
+                {
+                    "vendor_id": int(vendor_id),
+                    "sent_to_email": recipient,
+                    "reason": reason_text or None,
+                    "loss_summary": " | ".join(losses),
+                    "sent_by": sent_by,
+                },
+            )
+            db.session.commit()
+
+        summary = SuperAdminService._deactivation_notice_summary_map([int(vendor_id)]).get(int(vendor_id), {"sent_count": 1, "last_sent_at": datetime.utcnow()})
+        return True, "Deactivation notice sent", {"vendor_id": int(vendor_id), "sent_to": recipient, **summary}
+
+    @staticmethod
+    def get_deactivation_notice_summary(vendor_id: int) -> Dict[str, Any]:
+        summary = SuperAdminService._deactivation_notice_summary_map([int(vendor_id)]).get(int(vendor_id))
+        return summary or {"sent_count": 0, "last_sent_at": None}
+
+    @staticmethod
     def change_subscription(vendor_id: int, package_code: str, immediate: bool = True, unit_amount: float = 0.0):
         payload = {
             "package_code": package_code,
@@ -1132,23 +1318,25 @@ class SuperAdminService:
             "unit_amount": float(unit_amount or 0),
         }
         url = f"{SuperAdminService._dashboard_service_url()}/api/vendors/{vendor_id}/subscription/change"
-        response = requests.post(url, json=payload, timeout=8)
+        response = requests.post(url, json=payload, headers=SuperAdminService._admin_proxy_headers(), timeout=8)
         if response.status_code >= 400:
             try:
                 msg = response.json()
             except Exception:
                 msg = {"error": response.text}
             return False, msg
+        SuperAdminService.update_vendor_status(vendor_id, "active", changed_by="subscription_change")
         return True, response.json()
 
     @staticmethod
     def provision_default_subscription(vendor_id: int):
         url = f"{SuperAdminService._dashboard_service_url()}/api/vendors/{vendor_id}/subscription/provision-default"
-        response = requests.post(url, json={}, timeout=8)
+        response = requests.post(url, json={}, headers=SuperAdminService._admin_proxy_headers(), timeout=8)
         if response.status_code >= 400:
             try:
                 msg = response.json()
             except Exception:
                 msg = {"error": response.text}
             return False, msg
+        SuperAdminService.update_vendor_status(vendor_id, "active", changed_by="subscription_default")
         return True, response.json()
