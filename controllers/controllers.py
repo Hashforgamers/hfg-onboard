@@ -706,10 +706,12 @@ def get_vendor_dashboard():
 def get_all_gaming_cafe():
     """
     API to retrieve all vendors with their statuses and relevant information
-    for the salesperson dashboard. Returns ALL cafes.
+    for app/dashboard listing.
+    By default returns only active cafes; pass include_inactive=true for admin/debug.
     """
     try:
-        response_data = VendorService.get_all_gaming_cafe()
+        include_inactive = str(request.args.get("include_inactive", "")).strip().lower() in {"1", "true", "yes", "y"}
+        response_data = VendorService.get_all_gaming_cafe(include_inactive=include_inactive)
         return jsonify(response_data), 200
     except Exception as e:
         current_app.logger.error(f"Error fetching vendor dashboard: {e}")
