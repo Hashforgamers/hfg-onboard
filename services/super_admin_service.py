@@ -1267,6 +1267,7 @@ class SuperAdminService:
             "Realtime discoverability and wallet users cannot find your cafe."
         ]
         reason_text = (reason or "").strip()
+        reason_block = f"Reason: {reason_text}\n\n" if reason_text else ""
         msg = Message(
             subject=f"Hash For Gamers · Cafe Status Update ({vendor.cafe_name})",
             recipients=[recipient],
@@ -1274,7 +1275,7 @@ class SuperAdminService:
         msg.body = (
             f"Hello {vendor.owner_name or 'Partner'},\n\n"
             f"We are notifying you that cafe '{vendor.cafe_name}' may be marked inactive on Hash For Gamers.\n\n"
-            f"{'Reason: ' + reason_text + '\\n\\n' if reason_text else ''}"
+            f"{reason_block}"
             "What you lose while inactive:\n"
             f"- {losses[0]}\n- {losses[1]}\n- {losses[2]}\n- {losses[3]}\n\n"
             "To avoid deactivation, please renew subscription and complete pending compliance items.\n\n"
