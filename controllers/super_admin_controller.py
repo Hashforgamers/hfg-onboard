@@ -182,7 +182,15 @@ def change_subscription(vendor_id):
 
     ok, payload = SuperAdminService.change_subscription(vendor_id, package_code, immediate=immediate, unit_amount=unit_amount)
     if not ok:
-        return jsonify({"success": False, "message": "Failed to change subscription", "details": payload}), 400
+        detail_message = ""
+        if isinstance(payload, dict):
+            detail_message = str(payload.get("message") or payload.get("error") or "")
+        status_code = int(payload.get("_status_code", 400)) if isinstance(payload, dict) else 400
+        return jsonify({
+            "success": False,
+            "message": detail_message or "Failed to change subscription",
+            "details": payload,
+        }), status_code
 
     return jsonify({"success": True, "vendor_id": vendor_id, "result": payload}), 200
 
@@ -192,7 +200,15 @@ def change_subscription(vendor_id):
 def provision_default_subscription(vendor_id):
     ok, payload = SuperAdminService.provision_default_subscription(vendor_id)
     if not ok:
-        return jsonify({"success": False, "message": "Failed to provision default subscription", "details": payload}), 400
+        detail_message = ""
+        if isinstance(payload, dict):
+            detail_message = str(payload.get("message") or payload.get("error") or "")
+        status_code = int(payload.get("_status_code", 400)) if isinstance(payload, dict) else 400
+        return jsonify({
+            "success": False,
+            "message": detail_message or "Failed to provision default subscription",
+            "details": payload,
+        }), status_code
     return jsonify({"success": True, "vendor_id": vendor_id, "result": payload}), 200
 
 
