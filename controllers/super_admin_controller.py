@@ -96,15 +96,19 @@ def get_vendor(vendor_id):
 @super_admin_bp.route('/admin/vendors/<int:vendor_id>/status', methods=['POST'])
 @require_super_admin
 def update_vendor_status(vendor_id):
-    data = request.get_json(silent=True) or {}
-    new_status = (data.get('status') or '').strip().lower()
-    changed_by = (data.get('changed_by') or 'super_admin').strip()
+    try:
+        data = request.get_json(silent=True) or {}
+        new_status = (data.get('status') or '').strip().lower()
+        changed_by = (data.get('changed_by') or 'super_admin').strip()
 
-    ok, message = SuperAdminService.update_vendor_status(vendor_id, new_status, changed_by=changed_by)
-    if not ok:
-        return jsonify({"success": False, "message": message}), 400
+        ok, message = SuperAdminService.update_vendor_status(vendor_id, new_status, changed_by=changed_by)
+        if not ok:
+            return jsonify({"success": False, "message": message}), 400
 
-    return jsonify({"success": True, "message": message}), 200
+        return jsonify({"success": True, "message": message}), 200
+    except Exception as exc:
+        current_app.logger.error("update_vendor_status failed for vendor %s: %s", vendor_id, exc, exc_info=True)
+        return jsonify({"success": False, "message": f"Failed to update status: {exc}"}), 500
 
 
 @super_admin_bp.route('/admin/vendors/<int:vendor_id>/documents/verify', methods=['POST'])
