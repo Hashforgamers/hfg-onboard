@@ -1313,8 +1313,11 @@ class SuperAdminService:
 
     @staticmethod
     def change_subscription(vendor_id: int, package_code: str, immediate: bool = True, unit_amount: float = 0.0):
+        code = (package_code or "").strip().lower()
+        if code == "pro":
+            code = "grow"
         payload = {
-            "package_code": package_code,
+            "package_code": code,
             "immediate": bool(immediate),
             "unit_amount": float(unit_amount or 0),
         }
@@ -1325,6 +1328,8 @@ class SuperAdminService:
                 msg = response.json()
             except Exception:
                 msg = {"error": response.text}
+            if isinstance(msg, dict):
+                msg["_status_code"] = response.status_code
             return False, msg
         SuperAdminService.update_vendor_status(vendor_id, "active", changed_by="subscription_change")
         return True, response.json()
@@ -1338,6 +1343,8 @@ class SuperAdminService:
                 msg = response.json()
             except Exception:
                 msg = {"error": response.text}
+            if isinstance(msg, dict):
+                msg["_status_code"] = response.status_code
             return False, msg
         SuperAdminService.update_vendor_status(vendor_id, "active", changed_by="subscription_default")
         return True, response.json()
