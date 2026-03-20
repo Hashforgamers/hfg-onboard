@@ -950,18 +950,23 @@ class SuperAdminService:
 
     @staticmethod
     def update_vendor_status(vendor_id, new_status, changed_by="super_admin"):
-        vendor = Vendor.query.get(vendor_id)
-        if not vendor:
-            return False, "Vendor not found"
+        try:
+            vendor = Vendor.query.get(vendor_id)
+            if not vendor:
+                return False, "Vendor not found"
 
-        if new_status not in SuperAdminService.ALLOWED_STATUSES:
-            return False, f"Invalid status. Allowed: {', '.join(sorted(SuperAdminService.ALLOWED_STATUSES))}"
+            if new_status not in SuperAdminService.ALLOWED_STATUSES:
+                return False, f"Invalid status. Allowed: {', '.join(sorted(SuperAdminService.ALLOWED_STATUSES))}"
 
-        status_row = VendorStatus(vendor_id=vendor_id, status=new_status, updated_at=datetime.utcnow())
-        db.session.add(status_row)
-        db.session.commit()
+            status_row = VendorStatus(vendor_id=vendor_id, status=new_status, updated_at=datetime.utcnow())
+            db.session.add(status_row)
+            db.session.commit()
 
-        return True, f"Vendor status updated to '{new_status}' by {changed_by}"
+            return True, f"Vendor status updated to '{new_status}' by {changed_by}"
+        except Exception as exc:
+            db.session.rollback()
+            current_app.logger.error("Failed to update vendor status for %s: %s", vendor_id, exc, exc_info=True)
+            return False, f"Failed to update vendor status: {exc}"
 
     @staticmethod
     def verify_documents(vendor_id, document_ids, target_status="verified"):
@@ -1322,7 +1327,11 @@ class SuperAdminService:
             "unit_amount": float(unit_amount or 0),
         }
         url = f"{SuperAdminService._dashboard_service_url()}/api/vendors/{vendor_id}/subscription/change"
-        response = requests.post(url, json=payload, headers=SuperAdminService._admin_proxy_headers(), timeout=8)
+        try:
+            response = requests.post(url, json=payload, headers=SuperAdminService._admin_proxy_headers(), timeout=12)
+        except requests.RequestException as exc:
+            current_app.logger.error("Subscription change request failed for vendor %s: %s", vendor_id, exc, exc_info=True)
+            return False, {"error": f"Dashboard subscription service unreachable: {exc}", "_status_code": 502}
         if response.status_code >= 400:
             try:
                 msg = response.json()
@@ -1331,13 +1340,19 @@ class SuperAdminService:
             if isinstance(msg, dict):
                 msg["_status_code"] = response.status_code
             return False, msg
-        SuperAdminService.update_vendor_status(vendor_id, "active", changed_by="subscription_change")
+        ok, message = SuperAdminService.update_vendor_status(vendor_id, "active", changed_by="subscription_change")
+        if not ok:
+            return False, {"error": message, "_status_code": 500}
         return True, response.json()
 
     @staticmethod
     def provision_default_subscription(vendor_id: int):
         url = f"{SuperAdminService._dashboard_service_url()}/api/vendors/{vendor_id}/subscription/provision-default"
-        response = requests.post(url, json={}, headers=SuperAdminService._admin_proxy_headers(), timeout=8)
+        try:
+            response = requests.post(url, json={}, headers=SuperAdminService._admin_proxy_headers(), timeout=12)
+        except requests.RequestException as exc:
+            current_app.logger.error("Provision-default request failed for vendor %s: %s", vendor_id, exc, exc_info=True)
+            return False, {"error": f"Dashboard subscription service unreachable: {exc}", "_status_code": 502}
         if response.status_code >= 400:
             try:
                 msg = response.json()
@@ -1346,5 +1361,7 @@ class SuperAdminService:
             if isinstance(msg, dict):
                 msg["_status_code"] = response.status_code
             return False, msg
-        SuperAdminService.update_vendor_status(vendor_id, "active", changed_by="subscription_default")
+        ok, message = SuperAdminService.update_vendor_status(vendor_id, "active", changed_by="subscription_default")
+        if not ok:
+            return False, {"error": message, "_status_code": 500}
         return True, response.json()
