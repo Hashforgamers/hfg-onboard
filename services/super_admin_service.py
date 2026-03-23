@@ -1273,22 +1273,23 @@ class SuperAdminService:
             "Realtime discoverability and wallet users cannot find your cafe."
         ]
         reason_text = (reason or "").strip()
-        reason_block = f"Reason: {reason_text}\n\n" if reason_text else ""
         support_email = (os.getenv("MAIL_REPLY_TO") or os.getenv("MAIL_DEFAULT_SENDER") or "support@hashforgamers.co.in").strip()
         dashboard_url = (os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
         subscription_url = f"{dashboard_url}/subscription"
+        sender_email = (os.getenv("MAIL_DEFAULT_SENDER") or "support@hashforgamers.co.in").strip()
         msg = Message(
             subject=f"Hash For Gamers · Cafe Status Update ({vendor.cafe_name})",
+            sender=sender_email,
             recipients=[recipient],
+            reply_to=support_email,
         )
-        msg.body = (
-            f"Hello {vendor.owner_name or 'Partner'},\n\n"
-            f"We are notifying you that cafe '{vendor.cafe_name}' may be marked inactive on Hash For Gamers.\n\n"
-            f"{reason_block}"
-            "What you lose while inactive:\n"
-            f"- {losses[0]}\n- {losses[1]}\n- {losses[2]}\n- {losses[3]}\n\n"
-            "To avoid deactivation, please renew subscription and complete pending compliance items.\n\n"
-            "Regards,\nHash For Gamers Ops"
+        msg.body = SuperAdminService._build_deactivation_notice_email_text(
+            owner_name=vendor.owner_name or "Partner",
+            cafe_name=vendor.cafe_name or f"Cafe #{vendor.id}",
+            reason_text=reason_text,
+            losses=losses,
+            support_email=support_email,
+            subscription_url=subscription_url,
         )
         msg.html = SuperAdminService._build_deactivation_notice_email_html(
             owner_name=vendor.owner_name or "Partner",
@@ -1298,6 +1299,12 @@ class SuperAdminService:
             recipient_email=recipient,
             support_email=support_email,
             subscription_url=subscription_url,
+        )
+        current_app.logger.info(
+            "Sending deactivation notice email vendor_id=%s recipient=%s html_len=%s",
+            vendor_id,
+            recipient,
+            len(msg.html or ""),
         )
         mail.send(msg)
 
@@ -1325,6 +1332,46 @@ class SuperAdminService:
         return True, "Deactivation notice sent", {"vendor_id": int(vendor_id), "sent_to": recipient, **summary}
 
     @staticmethod
+    def _build_deactivation_notice_email_text(
+        owner_name: str,
+        cafe_name: str,
+        reason_text: str,
+        losses: List[str],
+        support_email: str,
+        subscription_url: str,
+    ) -> str:
+        lines = [
+            "Hash For Gamers - Cafe Status Update",
+            "",
+            f"Hello {owner_name or 'Partner'},",
+            "",
+            f"We are notifying you that cafe '{cafe_name}' may be marked inactive on Hash For Gamers.",
+            "",
+        ]
+        if reason_text:
+            lines.extend([
+                "Reason:",
+                reason_text,
+                "",
+            ])
+        lines.extend([
+            "What you lose while inactive:",
+            f"- {losses[0]}",
+            f"- {losses[1]}",
+            f"- {losses[2]}",
+            f"- {losses[3]}",
+            "",
+            "To avoid deactivation, please renew subscription and complete pending compliance items.",
+            f"Renew link: {subscription_url}",
+            "",
+            f"Support: {support_email}",
+            "",
+            "Regards,",
+            "Hash For Gamers Ops",
+        ])
+        return "\n".join(lines)
+
+    @staticmethod
     def _build_deactivation_notice_email_html(
         owner_name: str,
         cafe_name: str,
@@ -1339,7 +1386,10 @@ class SuperAdminService:
         safe_recipient = html.escape(recipient_email or "")
         safe_support_email = html.escape(support_email or "support@hashforgamers.co.in")
         safe_subscription_url = html.escape(subscription_url or "https://dashboard.hashforgamers.com/subscription")
-        logo_url = (os.getenv("HASH_EMAIL_LOGO_URL") or "").strip()
+        logo_url = (
+            os.getenv("HASH_EMAIL_LOGO_URL")
+            or "https://dashboard.hashforgamers.com/whitehashlogo.png"
+        ).strip()
         logo_block = (
             f"<img src=\"{html.escape(logo_url)}\" alt=\"Hash For Gamers\" style=\"display:block;height:42px;width:auto;margin:0 0 10px 0;\" />"
             if logo_url else ""
