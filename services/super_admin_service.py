@@ -1,6 +1,7 @@
 import os
 import random
 import string
+import html
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional, Dict, List
 
@@ -1273,6 +1274,9 @@ class SuperAdminService:
         ]
         reason_text = (reason or "").strip()
         reason_block = f"Reason: {reason_text}\n\n" if reason_text else ""
+        support_email = (os.getenv("MAIL_REPLY_TO") or os.getenv("MAIL_DEFAULT_SENDER") or "support@hashforgamers.co.in").strip()
+        dashboard_url = (os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
+        subscription_url = f"{dashboard_url}/subscription"
         msg = Message(
             subject=f"Hash For Gamers · Cafe Status Update ({vendor.cafe_name})",
             recipients=[recipient],
@@ -1285,6 +1289,15 @@ class SuperAdminService:
             f"- {losses[0]}\n- {losses[1]}\n- {losses[2]}\n- {losses[3]}\n\n"
             "To avoid deactivation, please renew subscription and complete pending compliance items.\n\n"
             "Regards,\nHash For Gamers Ops"
+        )
+        msg.html = SuperAdminService._build_deactivation_notice_email_html(
+            owner_name=vendor.owner_name or "Partner",
+            cafe_name=vendor.cafe_name or f"Cafe #{vendor.id}",
+            reason_text=reason_text,
+            losses=losses,
+            recipient_email=recipient,
+            support_email=support_email,
+            subscription_url=subscription_url,
         )
         mail.send(msg)
 
@@ -1310,6 +1323,107 @@ class SuperAdminService:
 
         summary = SuperAdminService._deactivation_notice_summary_map([int(vendor_id)]).get(int(vendor_id), {"sent_count": 1, "last_sent_at": datetime.utcnow()})
         return True, "Deactivation notice sent", {"vendor_id": int(vendor_id), "sent_to": recipient, **summary}
+
+    @staticmethod
+    def _build_deactivation_notice_email_html(
+        owner_name: str,
+        cafe_name: str,
+        reason_text: str,
+        losses: List[str],
+        recipient_email: str,
+        support_email: str,
+        subscription_url: str,
+    ) -> str:
+        safe_owner = html.escape(owner_name or "Partner")
+        safe_cafe = html.escape(cafe_name or "Cafe")
+        safe_recipient = html.escape(recipient_email or "")
+        safe_support_email = html.escape(support_email or "support@hashforgamers.co.in")
+        safe_subscription_url = html.escape(subscription_url or "https://dashboard.hashforgamers.com/subscription")
+        logo_url = (os.getenv("HASH_EMAIL_LOGO_URL") or "").strip()
+        logo_block = (
+            f"<img src=\"{html.escape(logo_url)}\" alt=\"Hash For Gamers\" style=\"display:block;height:42px;width:auto;margin:0 0 10px 0;\" />"
+            if logo_url else ""
+        )
+        reason_section = ""
+        if reason_text:
+            reason_section = (
+                "<tr><td style='padding:0 24px 16px 24px;'>"
+                "<div style='border:1px solid #f59e0b;background:#fff8eb;border-radius:8px;padding:12px 14px;'>"
+                "<div style='font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#92400e;font-weight:700;margin-bottom:6px;'>Reason</div>"
+                f"<div style='font-size:14px;line-height:1.6;color:#111827;'>{html.escape(reason_text)}</div>"
+                "</div></td></tr>"
+            )
+
+        losses_list = "".join(
+            f"<li style='margin:0 0 8px 0;'>{html.escape(item)}</li>"
+            for item in losses
+        )
+
+        return f"""<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hash For Gamers · Cafe Status Update</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+            <tr>
+              <td style="padding:20px 24px;background:#0b1220;color:#ffffff;">
+                {logo_block}
+                <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#22c55e;font-weight:700;">Hash For Gamers</div>
+                <div style="margin-top:8px;font-size:22px;line-height:1.3;font-weight:700;">Cafe Status Update</div>
+                <div style="margin-top:8px;font-size:13px;opacity:0.9;">Sent to: {safe_recipient}</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;">
+                <p style="margin:0 0 12px 0;font-size:16px;">Hello <strong>{safe_owner}</strong>,</p>
+                <p style="margin:0;font-size:15px;line-height:1.7;color:#1f2937;">
+                  We are notifying you that cafe <strong>{safe_cafe}</strong> may be marked inactive on Hash For Gamers.
+                </p>
+              </td>
+            </tr>
+            {reason_section}
+            <tr>
+              <td style="padding:0 24px 8px 24px;">
+                <div style="font-size:15px;line-height:1.6;font-weight:700;color:#111827;">What you lose while inactive:</div>
+                <ul style="padding-left:20px;margin:10px 0 0 0;font-size:14px;line-height:1.6;color:#374151;">
+                  {losses_list}
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:20px 24px 12px 24px;">
+                <div style="font-size:15px;line-height:1.6;color:#111827;">
+                  To avoid deactivation, please renew subscription and complete pending compliance items.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 24px 24px 24px;">
+                <a href="{safe_subscription_url}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:700;">
+                  Renew Subscription
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#f9fafb;">
+                <div style="font-size:12px;line-height:1.6;color:#6b7280;">
+                  Need help? Contact <a href="mailto:{safe_support_email}" style="color:#2563eb;text-decoration:none;">{safe_support_email}</a>
+                </div>
+                <div style="margin-top:6px;font-size:12px;color:#6b7280;">Regards,<br/>Hash For Gamers Ops</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"""
 
     @staticmethod
     def get_deactivation_notice_summary(vendor_id: int) -> Dict[str, Any]:
