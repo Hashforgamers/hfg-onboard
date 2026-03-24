@@ -2,6 +2,8 @@ import os
 import random
 import string
 import html
+import hashlib
+import secrets
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional, Dict, List
 
@@ -23,7 +25,6 @@ from models.vendorStatus import VendorStatus
 
 
 class SuperAdminService:
-    DEACTIVATION_NOTICE_TEMPLATE_VERSION = "hfg_notice_v3"
     ALLOWED_STATUSES = {
         "pending_verification",
         "active",
@@ -52,6 +53,14 @@ class SuperAdminService:
     @staticmethod
     def _dashboard_service_url() -> str:
         return (os.getenv("DASHBOARD_SERVICE_URL") or "https://hfg-dashboard.onrender.com").rstrip("/")
+
+    @staticmethod
+    def _onboard_public_url() -> str:
+        return (os.getenv("ONBOARD_PUBLIC_URL") or os.getenv("SELF_ONBOARD_BACKEND_URL") or "https://hfg-onboard.onrender.com").rstrip("/")
+
+    @staticmethod
+    def _token_hash(raw_token: str) -> str:
+        return hashlib.sha256((raw_token or "").encode("utf-8")).hexdigest()
 
     @staticmethod
     def _admin_proxy_headers() -> Dict[str, str]:
@@ -93,6 +102,52 @@ class SuperAdminService:
         except Exception:
             db.session.rollback()
         SuperAdminService._table_cache["vendor_deactivation_notifications"] = True
+
+    @staticmethod
+    def _ensure_promotion_token_table():
+        if SuperAdminService._has_table("vendor_promotion_tokens"):
+            return
+        try:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS vendor_promotion_tokens (
+                      id BIGSERIAL PRIMARY KEY,
+                      vendor_id INTEGER NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
+                      promo_code VARCHAR(64) NOT NULL,
+                      token_hash VARCHAR(128) NOT NULL UNIQUE,
+                      recipient_email VARCHAR(255),
+                      login_email VARCHAR(255),
+                      sent_by VARCHAR(128) DEFAULT 'super_admin',
+                      sent_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                      expires_at TIMESTAMPTZ NOT NULL,
+                      used_at TIMESTAMPTZ NULL,
+                      used_ip VARCHAR(64),
+                      used_user_agent TEXT
+                    )
+                    """
+                )
+            )
+            db.session.execute(
+                text(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_vendor_promotion_tokens_vendor_sent
+                    ON vendor_promotion_tokens (vendor_id, sent_at DESC)
+                    """
+                )
+            )
+            db.session.execute(
+                text(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_vendor_promotion_tokens_token_hash
+                    ON vendor_promotion_tokens (token_hash)
+                    """
+                )
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        SuperAdminService._table_cache["vendor_promotion_tokens"] = True
 
     @staticmethod
     def _deactivation_notice_summary_map(vendor_ids: List[int]) -> Dict[int, Dict[str, Any]]:
@@ -194,6 +249,19 @@ class SuperAdminService:
             pin = f"{random.randint(0, 9999):04d}"
             if not VendorPin.query.filter_by(pin_code=pin).first():
                 return pin
+
+    @staticmethod
+    def _resolve_vendor_emails(vendor: Vendor) -> Dict[str, Optional[str]]:
+        account_email = (vendor.account.email or "").strip().lower() if vendor.account and vendor.account.email else None
+        contact = ContactInfo.query.filter_by(parent_id=vendor.id, parent_type="vendor").first()
+        contact_email = (contact.email or "").strip().lower() if contact and contact.email else None
+        login_email = account_email or contact_email
+        return {
+            "recipient": login_email,
+            "login_email": login_email,
+            "contact_email": contact_email,
+            "account_email": account_email,
+        }
 
     @staticmethod
     def _subscription_snapshot_map(vendor_ids: List[int]) -> Dict[int, Dict[str, Any]]:
@@ -1253,17 +1321,348 @@ class SuperAdminService:
         return True, body.get("models", [])
 
     @staticmethod
+    def send_early_onboard_promotion(vendor_id: int, sent_by: str = "super_admin"):
+        vendor = Vendor.query.get(vendor_id)
+        if not vendor:
+            return False, "Vendor not found", None
+
+        emails = SuperAdminService._resolve_vendor_emails(vendor)
+        recipient = emails.get("recipient")
+        if not recipient:
+            return False, "No vendor email available for promotion", None
+
+        pin_row = VendorPin.query.filter_by(vendor_id=vendor_id).first()
+        if not pin_row:
+            ok_pin, msg_pin, pin_payload = SuperAdminService.reset_vendor_pin(vendor_id)
+            if not ok_pin:
+                return False, msg_pin, None
+            pin_code = str((pin_payload or {}).get("pin_code") or "")
+        else:
+            pin_code = str(pin_row.pin_code or "")
+
+        ok_pwd, msg_pwd, pwd_payload = SuperAdminService.reset_vendor_password(vendor_id, notify=False)
+        if not ok_pwd:
+            return False, msg_pwd, None
+        temp_password = str((pwd_payload or {}).get("temporary_password") or "")
+        login_email = str(emails.get("login_email") or recipient)
+
+        dashboard_url = (os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
+        support_email = (os.getenv("MAIL_REPLY_TO") or os.getenv("MAIL_DEFAULT_SENDER") or "support@hashforgamers.co.in").strip()
+        sender_email = (os.getenv("MAIL_DEFAULT_SENDER") or "support@hashforgamers.co.in").strip()
+        onboard_base = SuperAdminService._onboard_public_url()
+        token = secrets.token_urlsafe(32)
+        token_hash = SuperAdminService._token_hash(token)
+        try:
+            ttl_hours = int(str(os.getenv("EARLY_ONBOARD_TOKEN_EXPIRY_HOURS") or "168").strip())
+        except Exception:
+            ttl_hours = 168
+        ttl_hours = max(1, min(ttl_hours, 24 * 90))
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=ttl_hours)
+        claim_url = f"{onboard_base}/api/promotions/early-onboard/claim?token={token}"
+
+        subject = f"Hash For Gamers · Early Onboard Offer (1 Month Free) · {vendor.cafe_name}"
+        msg = Message(
+            subject=subject,
+            sender=sender_email,
+            recipients=[recipient],
+            reply_to=support_email,
+        )
+        msg.body = SuperAdminService._build_early_onboard_offer_email_text(
+            owner_name=vendor.owner_name or "Partner",
+            cafe_name=vendor.cafe_name or f"Cafe #{vendor.id}",
+            login_email=login_email,
+            temporary_password=temp_password,
+            pin_code=pin_code,
+            dashboard_url=dashboard_url,
+            claim_url=claim_url,
+            expires_at=expires_at,
+            support_email=support_email,
+        )
+        msg.html = SuperAdminService._build_early_onboard_offer_email_html(
+            owner_name=vendor.owner_name or "Partner",
+            cafe_name=vendor.cafe_name or f"Cafe #{vendor.id}",
+            login_email=login_email,
+            temporary_password=temp_password,
+            pin_code=pin_code,
+            dashboard_url=dashboard_url,
+            claim_url=claim_url,
+            expires_at=expires_at,
+            support_email=support_email,
+            recipient_email=recipient,
+        )
+
+        mail.send(msg)
+
+        SuperAdminService._ensure_promotion_token_table()
+        if SuperAdminService._has_table("vendor_promotion_tokens"):
+            db.session.execute(
+                text(
+                    """
+                    INSERT INTO vendor_promotion_tokens
+                    (vendor_id, promo_code, token_hash, recipient_email, login_email, sent_by, sent_at, expires_at)
+                    VALUES
+                    (:vendor_id, :promo_code, :token_hash, :recipient_email, :login_email, :sent_by, now(), :expires_at)
+                    """
+                ),
+                {
+                    "vendor_id": int(vendor_id),
+                    "promo_code": "early_onboard_1m_free",
+                    "token_hash": token_hash,
+                    "recipient_email": recipient,
+                    "login_email": login_email,
+                    "sent_by": sent_by,
+                    "expires_at": expires_at,
+                },
+            )
+            db.session.commit()
+
+        return True, "Early Onboard promotion mail sent", {
+            "vendor_id": int(vendor_id),
+            "sent_to": recipient,
+            "mail_subject": subject,
+            "claim_url": claim_url,
+            "expires_at": expires_at,
+            "dashboard_url": dashboard_url,
+            "login_email": login_email,
+            "temporary_password": temp_password,
+            "pin_code": pin_code,
+        }
+
+    @staticmethod
+    def claim_early_onboard_promotion(token: str, user_ip: Optional[str] = None, user_agent: Optional[str] = None):
+        raw_token = (token or "").strip()
+        if not raw_token:
+            return False, "Missing promotion token", {"code": "missing_token"}
+
+        SuperAdminService._ensure_promotion_token_table()
+        if not SuperAdminService._has_table("vendor_promotion_tokens"):
+            return False, "Promotion table not available", {"code": "infra_unavailable"}
+
+        now_utc = datetime.now(timezone.utc)
+        token_hash = SuperAdminService._token_hash(raw_token)
+        reserve_row = db.session.execute(
+            text(
+                """
+                UPDATE vendor_promotion_tokens
+                   SET used_at = :used_at,
+                       used_ip = :used_ip,
+                       used_user_agent = :used_user_agent
+                 WHERE token_hash = :token_hash
+                   AND used_at IS NULL
+                   AND expires_at >= :used_at
+                 RETURNING id, vendor_id, promo_code, recipient_email, login_email, expires_at
+                """
+            ),
+            {
+                "used_at": now_utc,
+                "used_ip": (user_ip or "")[:64] or None,
+                "used_user_agent": (user_agent or "")[:500] or None,
+                "token_hash": token_hash,
+            },
+        ).mappings().first()
+
+        if not reserve_row:
+            row = db.session.execute(
+                text(
+                    """
+                    SELECT vendor_id, used_at, expires_at
+                    FROM vendor_promotion_tokens
+                    WHERE token_hash = :token_hash
+                    LIMIT 1
+                    """
+                ),
+                {"token_hash": token_hash},
+            ).mappings().first()
+            if not row:
+                return False, "Invalid or unknown promotion link", {"code": "invalid_token"}
+            used_at = row.get("used_at")
+            expires_at = row.get("expires_at")
+            if used_at is not None:
+                return False, "This link was already used.", {"code": "already_used", "vendor_id": int(row.get("vendor_id") or 0)}
+            if expires_at and expires_at < now_utc:
+                return False, "This promotion link expired. Ask support for a fresh link.", {"code": "expired", "vendor_id": int(row.get("vendor_id") or 0)}
+            return False, "Unable to claim this promotion right now. Please retry.", {"code": "unavailable"}
+
+        vendor_id = int(reserve_row["vendor_id"])
+        ok_change, payload = SuperAdminService.change_subscription(
+            vendor_id=vendor_id,
+            package_code="early_onboard",
+            immediate=True,
+            unit_amount=0.0,
+        )
+        if not ok_change:
+            db.session.execute(
+                text(
+                    """
+                    UPDATE vendor_promotion_tokens
+                    SET used_at = NULL,
+                        used_ip = NULL,
+                        used_user_agent = NULL
+                    WHERE id = :id
+                    """
+                ),
+                {"id": int(reserve_row["id"])},
+            )
+            db.session.commit()
+            detail_message = ""
+            if isinstance(payload, dict):
+                detail_message = str(payload.get("message") or payload.get("error") or "")
+            return False, detail_message or "Failed to activate Early Onboard plan", {
+                "code": "subscription_change_failed",
+                "vendor_id": vendor_id,
+                "details": payload,
+            }
+
+        db.session.commit()
+        dashboard_url = (os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
+        return True, "Early Onboard plan activated (1 month free).", {
+            "code": "claimed",
+            "vendor_id": vendor_id,
+            "dashboard_url": dashboard_url,
+            "package_code": "early_onboard",
+            "used_at": now_utc.isoformat(),
+        }
+
+    @staticmethod
+    def _build_early_onboard_offer_email_text(
+        owner_name: str,
+        cafe_name: str,
+        login_email: str,
+        temporary_password: str,
+        pin_code: str,
+        dashboard_url: str,
+        claim_url: str,
+        expires_at: datetime,
+        support_email: str,
+    ) -> str:
+        expiry_text = expires_at.astimezone(timezone.utc).strftime("%d %b %Y, %H:%M UTC")
+        lines = [
+            "HASH FOR GAMERS | EARLY ONBOARD PROMOTION",
+            "",
+            f"Hello {owner_name or 'Partner'},",
+            "",
+            f"We are offering your cafe '{cafe_name}' the Early Onboard plan: 1 month FREE.",
+            "Reply to this email with 'AVAIL' or click the one-time activation link below.",
+            "",
+            f"One-time avail link: {claim_url}",
+            f"Link expiry: {expiry_text}",
+            "",
+            "Vendor credentials:",
+            f"- Dashboard: {dashboard_url}",
+            f"- Login email: {login_email}",
+            f"- Temporary password: {temporary_password}",
+            f"- Cafe PIN: {pin_code}",
+            "",
+            "Important: the avail link works once only.",
+            f"Need help? {support_email}",
+            "",
+            "Regards,",
+            "Hash For Gamers Ops",
+        ]
+        return "\n".join(lines)
+
+    @staticmethod
+    def _build_early_onboard_offer_email_html(
+        owner_name: str,
+        cafe_name: str,
+        login_email: str,
+        temporary_password: str,
+        pin_code: str,
+        dashboard_url: str,
+        claim_url: str,
+        expires_at: datetime,
+        support_email: str,
+        recipient_email: str,
+    ) -> str:
+        safe_owner = html.escape(owner_name or "Partner")
+        safe_cafe = html.escape(cafe_name or "Cafe")
+        safe_login = html.escape(login_email or "")
+        safe_password = html.escape(temporary_password or "")
+        safe_pin = html.escape(pin_code or "")
+        safe_claim_url = html.escape(claim_url or "#")
+        safe_dashboard = html.escape(dashboard_url or "https://dashboard.hashforgamers.com")
+        safe_support = html.escape(support_email or "support@hashforgamers.co.in")
+        safe_recipient = html.escape(recipient_email or "")
+        expiry_text = html.escape(expires_at.astimezone(timezone.utc).strftime("%d %b %Y, %H:%M UTC"))
+        logo_url = (
+            os.getenv("HASH_EMAIL_LOGO_URL")
+            or "https://dashboard.hashforgamers.com/whitehashlogo.png"
+        ).strip()
+        logo_block = (
+            f"<img src=\"{html.escape(logo_url)}\" alt=\"Hash For Gamers\" style=\"display:block;height:42px;width:auto;margin:0 0 10px 0;\" />"
+            if logo_url else ""
+        )
+
+        return f"""<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hash For Gamers · Early Onboard Offer</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+            <tr>
+              <td style="padding:20px 24px;background:#0b1220;color:#ffffff;">
+                {logo_block}
+                <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#22c55e;font-weight:700;">Hash For Gamers</div>
+                <div style="margin-top:8px;font-size:22px;line-height:1.3;font-weight:700;">Early Onboard Offer</div>
+                <div style="margin-top:8px;font-size:13px;opacity:0.9;">Sent to: {safe_recipient}</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;">
+                <p style="margin:0 0 12px 0;font-size:16px;">Hello <strong>{safe_owner}</strong>,</p>
+                <p style="margin:0 0 12px 0;font-size:15px;line-height:1.7;color:#1f2937;">
+                  We are offering your cafe <strong>{safe_cafe}</strong> the Early Onboard plan: <strong>1 month free</strong>.
+                </p>
+                <p style="margin:0 0 16px 0;font-size:14px;line-height:1.7;color:#1f2937;">
+                  Reply to this email with <strong>AVAIL</strong> or click the one-time activation button below.
+                </p>
+                <a href="{safe_claim_url}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:8px;font-size:14px;font-weight:700;">
+                  Avail Early Onboard (One-Time)
+                </a>
+                <p style="margin:10px 0 0 0;font-size:12px;color:#6b7280;">Link expires: {expiry_text}</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 24px 22px 24px;">
+                <div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px;">
+                  <div style="font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#0f766e;font-weight:700;margin-bottom:8px;">Vendor Credentials</div>
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;line-height:1.7;">
+                    <tr><td style="padding:4px 0;color:#374151;">Dashboard</td><td style="padding:4px 0;color:#111827;"><a href="{safe_dashboard}" style="color:#2563eb;text-decoration:none;">{safe_dashboard}</a></td></tr>
+                    <tr><td style="padding:4px 0;color:#374151;">Login Email</td><td style="padding:4px 0;color:#111827;"><strong>{safe_login}</strong></td></tr>
+                    <tr><td style="padding:4px 0;color:#374151;">Temporary Password</td><td style="padding:4px 0;color:#111827;"><strong>{safe_password}</strong></td></tr>
+                    <tr><td style="padding:4px 0;color:#374151;">Cafe PIN</td><td style="padding:4px 0;color:#111827;"><strong>{safe_pin}</strong></td></tr>
+                  </table>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#f9fafb;">
+                <div style="font-size:12px;line-height:1.6;color:#6b7280;">
+                  Need help? Contact <a href="mailto:{safe_support}" style="color:#2563eb;text-decoration:none;">{safe_support}</a>
+                </div>
+                <div style="margin-top:6px;font-size:12px;color:#6b7280;">Regards,<br/>Hash For Gamers Ops</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"""
+
+    @staticmethod
     def send_deactivation_notice(vendor_id: int, reason: Optional[str] = None, sent_by: str = "super_admin"):
         vendor = Vendor.query.get(vendor_id)
         if not vendor:
             return False, "Vendor not found", None
 
-        recipient = None
-        if vendor.account and vendor.account.email:
-            recipient = (vendor.account.email or "").strip().lower()
-        if not recipient:
-            contact = ContactInfo.query.filter_by(parent_id=vendor_id, parent_type="vendor").first()
-            recipient = (contact.email or "").strip().lower() if contact and contact.email else None
+        recipient = SuperAdminService._resolve_vendor_emails(vendor).get("recipient")
         if not recipient:
             return False, "No vendor email available for notification", None
 
