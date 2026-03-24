@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, foreign
 from db.extensions import db
 from sqlalchemy.ext.declarative import declared_attr
@@ -9,6 +9,7 @@ class PasswordManager(db.Model):
     id = Column(Integer, primary_key=True)
     userid = Column(String(255), unique=True, nullable=False)
     password = Column(String(255), nullable=False)
+    must_change_password = Column(Boolean, nullable=False, default=False, server_default="false")
 
     # Parent relationship columns (generic, no ForeignKey constraint)
     parent_id = Column(Integer, nullable=False)
