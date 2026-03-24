@@ -1278,10 +1278,7 @@ class SuperAdminService:
         dashboard_url = (os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
         subscription_url = f"{dashboard_url}/subscription"
         sender_email = (os.getenv("MAIL_DEFAULT_SENDER") or "support@hashforgamers.co.in").strip()
-        subject = (
-            f"[HFG Notice {SuperAdminService.DEACTIVATION_NOTICE_TEMPLATE_VERSION}] "
-            f"Action Required: Cafe Status ({vendor.cafe_name})"
-        )
+        subject = f"Hash For Gamers · Action Required: Cafe Status ({vendor.cafe_name})"
         msg = Message(
             subject=subject,
             sender=sender_email,
@@ -1337,7 +1334,6 @@ class SuperAdminService:
         return True, "Deactivation notice sent", {
             "vendor_id": int(vendor_id),
             "sent_to": recipient,
-            "template_version": SuperAdminService.DEACTIVATION_NOTICE_TEMPLATE_VERSION,
             "mail_subject": subject,
             "html_enabled": bool(msg.html),
             **summary,
@@ -1354,7 +1350,6 @@ class SuperAdminService:
     ) -> str:
         lines = [
             "HASH FOR GAMERS | CAFE STATUS NOTICE",
-            f"Template: {SuperAdminService.DEACTIVATION_NOTICE_TEMPLATE_VERSION}",
             "",
             f"Hello {owner_name or 'Partner'},",
             "",
@@ -1440,7 +1435,6 @@ class SuperAdminService:
                 <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#22c55e;font-weight:700;">Hash For Gamers</div>
                 <div style="margin-top:8px;font-size:22px;line-height:1.3;font-weight:700;">Cafe Status Notice</div>
                 <div style="margin-top:8px;font-size:13px;opacity:0.9;">Sent to: {safe_recipient}</div>
-                <div style="margin-top:8px;font-size:11px;opacity:0.8;">Template: {SuperAdminService.DEACTIVATION_NOTICE_TEMPLATE_VERSION}</div>
               </td>
             </tr>
             <tr>
