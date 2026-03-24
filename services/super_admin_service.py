@@ -23,7 +23,7 @@ from models.vendorStatus import VendorStatus
 
 
 class SuperAdminService:
-    DEACTIVATION_NOTICE_TEMPLATE_VERSION = "hfg_notice_v2"
+    DEACTIVATION_NOTICE_TEMPLATE_VERSION = "hfg_notice_v3"
     ALLOWED_STATUSES = {
         "pending_verification",
         "active",
@@ -1278,8 +1278,12 @@ class SuperAdminService:
         dashboard_url = (os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
         subscription_url = f"{dashboard_url}/subscription"
         sender_email = (os.getenv("MAIL_DEFAULT_SENDER") or "support@hashforgamers.co.in").strip()
+        subject = (
+            f"[HFG Notice {SuperAdminService.DEACTIVATION_NOTICE_TEMPLATE_VERSION}] "
+            f"Action Required: Cafe Status ({vendor.cafe_name})"
+        )
         msg = Message(
-            subject=f"Hash For Gamers · Action Required: Cafe Status ({vendor.cafe_name})",
+            subject=subject,
             sender=sender_email,
             recipients=[recipient],
             reply_to=support_email,
@@ -1330,7 +1334,14 @@ class SuperAdminService:
             db.session.commit()
 
         summary = SuperAdminService._deactivation_notice_summary_map([int(vendor_id)]).get(int(vendor_id), {"sent_count": 1, "last_sent_at": datetime.utcnow()})
-        return True, "Deactivation notice sent", {"vendor_id": int(vendor_id), "sent_to": recipient, **summary}
+        return True, "Deactivation notice sent", {
+            "vendor_id": int(vendor_id),
+            "sent_to": recipient,
+            "template_version": SuperAdminService.DEACTIVATION_NOTICE_TEMPLATE_VERSION,
+            "mail_subject": subject,
+            "html_enabled": bool(msg.html),
+            **summary,
+        }
 
     @staticmethod
     def _build_deactivation_notice_email_text(
