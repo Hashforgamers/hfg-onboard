@@ -23,6 +23,7 @@ from models.vendorStatus import VendorStatus
 
 
 class SuperAdminService:
+    DEACTIVATION_NOTICE_TEMPLATE_VERSION = "hfg_notice_v2"
     ALLOWED_STATUSES = {
         "pending_verification",
         "active",
@@ -1278,7 +1279,7 @@ class SuperAdminService:
         subscription_url = f"{dashboard_url}/subscription"
         sender_email = (os.getenv("MAIL_DEFAULT_SENDER") or "support@hashforgamers.co.in").strip()
         msg = Message(
-            subject=f"Hash For Gamers · Cafe Status Update ({vendor.cafe_name})",
+            subject=f"Hash For Gamers · Action Required: Cafe Status ({vendor.cafe_name})",
             sender=sender_email,
             recipients=[recipient],
             reply_to=support_email,
@@ -1341,11 +1342,12 @@ class SuperAdminService:
         subscription_url: str,
     ) -> str:
         lines = [
-            "Hash For Gamers - Cafe Status Update",
+            "HASH FOR GAMERS | CAFE STATUS NOTICE",
+            f"Template: {SuperAdminService.DEACTIVATION_NOTICE_TEMPLATE_VERSION}",
             "",
             f"Hello {owner_name or 'Partner'},",
             "",
-            f"We are notifying you that cafe '{cafe_name}' may be marked inactive on Hash For Gamers.",
+            f"Action required: cafe '{cafe_name}' may be marked inactive on Hash For Gamers.",
             "",
         ]
         if reason_text:
@@ -1355,13 +1357,13 @@ class SuperAdminService:
                 "",
             ])
         lines.extend([
-            "What you lose while inactive:",
+            "Impact while inactive:",
             f"- {losses[0]}",
             f"- {losses[1]}",
             f"- {losses[2]}",
             f"- {losses[3]}",
             "",
-            "To avoid deactivation, please renew subscription and complete pending compliance items.",
+            "To avoid deactivation: renew subscription and complete pending compliance items.",
             f"Renew link: {subscription_url}",
             "",
             f"Support: {support_email}",
@@ -1414,7 +1416,7 @@ class SuperAdminService:
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hash For Gamers · Cafe Status Update</title>
+    <title>Hash For Gamers · Cafe Status Notice</title>
   </head>
   <body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;">
@@ -1425,15 +1427,16 @@ class SuperAdminService:
               <td style="padding:20px 24px;background:#0b1220;color:#ffffff;">
                 {logo_block}
                 <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#22c55e;font-weight:700;">Hash For Gamers</div>
-                <div style="margin-top:8px;font-size:22px;line-height:1.3;font-weight:700;">Cafe Status Update</div>
+                <div style="margin-top:8px;font-size:22px;line-height:1.3;font-weight:700;">Cafe Status Notice</div>
                 <div style="margin-top:8px;font-size:13px;opacity:0.9;">Sent to: {safe_recipient}</div>
+                <div style="margin-top:8px;font-size:11px;opacity:0.8;">Template: {SuperAdminService.DEACTIVATION_NOTICE_TEMPLATE_VERSION}</div>
               </td>
             </tr>
             <tr>
               <td style="padding:24px;">
                 <p style="margin:0 0 12px 0;font-size:16px;">Hello <strong>{safe_owner}</strong>,</p>
                 <p style="margin:0;font-size:15px;line-height:1.7;color:#1f2937;">
-                  We are notifying you that cafe <strong>{safe_cafe}</strong> may be marked inactive on Hash For Gamers.
+                  Action required: cafe <strong>{safe_cafe}</strong> may be marked inactive on Hash For Gamers.
                 </p>
               </td>
             </tr>
