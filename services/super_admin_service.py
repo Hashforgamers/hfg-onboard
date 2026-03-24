@@ -264,6 +264,21 @@ class SuperAdminService:
         }
 
     @staticmethod
+    def _ensure_password_force_column():
+        try:
+            db.session.execute(
+                text(
+                    """
+                    ALTER TABLE password_manager
+                    ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE
+                    """
+                )
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+    @staticmethod
     def _subscription_snapshot_map(vendor_ids: List[int]) -> Dict[int, Dict[str, Any]]:
         if not vendor_ids or not SuperAdminService._has_table("subscriptions"):
             return {}
@@ -1216,7 +1231,8 @@ class SuperAdminService:
         return True, "PIN updated", {"vendor_id": vendor_id, "pin_code": pin}
 
     @staticmethod
-    def reset_vendor_password(vendor_id: int, new_password: Optional[str] = None, notify: bool = False):
+    def reset_vendor_password(vendor_id: int, new_password: Optional[str] = None, notify: bool = True):
+        SuperAdminService._ensure_password_force_column()
         vendor = Vendor.query.get(vendor_id)
         if not vendor:
             return False, "Vendor not found", None
@@ -1242,18 +1258,22 @@ class SuperAdminService:
         )
 
         if not existing_rows:
-            existing_rows = [
-                PasswordManager(
-                    userid=str(vendor_id),
-                    password=password,
-                    parent_id=vendor_id,
-                    parent_type="vendor",
+            existing_rows = []
+            for scoped_vendor_id in vendor_ids_scope:
+                existing_rows.append(
+                    PasswordManager(
+                        userid=str(scoped_vendor_id),
+                        password=password,
+                        parent_id=scoped_vendor_id,
+                        parent_type="vendor",
+                        must_change_password=True,
+                    )
                 )
-            ]
             db.session.add_all(existing_rows)
         else:
             for row in existing_rows:
                 row.password = password
+                row.must_change_password = True
 
         db.session.commit()
 
@@ -1430,98 +1450,150 @@ class SuperAdminService:
 
     @staticmethod
     def claim_early_onboard_promotion(token: str, user_ip: Optional[str] = None, user_agent: Optional[str] = None):
-        raw_token = (token or "").strip()
-        if not raw_token:
-            return False, "Missing promotion token", {"code": "missing_token"}
+        try:
+            raw_token = (token or "").strip()
+            if not raw_token:
+                return False, "Missing promotion token", {"code": "missing_token"}
 
-        SuperAdminService._ensure_promotion_token_table()
-        if not SuperAdminService._has_table("vendor_promotion_tokens"):
-            return False, "Promotion table not available", {"code": "infra_unavailable"}
+            SuperAdminService._ensure_promotion_token_table()
+            if not SuperAdminService._has_table("vendor_promotion_tokens"):
+                return False, "Promotion table not available", {"code": "infra_unavailable"}
 
-        now_utc = datetime.now(timezone.utc)
-        token_hash = SuperAdminService._token_hash(raw_token)
-        reserve_row = db.session.execute(
-            text(
-                """
-                UPDATE vendor_promotion_tokens
-                   SET used_at = :used_at,
-                       used_ip = :used_ip,
-                       used_user_agent = :used_user_agent
-                 WHERE token_hash = :token_hash
-                   AND used_at IS NULL
-                   AND expires_at >= :used_at
-                 RETURNING id, vendor_id, promo_code, recipient_email, login_email, expires_at
-                """
-            ),
-            {
-                "used_at": now_utc,
-                "used_ip": (user_ip or "")[:64] or None,
-                "used_user_agent": (user_agent or "")[:500] or None,
-                "token_hash": token_hash,
-            },
-        ).mappings().first()
-
-        if not reserve_row:
-            row = db.session.execute(
-                text(
-                    """
-                    SELECT vendor_id, used_at, expires_at
-                    FROM vendor_promotion_tokens
-                    WHERE token_hash = :token_hash
-                    LIMIT 1
-                    """
-                ),
-                {"token_hash": token_hash},
-            ).mappings().first()
-            if not row:
-                return False, "Invalid or unknown promotion link", {"code": "invalid_token"}
-            used_at = row.get("used_at")
-            expires_at = row.get("expires_at")
-            if used_at is not None:
-                return False, "This link was already used.", {"code": "already_used", "vendor_id": int(row.get("vendor_id") or 0)}
-            if expires_at and expires_at < now_utc:
-                return False, "This promotion link expired. Ask support for a fresh link.", {"code": "expired", "vendor_id": int(row.get("vendor_id") or 0)}
-            return False, "Unable to claim this promotion right now. Please retry.", {"code": "unavailable"}
-
-        vendor_id = int(reserve_row["vendor_id"])
-        ok_change, payload = SuperAdminService.change_subscription(
-            vendor_id=vendor_id,
-            package_code="early_onboard",
-            immediate=True,
-            unit_amount=0.0,
-        )
-        if not ok_change:
-            db.session.execute(
+            now_utc = datetime.utcnow()
+            token_hash = SuperAdminService._token_hash(raw_token)
+            reserve_row = db.session.execute(
                 text(
                     """
                     UPDATE vendor_promotion_tokens
-                    SET used_at = NULL,
-                        used_ip = NULL,
-                        used_user_agent = NULL
-                    WHERE id = :id
+                       SET used_at = :used_at,
+                           used_ip = :used_ip,
+                           used_user_agent = :used_user_agent
+                     WHERE token_hash = :token_hash
+                       AND used_at IS NULL
+                       AND expires_at >= :used_at
+                     RETURNING id, vendor_id, promo_code, recipient_email, login_email, expires_at
                     """
                 ),
-                {"id": int(reserve_row["id"])},
+                {
+                    "used_at": now_utc,
+                    "used_ip": (user_ip or "")[:64] or None,
+                    "used_user_agent": (user_agent or "")[:500] or None,
+                    "token_hash": token_hash,
+                },
+            ).mappings().first()
+
+            if not reserve_row:
+                row = db.session.execute(
+                    text(
+                        """
+                        SELECT vendor_id, used_at, expires_at
+                        FROM vendor_promotion_tokens
+                        WHERE token_hash = :token_hash
+                        LIMIT 1
+                        """
+                    ),
+                    {"token_hash": token_hash},
+                ).mappings().first()
+                if not row:
+                    return False, "Invalid or unknown promotion link", {"code": "invalid_token"}
+                used_at = row.get("used_at")
+                expires_at = row.get("expires_at")
+                if used_at is not None:
+                    return False, "This link was already used.", {"code": "already_used", "vendor_id": int(row.get("vendor_id") or 0)}
+                if expires_at and SuperAdminService._to_utc_naive(expires_at) < now_utc:
+                    return False, "This promotion link expired. Ask support for a fresh link.", {"code": "expired", "vendor_id": int(row.get("vendor_id") or 0)}
+                return False, "Unable to claim this promotion right now. Please retry.", {"code": "unavailable"}
+
+            vendor_id = int(reserve_row["vendor_id"])
+            ok_change, payload = SuperAdminService.change_subscription(
+                vendor_id=vendor_id,
+                package_code="early_onboard",
+                immediate=True,
+                unit_amount=0.0,
             )
+
+            # Retry once when dashboard service returns conflict/500 races.
+            if not ok_change:
+                conflict_text = ""
+                if isinstance(payload, dict):
+                    conflict_text = str(payload.get("details") or payload.get("message") or payload.get("error") or "").lower()
+                if "duplicate key value" in conflict_text or "conflict" in conflict_text or "retry once" in conflict_text:
+                    ok_change, payload = SuperAdminService.change_subscription(
+                        vendor_id=vendor_id,
+                        package_code="early_onboard",
+                        immediate=True,
+                        unit_amount=0.0,
+                    )
+
+            if not ok_change and SuperAdminService._vendor_has_active_package(vendor_id, "early_onboard"):
+                ok_change = True
+
+            if not ok_change:
+                db.session.execute(
+                    text(
+                        """
+                        UPDATE vendor_promotion_tokens
+                        SET used_at = NULL,
+                            used_ip = NULL,
+                            used_user_agent = NULL
+                        WHERE id = :id
+                        """
+                    ),
+                    {"id": int(reserve_row["id"])},
+                )
+                db.session.commit()
+                detail_message = ""
+                if isinstance(payload, dict):
+                    detail_message = str(payload.get("message") or payload.get("error") or "")
+                return False, detail_message or "Failed to activate Early Onboard plan", {
+                    "code": "subscription_change_failed",
+                    "vendor_id": vendor_id,
+                    "details": payload,
+                }
+
             db.session.commit()
-            detail_message = ""
-            if isinstance(payload, dict):
-                detail_message = str(payload.get("message") or payload.get("error") or "")
-            return False, detail_message or "Failed to activate Early Onboard plan", {
-                "code": "subscription_change_failed",
+            dashboard_url = (os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
+            return True, "Subscription enabled successfully. Early Onboard (1 month free) is now active.", {
+                "code": "claimed",
                 "vendor_id": vendor_id,
-                "details": payload,
+                "dashboard_url": dashboard_url,
+                "package_code": "early_onboard",
+                "used_at": now_utc.isoformat(),
+            }
+        except Exception as exc:
+            db.session.rollback()
+            current_app.logger.error("Failed to claim early onboard promotion: %s", exc, exc_info=True)
+            return False, "Unable to activate this offer right now. Please contact support.", {
+                "code": "claim_failed",
+                "details": str(exc),
             }
 
-        db.session.commit()
-        dashboard_url = (os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
-        return True, "Early Onboard plan activated (1 month free).", {
-            "code": "claimed",
-            "vendor_id": vendor_id,
-            "dashboard_url": dashboard_url,
-            "package_code": "early_onboard",
-            "used_at": now_utc.isoformat(),
-        }
+    @staticmethod
+    def _to_utc_naive(value):
+        if isinstance(value, datetime):
+            if value.tzinfo is not None:
+                return value.astimezone(timezone.utc).replace(tzinfo=None)
+            return value
+        return datetime.utcnow()
+
+    @staticmethod
+    def _vendor_has_active_package(vendor_id: int, package_code: str) -> bool:
+        target = (package_code or "").strip().lower()
+        if not target:
+            return False
+
+        url = f"{SuperAdminService._dashboard_service_url()}/api/vendors/{vendor_id}/subscription"
+        try:
+            response = requests.get(url, headers=SuperAdminService._admin_proxy_headers(), timeout=10)
+            if response.status_code >= 400:
+                return False
+            payload = response.json() if response.content else {}
+            package = payload.get("package") if isinstance(payload, dict) else None
+            code = str((package or {}).get("code") or "").strip().lower()
+            has_active = bool(payload.get("has_active")) if isinstance(payload, dict) else False
+            return has_active and code == target
+        except Exception:
+            return False
 
     @staticmethod
     def _build_early_onboard_offer_email_text(

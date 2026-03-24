@@ -36,16 +36,22 @@ def _parse_date(raw: Optional[str]):
 
 
 def _promo_claim_html(ok: bool, message: str, dashboard_url: Optional[str] = None):
-    title = "Early Onboard Activated" if ok else "Unable to Activate Offer"
+    title = "Subscription Enabled Successfully" if ok else "Unable to Activate Offer"
     accent = "#16a34a" if ok else "#dc2626"
     safe_message = html.escape(str(message or "").strip())
     safe_dashboard = html.escape((dashboard_url or "").strip())
     button_html = ""
+    helper_html = ""
     if ok and safe_dashboard:
         button_html = (
             f"<a href=\"{safe_dashboard}\" style=\"display:inline-block;margin-top:16px;background:#0f172a;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;\">"
             "Open Dashboard"
             "</a>"
+        )
+        helper_html = (
+            "<p style=\"margin:10px 0 0 0;color:#475569;font-size:13px;\">"
+            "Use the login email and temporary password shared in the promotion mail, then set a new password at first login."
+            "</p>"
         )
     html = f"""<!doctype html>
 <html>
@@ -71,6 +77,7 @@ def _promo_claim_html(ok: bool, message: str, dashboard_url: Optional[str] = Non
                   {safe_message}
                 </div>
                 {button_html}
+                {helper_html}
               </td>
             </tr>
           </table>
@@ -341,7 +348,7 @@ def reset_vendor_password(vendor_id):
     ok, message, payload = SuperAdminService.reset_vendor_password(
         vendor_id,
         new_password=data.get("password"),
-        notify=_parse_bool(data.get("notify"), False),
+        notify=_parse_bool(data.get("notify"), True),
     )
     if not ok:
         return jsonify({"success": False, "message": message}), 400
@@ -389,8 +396,10 @@ def claim_early_onboard_promotion():
         user_ip=request.headers.get("X-Forwarded-For") or request.remote_addr,
         user_agent=request.headers.get("User-Agent"),
     )
+    format_pref = (request.args.get("format") or "").strip().lower()
     accept_header = (request.headers.get("Accept") or "").lower()
-    if "text/html" in accept_header and request.method == "GET":
+    wants_html = request.method == "GET" and format_pref != "json" and ("text/html" in accept_header or "*/*" in accept_header or not accept_header)
+    if wants_html:
         dashboard_url = payload.get("dashboard_url") if isinstance(payload, dict) else None
         return _promo_claim_html(ok, message, dashboard_url=dashboard_url)
     status_code = 200 if ok else 400
