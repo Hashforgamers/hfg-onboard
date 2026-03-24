@@ -1,9 +1,10 @@
 from datetime import date
 from functools import wraps
+import html
 import os
 from typing import Optional
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, make_response, request
 
 from db.extensions import db
 from services.super_admin_service import SuperAdminService
@@ -32,6 +33,55 @@ def _parse_date(raw: Optional[str]):
         return date.fromisoformat(str(raw).strip())
     except ValueError:
         return None
+
+
+def _promo_claim_html(ok: bool, message: str, dashboard_url: Optional[str] = None):
+    title = "Early Onboard Activated" if ok else "Unable to Activate Offer"
+    accent = "#16a34a" if ok else "#dc2626"
+    safe_message = html.escape(str(message or "").strip())
+    safe_dashboard = html.escape((dashboard_url or "").strip())
+    button_html = ""
+    if ok and safe_dashboard:
+        button_html = (
+            f"<a href=\"{safe_dashboard}\" style=\"display:inline-block;margin-top:16px;background:#0f172a;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;\">"
+            "Open Dashboard"
+            "</a>"
+        )
+    html = f"""<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:28px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;">
+            <tr>
+              <td style="padding:20px 24px;border-bottom:1px solid #e5e7eb;background:#0b1220;color:#ffffff;">
+                <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#22c55e;font-weight:700;">Hash For Gamers</div>
+                <h1 style="margin:10px 0 0 0;font-size:24px;line-height:1.3;">{title}</h1>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;">
+                <div style="border-left:4px solid {accent};padding:10px 12px;background:#f9fafb;color:#111827;line-height:1.7;">
+                  {safe_message}
+                </div>
+                {button_html}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"""
+    response = make_response(html, 200 if ok else 400)
+    response.headers["Content-Type"] = "text/html; charset=utf-8"
+    return response
 
 
 def require_super_admin(fn):
@@ -315,6 +365,36 @@ def send_vendor_deactivation_notification(vendor_id):
 def vendor_deactivation_notification_summary(vendor_id):
     summary = SuperAdminService.get_deactivation_notice_summary(vendor_id)
     return jsonify({"success": True, "vendor_id": vendor_id, "summary": summary}), 200
+
+
+@super_admin_bp.route('/admin/vendors/<int:vendor_id>/notifications/promotion/early-onboard', methods=['POST'])
+@require_super_admin
+def send_vendor_early_onboard_promotion(vendor_id):
+    data = request.get_json(silent=True) or {}
+    sent_by = (data.get("sent_by") or "super_admin_dashboard").strip()
+    ok, message, payload = SuperAdminService.send_early_onboard_promotion(vendor_id, sent_by=sent_by)
+    if not ok:
+        return jsonify({"success": False, "message": message, "details": payload}), 400
+    return jsonify({"success": True, "message": message, "data": payload}), 200
+
+
+@super_admin_bp.route('/promotions/early-onboard/claim', methods=['GET', 'POST'])
+def claim_early_onboard_promotion():
+    token = (request.args.get("token") or "").strip()
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        token = token or str(data.get("token") or "").strip()
+    ok, message, payload = SuperAdminService.claim_early_onboard_promotion(
+        token=token,
+        user_ip=request.headers.get("X-Forwarded-For") or request.remote_addr,
+        user_agent=request.headers.get("User-Agent"),
+    )
+    accept_header = (request.headers.get("Accept") or "").lower()
+    if "text/html" in accept_header and request.method == "GET":
+        dashboard_url = payload.get("dashboard_url") if isinstance(payload, dict) else None
+        return _promo_claim_html(ok, message, dashboard_url=dashboard_url)
+    status_code = 200 if ok else 400
+    return jsonify({"success": ok, "message": message, "data": payload or {}}), status_code
 
 
 @super_admin_bp.route('/admin/settlements/daily', methods=['GET'])
