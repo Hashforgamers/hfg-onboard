@@ -387,23 +387,31 @@ def send_vendor_early_onboard_promotion(vendor_id):
 
 @super_admin_bp.route('/promotions/early-onboard/claim', methods=['GET', 'POST'])
 def claim_early_onboard_promotion():
-    token = (request.args.get("token") or "").strip()
-    if request.method == "POST":
-        data = request.get_json(silent=True) or {}
-        token = token or str(data.get("token") or "").strip()
-    ok, message, payload = SuperAdminService.claim_early_onboard_promotion(
-        token=token,
-        user_ip=request.headers.get("X-Forwarded-For") or request.remote_addr,
-        user_agent=request.headers.get("User-Agent"),
-    )
     format_pref = (request.args.get("format") or "").strip().lower()
     accept_header = (request.headers.get("Accept") or "").lower()
     wants_html = request.method == "GET" and format_pref != "json" and ("text/html" in accept_header or "*/*" in accept_header or not accept_header)
-    if wants_html:
-        dashboard_url = payload.get("dashboard_url") if isinstance(payload, dict) else None
-        return _promo_claim_html(ok, message, dashboard_url=dashboard_url)
-    status_code = 200 if ok else 400
-    return jsonify({"success": ok, "message": message, "data": payload or {}}), status_code
+
+    try:
+        token = (request.args.get("token") or "").strip()
+        if request.method == "POST":
+            data = request.get_json(silent=True) or {}
+            token = token or str(data.get("token") or "").strip()
+        ok, message, payload = SuperAdminService.claim_early_onboard_promotion(
+            token=token,
+            user_ip=request.headers.get("X-Forwarded-For") or request.remote_addr,
+            user_agent=request.headers.get("User-Agent"),
+        )
+        if wants_html:
+            dashboard_url = payload.get("dashboard_url") if isinstance(payload, dict) else None
+            return _promo_claim_html(ok, message, dashboard_url=dashboard_url)
+        status_code = 200 if ok else 400
+        return jsonify({"success": ok, "message": message, "data": payload or {}}), status_code
+    except Exception as exc:
+        current_app.logger.error("Early onboard claim route failed: %s", exc, exc_info=True)
+        friendly_message = "We couldn’t activate this offer right now. Please contact Hash support."
+        if wants_html:
+            return _promo_claim_html(False, friendly_message)
+        return jsonify({"success": False, "message": friendly_message}), 500
 
 
 @super_admin_bp.route('/admin/settlements/daily', methods=['GET'])
