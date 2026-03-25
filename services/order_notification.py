@@ -8,6 +8,7 @@ from models.orderItem import OrderItem
 from models.product import Product
 from models.communication import Communication
 from datetime import datetime
+from services.email_template import build_hfg_email_html
 
 class NotificationService:
     
@@ -153,7 +154,11 @@ HashForGamers © {order.order_date.year}
                 recipients=[collaborator.email],
                 cc=['bhanu.joshi@hashforgamers.com' , 'Zeyan.ansari@hashforgamers.com'], 
                 body=text_body,
-                html=html_body
+                html=build_hfg_email_html(
+                    subject=subject,
+                    content_html=html_body,
+                    preview_text=f"Order {order.order_id} confirmation",
+                )
             )
             
             mail = current_app.extensions.get('mail')
@@ -251,7 +256,11 @@ Support: support@hashfogamings.com
                 subject, 
                 recipients=[collaborator_email],
                 body=text_body,
-                html=html_body
+                html=build_hfg_email_html(
+                    subject=subject,
+                    content_html=html_body,
+                    preview_text=f"Invoice {invoice_data.get('invoice_id')}",
+                )
             )
             mail = current_app.extensions.get('mail')
             if mail:

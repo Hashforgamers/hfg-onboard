@@ -7,6 +7,7 @@ from flask_mail import Message
 from db.extensions import mail, redis_client, db
 from models.vendor import Vendor
 from models.vendorAccount import VendorAccount
+from services.email_template import build_hfg_email_html
 import logging
 from threading import Thread
 from datetime import datetime
@@ -81,7 +82,7 @@ class OTPService:
                 sender=current_app.config['MAIL_DEFAULT_SENDER']
             )
             
-            msg.html = f"""
+            otp_html = f"""
             <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -131,6 +132,11 @@ class OTPService:
             </body>
             </html>
             """
+            msg.html = build_hfg_email_html(
+                subject=msg.subject,
+                content_html=otp_html,
+                preview_text=f"Your OTP for {page_name} is {otp}",
+            )
             
             msg.body = f"""
 HashForGamers - Security Verification Required

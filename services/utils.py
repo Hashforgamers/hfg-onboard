@@ -9,6 +9,7 @@ from datetime import datetime
 import re
 from werkzeug.utils import secure_filename
 from models.vendorPin import VendorPin
+from services.email_template import build_hfg_email_html
 
 ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png', 'gif', 'doc', 'docx'}
 
@@ -32,8 +33,11 @@ def generate_unique_vendor_pin():
 def send_email(subject, recipients, body, html=None):
     msg = Message(subject, recipients=recipients)
     msg.body = body
-    if html:
-        msg.html = html
+    msg.html = build_hfg_email_html(
+        subject=subject,
+        content_html=html or f"<p>{body}</p>",
+        preview_text=body,
+    )
     current_app.logger.info(f"msg: {msg}")
     try:
         mail.send(msg)

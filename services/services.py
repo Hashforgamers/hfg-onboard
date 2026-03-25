@@ -45,6 +45,7 @@ from zoneinfo import ZoneInfo
 from threading import Thread
 from flask_mail import Message
 from db.extensions import mail
+from services.email_template import build_hfg_email_html
 
 from sqlalchemy import case, func
 from sqlalchemy import text
@@ -1601,7 +1602,11 @@ class VendorService:
                 recipients=[email]
             )
             msg.body = text_body
-            msg.html = html_body
+            msg.html = build_hfg_email_html(
+                subject=msg.subject,
+                content_html=html_body,
+                preview_text=f"Your cafe {vendor.cafe_name} onboarding is complete.",
+            )
             app_obj = current_app._get_current_object()
             Thread(
                 target=VendorService._send_email_async,
@@ -1754,7 +1759,11 @@ class VendorService:
             sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@hashforgamers.com'),
             recipients=[email]
         )
-        msg.html = html_body
+        msg.html = build_hfg_email_html(
+            subject=msg.subject,
+            content_html=html_body,
+            preview_text=f"Important account notice for {cafe_name}",
+        )
 
         mail.send(msg)
         current_app.logger.info(f"Deboard notification sent to {email} for vendor {vendor_id}")
