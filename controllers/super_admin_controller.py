@@ -39,21 +39,33 @@ def _promo_claim_html(ok: bool, message: str, dashboard_url: Optional[str] = Non
     title = "Subscription Enabled Successfully" if ok else "Unable to Activate Offer"
     accent = "#16a34a" if ok else "#dc2626"
     safe_message = html.escape(str(message or "").strip())
-    safe_dashboard = html.escape((dashboard_url or "").strip())
+    resolved_dashboard = (dashboard_url or os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
+    safe_dashboard = html.escape(resolved_dashboard)
+    safe_dashboard_login = html.escape(f"{resolved_dashboard}/login")
+    redirect_seconds = 4 if ok else 8
+    cta_label = "Open Dashboard" if ok else "Open Dashboard Login"
+    cta_url = safe_dashboard if ok else safe_dashboard_login
     button_html = ""
     helper_html = ""
-    if ok and safe_dashboard:
+    if cta_url:
         button_html = (
-            f"<a href=\"{safe_dashboard}\" style=\"display:inline-block;margin-top:16px;background:#0f172a;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;\">"
-            "Open Dashboard"
+            f"<a href=\"{cta_url}\" style=\"display:inline-block;margin-top:16px;background:#0f172a;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-weight:600;\">"
+            f"{cta_label}"
             "</a>"
         )
+    if ok:
         helper_html = (
             "<p style=\"margin:10px 0 0 0;color:#475569;font-size:13px;\">"
             "Use the login email and temporary password shared in the promotion mail, then set a new password at first login."
             "</p>"
         )
-    html = f"""<!doctype html>
+    else:
+        helper_html = (
+            "<p style=\"margin:10px 0 0 0;color:#475569;font-size:13px;\">"
+            "If this link is expired/used, request a fresh promotion link from Hash support."
+            "</p>"
+        )
+    page_html = f"""<!doctype html>
 <html>
   <head>
     <meta charset="UTF-8" />
@@ -76,6 +88,9 @@ def _promo_claim_html(ok: bool, message: str, dashboard_url: Optional[str] = Non
                 <div style="border-left:4px solid {accent};padding:10px 12px;background:#f9fafb;color:#111827;line-height:1.7;">
                   {safe_message}
                 </div>
+                <p style="margin:12px 0 0 0;color:#475569;font-size:13px;">
+                  Redirecting to dashboard in {redirect_seconds} seconds...
+                </p>
                 {button_html}
                 {helper_html}
               </td>
@@ -84,9 +99,14 @@ def _promo_claim_html(ok: bool, message: str, dashboard_url: Optional[str] = Non
         </td>
       </tr>
     </table>
+    <script>
+      setTimeout(function() {{
+        window.location.href = "{cta_url}";
+      }}, {redirect_seconds * 1000});
+    </script>
   </body>
 </html>"""
-    response = make_response(html, 200 if ok else 400)
+    response = make_response(page_html, 200 if ok else 400)
     response.headers["Content-Type"] = "text/html; charset=utf-8"
     return response
 
@@ -388,8 +408,9 @@ def send_vendor_early_onboard_promotion(vendor_id):
 @super_admin_bp.route('/promotions/early-onboard/claim', methods=['GET', 'POST'])
 def claim_early_onboard_promotion():
     format_pref = (request.args.get("format") or "").strip().lower()
-    accept_header = (request.headers.get("Accept") or "").lower()
-    wants_html = request.method == "GET" and format_pref != "json" and ("text/html" in accept_header or "*/*" in accept_header or not accept_header)
+    # For one-click links opened in browser/email, always render an HTML landing page.
+    # JSON can still be requested explicitly with ?format=json or POST API usage.
+    wants_html = request.method == "GET" and format_pref != "json"
 
     try:
         token = (request.args.get("token") or "").strip()

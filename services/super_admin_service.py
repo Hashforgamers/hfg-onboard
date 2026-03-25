@@ -517,9 +517,6 @@ class SuperAdminService:
             total_docs = int(row.total_documents or 0)
             verified_docs = int(row.verified_documents or 0)
             raw_status = str(row.status or "pending_verification")
-            effective_status = raw_status
-            if raw_status in {"active", "inactive"}:
-                effective_status = "active" if bool((sub or {}).get("is_active", False)) else "inactive"
 
             vendors.append(
                 {
@@ -527,7 +524,9 @@ class SuperAdminService:
                     "cafe_name": row.cafe_name,
                     "owner_name": row.owner_name,
                     "account_id": row.account_id,
-                    "status": effective_status,
+                    # Keep operational status (manual activate/deactivate) independent
+                    # from subscription state so super-admin actions reflect immediately.
+                    "status": raw_status,
                     "raw_status": raw_status,
                     "status_updated_at": row.status_updated_at,
                     "created_at": row.created_at,
