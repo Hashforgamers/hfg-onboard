@@ -72,6 +72,7 @@ FUTURE_WINDOW_DAYS = int(os.getenv("SLOT_ROLLING_WINDOW_DAYS", "60"))
 SELF_ONBOARD_OTP_EXPIRY_SECONDS = int(os.getenv("SELF_ONBOARD_OTP_EXPIRY_SECONDS", "300"))
 SELF_ONBOARD_VERIFY_EXPIRY_SECONDS = int(os.getenv("SELF_ONBOARD_VERIFY_EXPIRY_SECONDS", "1800"))
 SELF_ONBOARD_OTP_COOLDOWN_SECONDS = int(os.getenv("SELF_ONBOARD_OTP_COOLDOWN_SECONDS", "45"))
+SELF_ONBOARD_DASHBOARD_URL = (os.getenv("SELF_ONBOARD_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
 
 
 def _normalize_email(value):
@@ -109,7 +110,8 @@ def _self_onboard_duplicate_reason(email, owner_phone=None):
             if linked_vendor:
                 return (
                     "This owner email is already onboarded with Hash. "
-                    "Use your dashboard account and add new branches from Select Cafe."
+                    "Use your dashboard account and add new branches from Select Cafe.",
+                    "existing_owner_email",
                 )
 
     if normalized_phone and re.match(r"^[6-9][0-9]{9}$", normalized_phone):
@@ -126,7 +128,8 @@ def _self_onboard_duplicate_reason(email, owner_phone=None):
             if linked_vendor:
                 return (
                     "This owner phone is already linked to an onboarded cafe. "
-                    "Use the existing owner account and add branches from Select Cafe."
+                    "Use the existing owner account and add branches from Select Cafe.",
+                    "existing_owner_phone",
                 )
 
     return None
@@ -139,6 +142,8 @@ def _validate_self_onboard_payload(data):
     address = data.get("physicalAddress") or {}
     timing = data.get("timing") or {}
     games = data.get("available_games") or []
+    business_registration = data.get("business_registration_details") or {}
+    owner_proof = data.get("owner_proof_details") or {}
 
     owner_email = _normalize_email(contact_info.get("email"))
     owner_phone = _normalize_phone(contact_info.get("phone"))
@@ -162,6 +167,14 @@ def _validate_self_onboard_payload(data):
         return "City and state are required."
     if re.match(r"^[0-9]{6}$", pincode) is None:
         return "Pincode must be 6 digits."
+    if len(_normalize_whitespace(business_registration.get("registration_type"))) < 3:
+        return "Business registration document type is required."
+    if len(_normalize_whitespace(business_registration.get("registration_number"))) < 3:
+        return "Business registration number is required."
+    if len(_normalize_whitespace(owner_proof.get("type"))) < 3:
+        return "Owner proof type is required."
+    if len(_normalize_whitespace(owner_proof.get("number"))) < 4:
+        return "Owner proof number is required."
 
     lat_raw = address.get("latitude")
     lng_raw = address.get("longitude")
@@ -530,9 +543,15 @@ def send_self_onboard_email_otp():
         if owner_phone and re.match(r"^[6-9][0-9]{9}$", owner_phone) is None:
             return jsonify({"success": False, "message": "Owner phone must be a valid 10-digit mobile number"}), 400
 
-        duplicate_reason = _self_onboard_duplicate_reason(email, owner_phone=owner_phone)
-        if duplicate_reason:
-            return jsonify({"success": False, "message": duplicate_reason}), 409
+        duplicate_info = _self_onboard_duplicate_reason(email, owner_phone=owner_phone)
+        if duplicate_info:
+            duplicate_reason, duplicate_code = duplicate_info
+            return jsonify({
+                "success": False,
+                "message": duplicate_reason,
+                "code": duplicate_code,
+                "dashboard_url": SELF_ONBOARD_DASHBOARD_URL
+            }), 409
 
         cooldown_key = _self_onboard_otp_cooldown_key(email)
         if redis_client.exists(cooldown_key):
@@ -658,12 +677,18 @@ def onboard_vendor():
         return jsonify({'message': 'Email verification is required before onboarding'}), 400
 
     if onboarding_source == "self_onboard":
-        duplicate_reason = _self_onboard_duplicate_reason(
+        duplicate_info = _self_onboard_duplicate_reason(
             contact_email,
             owner_phone=(data.get("contact_info") or {}).get("phone"),
         )
-        if duplicate_reason:
-            return jsonify({'message': duplicate_reason}), 409
+        if duplicate_info:
+            duplicate_reason, duplicate_code = duplicate_info
+            return jsonify({
+                'success': False,
+                'message': duplicate_reason,
+                'code': duplicate_code,
+                'dashboard_url': SELF_ONBOARD_DASHBOARD_URL
+            }), 409
 
     # Extract vendor_account_email from contact_info
 

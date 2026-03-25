@@ -394,6 +394,48 @@ def vendor_deactivation_notification_summary(vendor_id):
     return jsonify({"success": True, "vendor_id": vendor_id, "summary": summary}), 200
 
 
+@super_admin_bp.route('/admin/newsletters/preview', methods=['POST'])
+@require_super_admin
+def preview_newsletter():
+    data = request.get_json(silent=True) or {}
+    topic = (data.get("topic") or "").strip()
+    content = str(data.get("content") or "").strip()
+    mode = (data.get("mode") or "all").strip().lower()
+    vendor_ids = data.get("vendor_ids") if isinstance(data.get("vendor_ids"), list) else None
+
+    ok, message, payload = SuperAdminService.preview_newsletter(
+        topic=topic,
+        content=content,
+        mode=mode,
+        vendor_ids=vendor_ids,
+    )
+    if not ok:
+        return jsonify({"success": False, "message": message, "details": payload}), 400
+    return jsonify({"success": True, "message": message, "data": payload}), 200
+
+
+@super_admin_bp.route('/admin/newsletters/send', methods=['POST'])
+@require_super_admin
+def send_newsletter():
+    data = request.get_json(silent=True) or {}
+    topic = (data.get("topic") or "").strip()
+    content = str(data.get("content") or "").strip()
+    mode = (data.get("mode") or "all").strip().lower()
+    vendor_ids = data.get("vendor_ids") if isinstance(data.get("vendor_ids"), list) else None
+    sent_by = (data.get("sent_by") or "super_admin_dashboard").strip()
+
+    ok, message, payload = SuperAdminService.send_newsletter(
+        topic=topic,
+        content=content,
+        mode=mode,
+        vendor_ids=vendor_ids,
+        sent_by=sent_by,
+    )
+    if not ok:
+        return jsonify({"success": False, "message": message, "details": payload}), 400
+    return jsonify({"success": True, "message": message, "data": payload}), 200
+
+
 @super_admin_bp.route('/admin/vendors/<int:vendor_id>/notifications/promotion/early-onboard', methods=['POST'])
 @require_super_admin
 def send_vendor_early_onboard_promotion(vendor_id):

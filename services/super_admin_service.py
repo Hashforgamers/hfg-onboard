@@ -150,6 +150,50 @@ class SuperAdminService:
         SuperAdminService._table_cache["vendor_promotion_tokens"] = True
 
     @staticmethod
+    def _ensure_newsletter_log_table():
+        if SuperAdminService._has_table("vendor_newsletter_logs"):
+            return
+        try:
+            db.session.execute(
+                text(
+                    """
+                    CREATE TABLE IF NOT EXISTS vendor_newsletter_logs (
+                      id BIGSERIAL PRIMARY KEY,
+                      campaign_id VARCHAR(64) NOT NULL,
+                      vendor_id INTEGER REFERENCES vendors(id) ON DELETE SET NULL,
+                      sent_to_email VARCHAR(255) NOT NULL,
+                      topic VARCHAR(255) NOT NULL,
+                      content TEXT NOT NULL,
+                      status VARCHAR(32) NOT NULL DEFAULT 'sent',
+                      error_message TEXT,
+                      sent_by VARCHAR(128) DEFAULT 'super_admin',
+                      sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    )
+                    """
+                )
+            )
+            db.session.execute(
+                text(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_vendor_newsletter_logs_campaign
+                    ON vendor_newsletter_logs (campaign_id, sent_at DESC)
+                    """
+                )
+            )
+            db.session.execute(
+                text(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_vendor_newsletter_logs_vendor
+                    ON vendor_newsletter_logs (vendor_id, sent_at DESC)
+                    """
+                )
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        SuperAdminService._table_cache["vendor_newsletter_logs"] = True
+
+    @staticmethod
     def _deactivation_notice_summary_map(vendor_ids: List[int]) -> Dict[int, Dict[str, Any]]:
         if not vendor_ids:
             return {}
@@ -1718,6 +1762,373 @@ class SuperAdminService:
                   Need help? Contact <a href="mailto:{safe_support}" style="color:#2563eb;text-decoration:none;">{safe_support}</a>
                 </div>
                 <div style="margin-top:6px;font-size:12px;color:#6b7280;">Regards,<br/>Hash For Gamers Ops</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>"""
+
+    @staticmethod
+    def _validate_newsletter_payload(topic: str, content: str):
+        cleaned_topic = " ".join(str(topic or "").split()).strip()
+        cleaned_content = str(content or "").strip()
+        if len(cleaned_topic) < 3:
+            return None, None, "Topic must be at least 3 characters."
+        if len(cleaned_topic) > 140:
+            return None, None, "Topic is too long. Keep it within 140 characters."
+        if len(cleaned_content) < 10:
+            return None, None, "Content must be at least 10 characters."
+        if len(cleaned_content) > 10000:
+            return None, None, "Content is too long. Keep it within 10000 characters."
+        return cleaned_topic, cleaned_content, None
+
+    @staticmethod
+    def _resolve_newsletter_targets(mode: str = "all", vendor_ids: Optional[List[int]] = None):
+        normalized_mode = (mode or "all").strip().lower()
+        if normalized_mode not in {"all", "selected"}:
+            return False, "mode must be 'all' or 'selected'", None
+
+        query = Vendor.query.order_by(Vendor.id.asc())
+        normalized_vendor_ids: List[int] = []
+        if normalized_mode == "selected":
+            if not vendor_ids:
+                return False, "vendor_ids are required for selected mode", None
+            try:
+                normalized_vendor_ids = sorted({int(v) for v in vendor_ids if int(v) > 0})
+            except Exception:
+                return False, "vendor_ids must contain valid integers", None
+            if not normalized_vendor_ids:
+                return False, "vendor_ids are required for selected mode", None
+            query = query.filter(Vendor.id.in_(normalized_vendor_ids))
+
+        vendors = query.all()
+        if not vendors:
+            return False, "No vendors found for the selected audience.", None
+
+        targets: List[Dict[str, Any]] = []
+        missing_email_vendor_ids: List[int] = []
+        seen_emails: set[str] = set()
+        duplicate_recipients = 0
+
+        for vendor in vendors:
+            resolved = SuperAdminService._resolve_vendor_emails(vendor)
+            recipient = (resolved.get("recipient") or "").strip().lower()
+            if not recipient:
+                missing_email_vendor_ids.append(int(vendor.id))
+                continue
+            if recipient in seen_emails:
+                duplicate_recipients += 1
+                continue
+            seen_emails.add(recipient)
+            targets.append(
+                {
+                    "vendor_id": int(vendor.id),
+                    "cafe_name": str(vendor.cafe_name or f"Cafe #{vendor.id}"),
+                    "owner_name": str(vendor.owner_name or "Partner"),
+                    "recipient": recipient,
+                }
+            )
+
+        if not targets:
+            return False, "No vendor recipients found with valid emails.", {
+                "missing_email_vendor_ids": missing_email_vendor_ids,
+                "duplicate_recipients": duplicate_recipients,
+            }
+
+        return True, "Audience resolved", {
+            "mode": normalized_mode,
+            "vendor_count_scanned": len(vendors),
+            "recipient_count": len(targets),
+            "targets": targets,
+            "missing_email_vendor_ids": missing_email_vendor_ids,
+            "duplicate_recipients": duplicate_recipients,
+            "selected_vendor_ids": normalized_vendor_ids if normalized_mode == "selected" else [],
+        }
+
+    @staticmethod
+    def preview_newsletter(topic: str, content: str, mode: str = "all", vendor_ids: Optional[List[int]] = None):
+        cleaned_topic, cleaned_content, validation_error = SuperAdminService._validate_newsletter_payload(topic, content)
+        if validation_error:
+            return False, validation_error, None
+
+        ok_targets, target_message, target_payload = SuperAdminService._resolve_newsletter_targets(
+            mode=mode,
+            vendor_ids=vendor_ids,
+        )
+        if not ok_targets:
+            return False, target_message, target_payload
+
+        sample_target = (target_payload.get("targets") or [{}])[0]
+        owner_name = str(sample_target.get("owner_name") or "Partner")
+        cafe_name = str(sample_target.get("cafe_name") or "Your Cafe")
+        recipient = str(sample_target.get("recipient") or "")
+        dashboard_url = (os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
+        support_email = (os.getenv("MAIL_REPLY_TO") or os.getenv("MAIL_DEFAULT_SENDER") or "support@hashforgamers.co.in").strip()
+        subject = f"Hash For Gamers · {cleaned_topic}"
+
+        html_preview = SuperAdminService._build_newsletter_email_html(
+            topic=cleaned_topic,
+            content=cleaned_content,
+            owner_name=owner_name,
+            cafe_name=cafe_name,
+            recipient_email=recipient,
+            support_email=support_email,
+            dashboard_url=dashboard_url,
+        )
+        text_preview = SuperAdminService._build_newsletter_email_text(
+            topic=cleaned_topic,
+            content=cleaned_content,
+            owner_name=owner_name,
+            cafe_name=cafe_name,
+            support_email=support_email,
+            dashboard_url=dashboard_url,
+        )
+
+        return True, "Preview generated", {
+            "subject": subject,
+            "preview_html": html_preview,
+            "preview_text": text_preview,
+            "audience_mode": target_payload.get("mode"),
+            "recipient_count": int(target_payload.get("recipient_count") or 0),
+            "missing_email_vendor_ids": target_payload.get("missing_email_vendor_ids") or [],
+            "duplicate_recipients": int(target_payload.get("duplicate_recipients") or 0),
+        }
+
+    @staticmethod
+    def send_newsletter(
+        topic: str,
+        content: str,
+        mode: str = "all",
+        vendor_ids: Optional[List[int]] = None,
+        sent_by: str = "super_admin_dashboard",
+    ):
+        cleaned_topic, cleaned_content, validation_error = SuperAdminService._validate_newsletter_payload(topic, content)
+        if validation_error:
+            return False, validation_error, None
+
+        ok_targets, target_message, target_payload = SuperAdminService._resolve_newsletter_targets(
+            mode=mode,
+            vendor_ids=vendor_ids,
+        )
+        if not ok_targets:
+            return False, target_message, target_payload
+
+        targets = target_payload.get("targets") or []
+        sender_email = (os.getenv("MAIL_DEFAULT_SENDER") or "support@hashforgamers.co.in").strip()
+        support_email = (os.getenv("MAIL_REPLY_TO") or sender_email).strip()
+        dashboard_url = (os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
+        subject = f"Hash For Gamers · {cleaned_topic}"
+        campaign_id = f"nl_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{secrets.token_hex(4)}"
+
+        sent_count = 0
+        failed_count = 0
+        failed_recipients: List[Dict[str, str]] = []
+        log_rows: List[Dict[str, Any]] = []
+
+        for target in targets:
+            recipient = str(target.get("recipient") or "").strip().lower()
+            if not recipient:
+                continue
+            vendor_id = int(target.get("vendor_id") or 0)
+            owner_name = str(target.get("owner_name") or "Partner")
+            cafe_name = str(target.get("cafe_name") or f"Cafe #{vendor_id}")
+
+            msg = Message(
+                subject=subject,
+                sender=sender_email,
+                recipients=[recipient],
+                reply_to=support_email,
+            )
+            msg.body = SuperAdminService._build_newsletter_email_text(
+                topic=cleaned_topic,
+                content=cleaned_content,
+                owner_name=owner_name,
+                cafe_name=cafe_name,
+                support_email=support_email,
+                dashboard_url=dashboard_url,
+            )
+            msg.html = SuperAdminService._build_newsletter_email_html(
+                topic=cleaned_topic,
+                content=cleaned_content,
+                owner_name=owner_name,
+                cafe_name=cafe_name,
+                recipient_email=recipient,
+                support_email=support_email,
+                dashboard_url=dashboard_url,
+            )
+
+            row_payload: Dict[str, Any] = {
+                "campaign_id": campaign_id,
+                "vendor_id": vendor_id,
+                "sent_to_email": recipient,
+                "topic": cleaned_topic,
+                "content": cleaned_content,
+                "status": "sent",
+                "error_message": None,
+                "sent_by": sent_by,
+            }
+            try:
+                mail.send(msg)
+                sent_count += 1
+            except Exception as exc:
+                failed_count += 1
+                error_text = str(exc)
+                failed_recipients.append({"email": recipient, "error": error_text[:220]})
+                row_payload["status"] = "failed"
+                row_payload["error_message"] = error_text[:1500]
+                current_app.logger.error(
+                    "Newsletter send failed campaign=%s vendor_id=%s email=%s error=%s",
+                    campaign_id,
+                    vendor_id,
+                    recipient,
+                    error_text,
+                )
+            log_rows.append(row_payload)
+
+        SuperAdminService._ensure_newsletter_log_table()
+        if SuperAdminService._has_table("vendor_newsletter_logs") and log_rows:
+            try:
+                db.session.execute(
+                    text(
+                        """
+                        INSERT INTO vendor_newsletter_logs
+                        (campaign_id, vendor_id, sent_to_email, topic, content, status, error_message, sent_by, sent_at)
+                        VALUES
+                        (:campaign_id, :vendor_id, :sent_to_email, :topic, :content, :status, :error_message, :sent_by, now())
+                        """
+                    ),
+                    log_rows,
+                )
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+        if sent_count == 0:
+            return False, "No newsletters were sent. Please verify email setup.", {
+                "campaign_id": campaign_id,
+                "attempted": len(targets),
+                "sent": sent_count,
+                "failed": failed_count,
+                "failed_recipients": failed_recipients,
+            }
+
+        response_payload = {
+            "campaign_id": campaign_id,
+            "attempted": len(targets),
+            "sent": sent_count,
+            "failed": failed_count,
+            "subject": subject,
+            "audience_mode": target_payload.get("mode"),
+            "recipient_count": int(target_payload.get("recipient_count") or len(targets)),
+            "missing_email_vendor_ids": target_payload.get("missing_email_vendor_ids") or [],
+            "duplicate_recipients": int(target_payload.get("duplicate_recipients") or 0),
+            "failed_recipients": failed_recipients,
+        }
+
+        if failed_count > 0:
+            return True, f"Newsletter sent to {sent_count} recipients. {failed_count} failed.", response_payload
+        return True, f"Newsletter sent successfully to {sent_count} recipients.", response_payload
+
+    @staticmethod
+    def _build_newsletter_email_text(
+        topic: str,
+        content: str,
+        owner_name: str,
+        cafe_name: str,
+        support_email: str,
+        dashboard_url: str,
+    ) -> str:
+        lines = [
+            "HASH FOR GAMERS | OWNER NEWSLETTER",
+            "",
+            f"Hello {owner_name or 'Partner'},",
+            "",
+            f"Cafe: {cafe_name or 'Your Cafe'}",
+            f"Topic: {topic}",
+            "",
+            content.strip(),
+            "",
+            f"Dashboard: {dashboard_url}",
+            f"Support: {support_email}",
+            "",
+            "Regards,",
+            "Hash For Gamers Team",
+        ]
+        return "\n".join(lines)
+
+    @staticmethod
+    def _build_newsletter_email_html(
+        topic: str,
+        content: str,
+        owner_name: str,
+        cafe_name: str,
+        recipient_email: str,
+        support_email: str,
+        dashboard_url: str,
+    ) -> str:
+        safe_topic = html.escape(topic or "")
+        safe_owner = html.escape(owner_name or "Partner")
+        safe_cafe = html.escape(cafe_name or "Your Cafe")
+        safe_recipient = html.escape(recipient_email or "")
+        safe_support_email = html.escape(support_email or "support@hashforgamers.co.in")
+        safe_dashboard_url = html.escape(dashboard_url or "https://dashboard.hashforgamers.com")
+        safe_content_html = "<br/>".join(
+            html.escape(line)
+            for line in str(content or "").strip().splitlines()
+        ) or html.escape(str(content or ""))
+        logo_url = (
+            os.getenv("HASH_EMAIL_LOGO_URL")
+            or "https://dashboard.hashforgamers.com/whitehashlogo.png"
+        ).strip()
+        logo_block = (
+            f"<img src=\"{html.escape(logo_url)}\" alt=\"Hash For Gamers\" style=\"display:block;height:42px;width:auto;margin:0 0 10px 0;\" />"
+            if logo_url else ""
+        )
+
+        return f"""<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hash For Gamers · {safe_topic}</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+            <tr>
+              <td style="padding:20px 24px;background:#0b1220;color:#ffffff;">
+                {logo_block}
+                <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#22c55e;font-weight:700;">Hash For Gamers</div>
+                <div style="margin-top:8px;font-size:22px;line-height:1.3;font-weight:700;">Owner Newsletter</div>
+                <div style="margin-top:8px;font-size:13px;opacity:0.9;">Sent to: {safe_recipient}</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;">
+                <p style="margin:0 0 10px 0;font-size:16px;">Hello <strong>{safe_owner}</strong>,</p>
+                <p style="margin:0 0 12px 0;font-size:14px;color:#475569;">Cafe: <strong style="color:#111827;">{safe_cafe}</strong></p>
+                <div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px;background:#f9fafb;">
+                  <div style="font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:#0f766e;font-weight:700;margin-bottom:8px;">{safe_topic}</div>
+                  <div style="font-size:14px;line-height:1.75;color:#111827;">{safe_content_html}</div>
+                </div>
+                <div style="margin-top:14px;">
+                  <a href="{safe_dashboard_url}" style="display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:700;">
+                    Open Dashboard
+                  </a>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#f9fafb;">
+                <div style="font-size:12px;line-height:1.6;color:#6b7280;">
+                  Need help? Contact <a href="mailto:{safe_support_email}" style="color:#2563eb;text-decoration:none;">{safe_support_email}</a>
+                </div>
+                <div style="margin-top:6px;font-size:12px;color:#6b7280;">Regards,<br/>Hash For Gamers Team</div>
               </td>
             </tr>
           </table>
