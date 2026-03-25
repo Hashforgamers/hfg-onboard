@@ -15,6 +15,8 @@ from models.document import Document
 from services.utils import process_files
 
 from models.vendor import Vendor
+from models.vendorAccount import VendorAccount
+from models.contactInfo import ContactInfo
 from models.uploadedImage import Image
 
 from models.bookingQueue import BookingQueue
@@ -78,6 +80,143 @@ def _normalize_email(value):
 
 def _is_valid_email(value):
     return re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", value or "") is not None
+
+
+def _normalize_phone(value):
+    return re.sub(r"\D", "", str(value or ""))[-10:]
+
+
+def _normalize_whitespace(value):
+    return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def _normalize_cafe_name(value):
+    return _normalize_whitespace(value).lower()
+
+
+def _self_onboard_duplicate_reason(email, owner_phone=None):
+    normalized_email = _normalize_email(email)
+    normalized_phone = _normalize_phone(owner_phone)
+
+    if normalized_email:
+        vendor_account = (
+            VendorAccount.query
+            .filter(func.lower(VendorAccount.email) == normalized_email)
+            .first()
+        )
+        if vendor_account:
+            linked_vendor = Vendor.query.filter(Vendor.account_id == vendor_account.id).first()
+            if linked_vendor:
+                return (
+                    "This owner email is already onboarded with Hash. "
+                    "Use your dashboard account and add new branches from Select Cafe."
+                )
+
+    if normalized_phone and re.match(r"^[6-9][0-9]{9}$", normalized_phone):
+        existing_contact = (
+            ContactInfo.query
+            .filter(
+                ContactInfo.parent_type == "vendor",
+                ContactInfo.phone == normalized_phone,
+            )
+            .first()
+        )
+        if existing_contact:
+            linked_vendor = Vendor.query.get(existing_contact.parent_id)
+            if linked_vendor:
+                return (
+                    "This owner phone is already linked to an onboarded cafe. "
+                    "Use the existing owner account and add branches from Select Cafe."
+                )
+
+    return None
+
+
+def _validate_self_onboard_payload(data):
+    owner_name = _normalize_whitespace(data.get("owner_name"))
+    cafe_name = _normalize_whitespace(data.get("cafe_name"))
+    contact_info = data.get("contact_info") or {}
+    address = data.get("physicalAddress") or {}
+    timing = data.get("timing") or {}
+    games = data.get("available_games") or []
+
+    owner_email = _normalize_email(contact_info.get("email"))
+    owner_phone = _normalize_phone(contact_info.get("phone"))
+    city = _normalize_whitespace(address.get("city"))
+    state = _normalize_whitespace(address.get("state"))
+    pincode = str(address.get("zipCode") or "").strip()
+
+    if len(owner_name) < 2 or len(owner_name) > 80:
+        return "Owner name must be between 2 and 80 characters."
+    if re.match(r"^[A-Za-z][A-Za-z\s.'-]+$", owner_name) is None:
+        return "Owner name format is invalid."
+    if len(cafe_name) < 3 or len(cafe_name) > 120:
+        return "Cafe name must be between 3 and 120 characters."
+    if not _is_valid_email(owner_email):
+        return "Valid owner email is required."
+    if re.match(r"^[6-9][0-9]{9}$", owner_phone) is None:
+        return "Owner phone must be a valid 10-digit mobile number."
+    if len(_normalize_whitespace(address.get("street"))) < 5:
+        return "Address should be at least 5 characters."
+    if len(city) < 2 or len(state) < 2:
+        return "City and state are required."
+    if re.match(r"^[0-9]{6}$", pincode) is None:
+        return "Pincode must be 6 digits."
+
+    lat_raw = address.get("latitude")
+    lng_raw = address.get("longitude")
+    try:
+        lat = float(lat_raw)
+        lng = float(lng_raw)
+    except (TypeError, ValueError):
+        return "Latitude and longitude are required."
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+        return "Latitude/longitude is invalid."
+
+    if not isinstance(games, list) or len(games) == 0:
+        return "At least one console inventory item is required."
+    enabled_games = 0
+    for game in games:
+        total_slot = int(game.get("total_slot") or 0)
+        rate = float(game.get("rate_per_slot") or 0)
+        if total_slot < 0 or total_slot > 500:
+            return "Console quantity must be between 0 and 500."
+        if rate < 0 or rate > 100000:
+            return "Rate per slot is out of allowed range."
+        if total_slot > 0:
+            enabled_games += 1
+    if enabled_games == 0:
+        return "At least one console type must have quantity greater than zero."
+
+    if not isinstance(timing, dict) or not timing:
+        return "Operating hours are required."
+
+    has_open_day = False
+    for day_key, day_data in timing.items():
+        if not isinstance(day_data, dict):
+            return f"Invalid timing payload for {day_key}."
+        if day_data.get("closed"):
+            continue
+        has_open_day = True
+        slot_duration = int(day_data.get("slot_duration") or 0)
+        if slot_duration not in (15, 30, 45, 60, 90, 120):
+            return "Slot duration must be one of 15, 30, 45, 60, 90, or 120 minutes."
+        open_time = str(day_data.get("open") or "").strip()
+        close_time = str(day_data.get("close") or "").strip()
+        is_24_hours = bool(day_data.get("is_24_hours"))
+        if is_24_hours:
+            continue
+        open_parsed = safe_strptime(open_time, "%I:%M %p")
+        close_parsed = safe_strptime(close_time, "%I:%M %p")
+        if not open_parsed or not close_parsed:
+            return f"Invalid opening/closing time for {day_key}."
+        if open_time == close_time:
+            return f"Open and close time cannot be the same for {day_key}."
+
+    if not has_open_day:
+        return "At least one day must be open."
+
+    return None
 
 
 def _self_onboard_otp_key(email):
@@ -384,9 +523,16 @@ def send_self_onboard_email_otp():
         data = request.get_json(silent=True) or {}
         email = _normalize_email(data.get("email"))
         cafe_name = str(data.get("cafe_name") or "your gaming cafe").strip()
+        owner_phone = _normalize_phone(data.get("owner_phone"))
 
         if not _is_valid_email(email):
             return jsonify({"success": False, "message": "Valid email is required"}), 400
+        if owner_phone and re.match(r"^[6-9][0-9]{9}$", owner_phone) is None:
+            return jsonify({"success": False, "message": "Owner phone must be a valid 10-digit mobile number"}), 400
+
+        duplicate_reason = _self_onboard_duplicate_reason(email, owner_phone=owner_phone)
+        if duplicate_reason:
+            return jsonify({"success": False, "message": duplicate_reason}), 409
 
         cooldown_key = _self_onboard_otp_cooldown_key(email)
         if redis_client.exists(cooldown_key):
@@ -494,6 +640,13 @@ def onboard_vendor():
         current_app.logger.error("Invalid JSON format in form data")
         return jsonify({'message': 'Invalid JSON format'}), 400
 
+    onboarding_source = str(data.get("onboarding_source", "")).strip().lower()
+
+    if onboarding_source == "self_onboard":
+        validation_error = _validate_self_onboard_payload(data)
+        if validation_error:
+            return jsonify({'message': validation_error}), 400
+
     verification_token = str(data.pop("self_onboard_email_verification_token", "") or "").strip()
     contact_email = _normalize_email((data.get("contact_info") or {}).get("email"))
     if verification_token:
@@ -501,8 +654,16 @@ def onboard_vendor():
         if not valid:
             current_app.logger.warning(f"Self-onboard email verification failed: {verify_error}")
             return jsonify({'message': verify_error}), 400
-    elif str(data.get("onboarding_source", "")).strip().lower() == "self_onboard":
+    elif onboarding_source == "self_onboard":
         return jsonify({'message': 'Email verification is required before onboarding'}), 400
+
+    if onboarding_source == "self_onboard":
+        duplicate_reason = _self_onboard_duplicate_reason(
+            contact_email,
+            owner_phone=(data.get("contact_info") or {}).get("phone"),
+        )
+        if duplicate_reason:
+            return jsonify({'message': duplicate_reason}), 409
 
     # Extract vendor_account_email from contact_info
 
