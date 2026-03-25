@@ -24,6 +24,7 @@ from models.booking import Booking
 from models.accessBookingCode import AccessBookingCode
 from db.extensions import db, mail, redis_client
 from services.otp_service import OTPService
+from services.email_template import build_hfg_email_html
 from models.transaction import Transaction
 from models.availableGame import AvailableGame
 from models.slots import Slot
@@ -578,7 +579,7 @@ def send_self_onboard_email_otp():
             f"If you did not request this, you can ignore this email.\n\n"
             "Team Hash"
         )
-        msg.html = f"""
+        otp_html = f"""
         <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:560px;margin:0 auto;">
           <h2 style="margin:0 0 12px;">Hash Cafe Self Onboarding</h2>
           <p style="margin:0 0 8px;">Use this OTP to verify your email:</p>
@@ -590,6 +591,11 @@ def send_self_onboard_email_otp():
           <p style="color:#6b7280;margin:0;">If you did not request this, ignore this email.</p>
         </div>
         """
+        msg.html = build_hfg_email_html(
+            subject=msg.subject,
+            content_html=otp_html,
+            preview_text=f"Your Hash onboarding OTP is {otp}",
+        )
 
         mail.send(msg)
 

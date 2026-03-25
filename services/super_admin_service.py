@@ -14,6 +14,7 @@ from sqlalchemy import and_, bindparam, case, func, inspect, or_, text
 from werkzeug.security import generate_password_hash
 
 from db.extensions import db, mail
+from services.email_template import build_hfg_email_html
 from models.contactInfo import ContactInfo
 from models.document import Document
 from models.passwordManager import PasswordManager
@@ -1344,6 +1345,19 @@ class SuperAdminService:
                         "Please login and change your password immediately.\n"
                         "Team Hash"
                     )
+                    msg.html = build_hfg_email_html(
+                        subject=msg.subject,
+                        content_html=(
+                            f"<p>Hello {html.escape(vendor.owner_name or 'Partner')},</p>"
+                            f"<p>Your dashboard credentials were reset by super admin for <strong>{html.escape(vendor.cafe_name or f'Cafe #{vendor_id}')}</strong>.</p>"
+                            "<ul>"
+                            f"<li>Login email: <strong>{html.escape(recipient)}</strong></li>"
+                            f"<li>Temporary password: <strong>{html.escape(password)}</strong></li>"
+                            "</ul>"
+                            "<p>Please login and change your password immediately.</p>"
+                        ),
+                        preview_text="Your dashboard credentials were reset by Hash super admin.",
+                    )
                     mail.send(msg)
                     notified_to = recipient
             except Exception as exc:
@@ -1441,7 +1455,9 @@ class SuperAdminService:
             expires_at=expires_at,
             support_email=support_email,
         )
-        msg.html = SuperAdminService._build_early_onboard_offer_email_html(
+        msg.html = build_hfg_email_html(
+            subject=subject,
+            content_html=SuperAdminService._build_early_onboard_offer_email_html(
             owner_name=vendor.owner_name or "Partner",
             cafe_name=vendor.cafe_name or f"Cafe #{vendor.id}",
             login_email=login_email,
@@ -1452,6 +1468,8 @@ class SuperAdminService:
             expires_at=expires_at,
             support_email=support_email,
             recipient_email=recipient,
+        ),
+            preview_text=f"Early onboard offer for {vendor.cafe_name}",
         )
 
         mail.send(msg)
@@ -1950,7 +1968,9 @@ class SuperAdminService:
                 support_email=support_email,
                 dashboard_url=dashboard_url,
             )
-            msg.html = SuperAdminService._build_newsletter_email_html(
+            msg.html = build_hfg_email_html(
+                subject=subject,
+                content_html=SuperAdminService._build_newsletter_email_html(
                 topic=cleaned_topic,
                 content=cleaned_content,
                 owner_name=owner_name,
@@ -1958,6 +1978,8 @@ class SuperAdminService:
                 recipient_email=recipient,
                 support_email=support_email,
                 dashboard_url=dashboard_url,
+            ),
+                preview_text=cleaned_topic,
             )
 
             row_payload: Dict[str, Any] = {
@@ -2174,7 +2196,9 @@ class SuperAdminService:
             support_email=support_email,
             subscription_url=subscription_url,
         )
-        msg.html = SuperAdminService._build_deactivation_notice_email_html(
+        msg.html = build_hfg_email_html(
+            subject=subject,
+            content_html=SuperAdminService._build_deactivation_notice_email_html(
             owner_name=vendor.owner_name or "Partner",
             cafe_name=vendor.cafe_name or f"Cafe #{vendor.id}",
             reason_text=reason_text,
@@ -2182,6 +2206,8 @@ class SuperAdminService:
             recipient_email=recipient,
             support_email=support_email,
             subscription_url=subscription_url,
+        ),
+            preview_text=f"Action required for {vendor.cafe_name}",
         )
         current_app.logger.info(
             "Sending deactivation notice email vendor_id=%s recipient=%s html_len=%s",
