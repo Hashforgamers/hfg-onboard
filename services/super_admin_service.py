@@ -1719,7 +1719,7 @@ class SuperAdminService:
         expiry_text = html.escape(expires_at.astimezone(timezone.utc).strftime("%d %b %Y, %H:%M UTC"))
         logo_url = (
             os.getenv("HASH_EMAIL_LOGO_URL")
-            or "https://dashboard.hashforgamers.com/whitehashlogo.png"
+            or "https://res.cloudinary.com/dxjjigepf/image/upload/v1774469992/hash_logo_fmngta.png"
         ).strip()
         logo_block = (
             f"<img src=\"{html.escape(logo_url)}\" alt=\"Hash For Gamers\" style=\"display:block;height:42px;width:auto;margin:0 0 10px 0;\" />"
@@ -1887,7 +1887,7 @@ class SuperAdminService:
         support_email = (os.getenv("MAIL_REPLY_TO") or os.getenv("MAIL_DEFAULT_SENDER") or "support@hashforgamers.co.in").strip()
         subject = f"Hash For Gamers · {cleaned_topic}"
 
-        html_preview = SuperAdminService._build_newsletter_email_html(
+        newsletter_content = SuperAdminService._build_newsletter_email_html(
             topic=cleaned_topic,
             content=cleaned_content,
             owner_name=owner_name,
@@ -1895,6 +1895,11 @@ class SuperAdminService:
             recipient_email=recipient,
             support_email=support_email,
             dashboard_url=dashboard_url,
+        )
+        html_preview = build_hfg_email_html(
+            subject=subject,
+            content_html=newsletter_content,
+            preview_text=cleaned_topic,
         )
         text_preview = SuperAdminService._build_newsletter_email_text(
             topic=cleaned_topic,
@@ -2095,70 +2100,27 @@ class SuperAdminService:
         safe_owner = html.escape(owner_name or "Partner")
         safe_cafe = html.escape(cafe_name or "Your Cafe")
         safe_recipient = html.escape(recipient_email or "")
-        safe_support_email = html.escape(support_email or "support@hashforgamers.co.in")
         safe_dashboard_url = html.escape(dashboard_url or "https://dashboard.hashforgamers.com")
         safe_content_html = "<br/>".join(
             html.escape(line)
             for line in str(content or "").strip().splitlines()
         ) or html.escape(str(content or ""))
-        logo_url = (
-            os.getenv("HASH_EMAIL_LOGO_URL")
-            or "https://dashboard.hashforgamers.com/whitehashlogo.png"
-        ).strip()
-        logo_block = (
-            f"<img src=\"{html.escape(logo_url)}\" alt=\"Hash For Gamers\" style=\"display:block;height:42px;width:auto;margin:0 0 10px 0;\" />"
-            if logo_url else ""
-        )
-
-        return f"""<!doctype html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hash For Gamers · {safe_topic}</title>
-  </head>
-  <body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;">
-      <tr>
-        <td align="center">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-            <tr>
-              <td style="padding:20px 24px;background:#0b1220;color:#ffffff;">
-                {logo_block}
-                <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#22c55e;font-weight:700;">Hash For Gamers</div>
-                <div style="margin-top:8px;font-size:22px;line-height:1.3;font-weight:700;">Owner Newsletter</div>
-                <div style="margin-top:8px;font-size:13px;opacity:0.9;">Sent to: {safe_recipient}</div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:24px;">
-                <p style="margin:0 0 10px 0;font-size:16px;">Hello <strong>{safe_owner}</strong>,</p>
-                <p style="margin:0 0 12px 0;font-size:14px;color:#475569;">Cafe: <strong style="color:#111827;">{safe_cafe}</strong></p>
-                <div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px;background:#f9fafb;">
-                  <div style="font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:#0f766e;font-weight:700;margin-bottom:8px;">{safe_topic}</div>
-                  <div style="font-size:14px;line-height:1.75;color:#111827;">{safe_content_html}</div>
-                </div>
-                <div style="margin-top:14px;">
-                  <a href="{safe_dashboard_url}" style="display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:700;">
-                    Open Dashboard
-                  </a>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#f9fafb;">
-                <div style="font-size:12px;line-height:1.6;color:#6b7280;">
-                  Need help? Contact <a href="mailto:{safe_support_email}" style="color:#2563eb;text-decoration:none;">{safe_support_email}</a>
-                </div>
-                <div style="margin-top:6px;font-size:12px;color:#6b7280;">Regards,<br/>Hash For Gamers Team</div>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>"""
+        return f"""
+<div style="font-size:16px;line-height:1.7;">
+  <p style="margin:0 0 10px 0;color:#e5e7eb;">Hello <strong>{safe_owner}</strong>,</p>
+  <p style="margin:0 0 12px 0;color:#cbd5e1;">Cafe: <strong style="color:#f8fafc;">{safe_cafe}</strong></p>
+  <p style="margin:0 0 12px 0;color:#94a3b8;">Sent to: <strong style="color:#e2e8f0;">{safe_recipient}</strong></p>
+  <div style="border:1px solid #1e2a44;border-radius:10px;padding:14px;background:#08142c;">
+    <div style="font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:#22c55e;font-weight:700;margin-bottom:8px;">{safe_topic}</div>
+    <div style="font-size:14px;line-height:1.75;color:#e2e8f0;">{safe_content_html}</div>
+  </div>
+  <div style="margin-top:14px;">
+    <a href="{safe_dashboard_url}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:700;">
+      Open Dashboard
+    </a>
+  </div>
+</div>
+"""
 
     @staticmethod
     def send_deactivation_notice(vendor_id: int, reason: Optional[str] = None, sent_by: str = "super_admin"):
@@ -2303,7 +2265,7 @@ class SuperAdminService:
         safe_subscription_url = html.escape(subscription_url or "https://dashboard.hashforgamers.com/subscription")
         logo_url = (
             os.getenv("HASH_EMAIL_LOGO_URL")
-            or "https://dashboard.hashforgamers.com/whitehashlogo.png"
+            or "https://res.cloudinary.com/dxjjigepf/image/upload/v1774469992/hash_logo_fmngta.png"
         ).strip()
         logo_block = (
             f"<img src=\"{html.escape(logo_url)}\" alt=\"Hash For Gamers\" style=\"display:block;height:42px;width:auto;margin:0 0 10px 0;\" />"
