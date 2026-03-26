@@ -33,89 +33,60 @@ class NotificationService:
            
             # Products table (HTML)
             items_table = """
-            <table style="width:100%; border-collapse:collapse; margin-bottom:15px;">
+            <table style="width:100%; border-collapse:collapse; margin-bottom:15px; border:1px solid #1e2a44; border-radius:8px; overflow:hidden; background:#08142c;">
                 <tr>
-                    <th style="border:1px solid #ddd; padding:8px; background:#f3f3f3;">Product</th>
-                    <th style="border:1px solid #ddd; padding:8px; background:#f3f3f3;">Qty</th>
-                    <th style="border:1px solid #ddd; padding:8px; background:#f3f3f3;">Unit Price</th>
-                    <th style="border:1px solid #ddd; padding:8px; background:#f3f3f3;">Subtotal</th>
+                    <th style="border-bottom:1px solid #1e2a44; padding:8px; background:#050f23; color:#cbd5e1;">Product</th>
+                    <th style="border-bottom:1px solid #1e2a44; padding:8px; background:#050f23; color:#cbd5e1;">Qty</th>
+                    <th style="border-bottom:1px solid #1e2a44; padding:8px; background:#050f23; color:#cbd5e1;">Unit Price</th>
+                    <th style="border-bottom:1px solid #1e2a44; padding:8px; background:#050f23; color:#cbd5e1;">Subtotal</th>
                 </tr>"""
             for item in items:
                 p = Product.query.get(item.product_id)
                 items_table += f"""
                 <tr>
-                    <td style="border:1px solid #ddd; padding:8px;">{p.name}</td>
-                    <td style="border:1px solid #ddd; padding:8px; text-align:center;">{item.quantity}</td>
-                    <td style="border:1px solid #ddd; padding:8px; text-align:right;">₹{float(item.unit_price):.2f}</td>
-                    <td style="border:1px solid #ddd; padding:8px; text-align:right;">₹{float(item.subtotal):.2f}</td>
+                    <td style="border-bottom:1px solid #1e2a44; padding:8px; color:#e2e8f0;">{p.name}</td>
+                    <td style="border-bottom:1px solid #1e2a44; padding:8px; text-align:center; color:#e2e8f0;">{item.quantity}</td>
+                    <td style="border-bottom:1px solid #1e2a44; padding:8px; text-align:right; color:#e2e8f0;">₹{float(item.unit_price):.2f}</td>
+                    <td style="border-bottom:1px solid #1e2a44; padding:8px; text-align:right; color:#e2e8f0;">₹{float(item.subtotal):.2f}</td>
                 </tr>"""
             items_table += "</table>"
 
             # Order summary table (HTML)
             order_summary_table = f"""
-            <table style="width:100%; border-collapse:collapse; margin-bottom:15px;">
+            <table style="width:100%; border-collapse:collapse; margin-bottom:15px; border:1px solid #1e2a44; border-radius:8px; overflow:hidden; background:#08142c;">
                 <tr>
-                    <th style="border:1px solid #ddd; padding:8px; background:#f3f3f3;">Total Amount</th>
-                    <td style="border:1px solid #ddd; padding:8px; text-align:right;">₹{float(order.total_amount):.2f}</td>
+                    <th style="border-bottom:1px solid #1e2a44; padding:8px; background:#050f23; color:#cbd5e1;">Total Amount</th>
+                    <td style="border-bottom:1px solid #1e2a44; padding:8px; text-align:right; color:#e2e8f0;">₹{float(order.total_amount):.2f}</td>
                 </tr>
                 <tr>
-                    <th style="border:1px solid #ddd; padding:8px; background:#f3f3f3;">Commission (HashForGamers)</th>
-                    <td style="border:1px solid #ddd; padding:8px; text-align:right;">₹{float(order.commission_amount):.2f}</td>
+                    <th style="border-bottom:1px solid #1e2a44; padding:8px; background:#050f23; color:#cbd5e1;">Commission (Hash For Gamers)</th>
+                    <td style="border-bottom:1px solid #1e2a44; padding:8px; text-align:right; color:#e2e8f0;">₹{float(order.commission_amount):.2f}</td>
                 </tr>
                 <tr>
-                    <th style="border:1px solid #ddd; padding:8px; background:#f3f3f3;">Net Payable to You</th>
-                    <td style="border:1px solid #ddd; padding:8px; text-align:right; font-weight:bold;">₹{float(order.total_amount) - float(order.commission_amount):.2f}</td>
+                    <th style="border-bottom:1px solid #1e2a44; padding:8px; background:#050f23; color:#cbd5e1;">Net Payable to You</th>
+                    <td style="border-bottom:1px solid #1e2a44; padding:8px; text-align:right; font-weight:bold; color:#22c55e;">₹{float(order.total_amount) - float(order.commission_amount):.2f}</td>
                 </tr>
             </table>
             """
 
-            # Main HTML body
+            # Main HTML body fragment (wrapped by shared template)
             html_body = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Order Notification</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; color: #222; background: #fff; }}
-        .main {{ max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; }}
-        h1 {{ font-size: 20px; margin-bottom: 0.5em; }}
-        h2 {{ font-size: 16px; margin-top: 2em; border-bottom: 1px solid #eee; padding-bottom: 5px; }}
-        p {{ margin-top: 0.4em; margin-bottom: 0.4em; }}
-        table {{ border-collapse: collapse; width: 100%; margin-bottom: 15px; }}
-        th, td {{ border: 1px solid #ddd; padding: 8px; font-size: 14px; }}
-        th {{ background: #f3f3f3; text-align: left; font-weight: bold; }}
-        .footer {{ color: #888; font-size: 11px; text-align: center; border-top: 1px solid #eee; margin-top: 30px; padding-top: 8px; }}
-    </style>
-</head>
-<body>
-<div class="main">
-    <h1>Order Confirmation</h1>
-    <p>Dear {collaborator.name},</p>
-    <p>Your order has been received on {order.order_date.strftime('%Y-%m-%d %H:%M')}. Below are the details:</p>
-    <h2>Order & Cafe Info</h2>
-    <table>
-        <tr><th>Order ID</th><td>{order.order_id}</td></tr>
-        <tr><th>Status</th><td>{order.status.capitalize()}</td></tr>
-        <tr><th>Cafe Name</th><td>{vendor.cafe_name}</td></tr>
-        <tr><th>Owner</th><td>{vendor.owner_name}</td></tr>
-        <tr><th>Email</th><td>{vendor_email}</td></tr>
-        <tr><th>Phone</th><td>{vendor_phone}</td></tr>
-    </table>
-    <h2>Products</h2>
-    {items_table}
-    <h2>Payment Summary</h2>
-    {order_summary_table}
-    <p><b>Note:</b> Min order quantity: {collaborator.min_order_quantity} units.<br>
-    Please review your order and confirm within 24 hours. </p>
-    <p>For help, reply or write to: <a href="mailto:support@hashfogamings.com">support@hashfogamings.com</a></p>
-    <div class="footer">
-        HashForGamers &copy; {order.order_date.year} | This is an automated message.
-    </div>
-</div>
-</body>
-</html>
-"""
+            <p style="margin:0 0 12px 0;color:#e5e7eb;">Dear <strong>{collaborator.name}</strong>,</p>
+            <p style="margin:0 0 14px 0;color:#cbd5e1;">
+                Your order was received on {order.order_date.strftime('%Y-%m-%d %H:%M')}. Details are below.
+            </p>
+            <div style="font-size:14px;font-weight:700;color:#22c55e;margin:0 0 8px 0;">Order and Cafe Info</div>
+            {order_summary_table}
+            <div style="font-size:14px;font-weight:700;color:#22c55e;margin:12px 0 8px 0;">Products</div>
+            {items_table}
+            <p style="margin:12px 0 8px 0;color:#cbd5e1;">
+                <strong>Note:</strong> Minimum order quantity is {collaborator.min_order_quantity} units. Please review and confirm within 24 hours.
+            </p>
+            <p style="margin:0;color:#94a3b8;">
+                For help, reply to this email or write to
+                <a href="mailto:support@hashforgamers.co.in" style="color:#60a5fa;text-decoration:none;">support@hashforgamers.co.in</a>.
+            </p>
+            """
 
             text_body = f"""
 Order Confirmation
@@ -144,7 +115,7 @@ Net Payable: ₹{float(order.total_amount) - float(order.commission_amount):.2f}
 Min order quantity: {collaborator.min_order_quantity} units.
 Please review and confirm your order within 24 hours.
 
-For help, email support@hashfogamings.com
+For help, email support@hashforgamers.co.in
 
 HashForGamers © {order.order_date.year}
 """
@@ -189,53 +160,34 @@ HashForGamers © {order.order_date.year}
     def send_invoice_notification_email(collaborator_email, collaborator_name, invoice_data):
         """Send invoice notification email with table format"""
         try:
-            subject = f"🧾 Monthly Commission Invoice – HashForGamers"
+            subject = "Monthly Commission Invoice - Hash For Gamers"
             invoice_table = f"""
-            <table style="width:100%; border-collapse:collapse; margin-bottom:15px;">
+            <table style="width:100%; border-collapse:collapse; margin-bottom:15px; border:1px solid #1e2a44; border-radius:8px; overflow:hidden; background:#08142c;">
                 <tr>
-                    <th style="border:1px solid #ddd; padding:8px; background:#f3f3f3;">Invoice ID</th>
-                    <td style="border:1px solid #ddd; padding:8px;">{invoice_data.get('invoice_id')}</td>
+                    <th style="border-bottom:1px solid #1e2a44; padding:8px; background:#050f23; color:#cbd5e1;">Invoice ID</th>
+                    <td style="border-bottom:1px solid #1e2a44; padding:8px; color:#e2e8f0;">{invoice_data.get('invoice_id')}</td>
                 </tr>
                 <tr>
-                    <th style="border:1px solid #ddd; padding:8px; background:#f3f3f3;">Total Commission</th>
-                    <td style="border:1px solid #ddd; padding:8px;">₹{invoice_data.get('total_commission', 0):.2f}</td>
+                    <th style="border-bottom:1px solid #1e2a44; padding:8px; background:#050f23; color:#cbd5e1;">Total Commission</th>
+                    <td style="border-bottom:1px solid #1e2a44; padding:8px; color:#e2e8f0;">₹{invoice_data.get('total_commission', 0):.2f}</td>
                 </tr>
                 <tr>
-                    <th style="border:1px solid #ddd; padding:8px; background:#f3f3f3;">Due Date</th>
-                    <td style="border:1px solid #ddd; padding:8px;">{invoice_data.get('due_date')}</td>
+                    <th style="border-bottom:1px solid #1e2a44; padding:8px; background:#050f23; color:#cbd5e1;">Due Date</th>
+                    <td style="border-bottom:1px solid #1e2a44; padding:8px; color:#e2e8f0;">{invoice_data.get('due_date')}</td>
                 </tr>
             </table>
             """
             html_body = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Commission Invoice</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; color: #222; background: #fff; }}
-        .main {{ max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; }}
-        h1 {{ font-size: 20px; margin-bottom: 0.5em; }}
-        table {{ border-collapse: collapse; width: 100%; margin-bottom: 15px; }}
-        th, td {{ border: 1px solid #ddd; padding: 8px; font-size: 14px; }}
-        th {{ background: #f3f3f3; font-weight: bold; }}
-        .footer {{ color: #888; font-size: 11px; text-align: center; border-top: 1px solid #eee; margin-top: 30px; padding-top: 8px; }}
-    </style>
-</head>
-<body>
-<div class="main">
-    <h1>Commission Invoice</h1>
-    <p>Dear {collaborator_name},</p>
-    <p>Your monthly commission invoice is ready. Details below:</p>
-    {invoice_table}
-    <p>Please login to your dashboard to download the invoice and process payment by the due date.</p>
-    <div class="footer">
-        HashForGamers &copy; {datetime.now().year} | For support: support@hashfogamings.com
-    </div>
-</div>
-</body>
-</html>
-"""
+            <p style="margin:0 0 12px 0;color:#e5e7eb;">Dear <strong>{collaborator_name}</strong>,</p>
+            <p style="margin:0 0 14px 0;color:#cbd5e1;">Your monthly commission invoice is ready.</p>
+            {invoice_table}
+            <p style="margin:12px 0 0 0;color:#cbd5e1;">
+                Please login to your dashboard to download the invoice and process payment by the due date.
+            </p>
+            <p style="margin:10px 0 0 0;color:#94a3b8;font-size:12px;">
+                For support: <a href="mailto:support@hashforgamers.co.in" style="color:#60a5fa;text-decoration:none;">support@hashforgamers.co.in</a>
+            </p>
+            """
             text_body = f"""
 Commission Invoice
 
@@ -250,7 +202,7 @@ Due Date: {invoice_data.get('due_date')}
 Please login to your dashboard to download the invoice and process payment by the due date.
 
 HashForGamers © {datetime.now().year}
-Support: support@hashfogamings.com
+Support: support@hashforgamers.co.in
 """
             msg = Message(
                 subject, 

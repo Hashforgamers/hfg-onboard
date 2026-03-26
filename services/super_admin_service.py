@@ -1717,77 +1717,34 @@ class SuperAdminService:
         safe_support = html.escape(support_email or "support@hashforgamers.co.in")
         safe_recipient = html.escape(recipient_email or "")
         expiry_text = html.escape(expires_at.astimezone(timezone.utc).strftime("%d %b %Y, %H:%M UTC"))
-        logo_url = (
-            os.getenv("HASH_EMAIL_LOGO_URL")
-            or "https://res.cloudinary.com/dxjjigepf/image/upload/v1774469992/hash_logo_fmngta.png"
-        ).strip()
-        logo_block = (
-            f"<img src=\"{html.escape(logo_url)}\" alt=\"Hash For Gamers\" style=\"display:block;height:42px;width:auto;margin:0 0 10px 0;\" />"
-            if logo_url else ""
-        )
-
-        return f"""<!doctype html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hash For Gamers · Early Onboard Offer</title>
-  </head>
-  <body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;">
-      <tr>
-        <td align="center">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-            <tr>
-              <td style="padding:20px 24px;background:#0b1220;color:#ffffff;">
-                {logo_block}
-                <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#22c55e;font-weight:700;">Hash For Gamers</div>
-                <div style="margin-top:8px;font-size:22px;line-height:1.3;font-weight:700;">Early Onboard Offer</div>
-                <div style="margin-top:8px;font-size:13px;opacity:0.9;">Sent to: {safe_recipient}</div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:24px;">
-                <p style="margin:0 0 12px 0;font-size:16px;">Hello <strong>{safe_owner}</strong>,</p>
-                <p style="margin:0 0 12px 0;font-size:15px;line-height:1.7;color:#1f2937;">
-                  We are offering your cafe <strong>{safe_cafe}</strong> the Early Onboard plan: <strong>1 month free</strong>.
-                </p>
-                <p style="margin:0 0 16px 0;font-size:14px;line-height:1.7;color:#1f2937;">
-                  Reply to this email with <strong>AVAIL</strong> or click the one-time activation button below.
-                </p>
-                <a href="{safe_claim_url}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:8px;font-size:14px;font-weight:700;">
-                  Avail Early Onboard (One-Time)
-                </a>
-                <p style="margin:10px 0 0 0;font-size:12px;color:#6b7280;">Link expires: {expiry_text}</p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:0 24px 22px 24px;">
-                <div style="border:1px solid #e5e7eb;border-radius:10px;padding:14px;">
-                  <div style="font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#0f766e;font-weight:700;margin-bottom:8px;">Vendor Credentials</div>
-                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;line-height:1.7;">
-                    <tr><td style="padding:4px 0;color:#374151;">Dashboard</td><td style="padding:4px 0;color:#111827;"><a href="{safe_dashboard}" style="color:#2563eb;text-decoration:none;">{safe_dashboard}</a></td></tr>
-                    <tr><td style="padding:4px 0;color:#374151;">Login Email</td><td style="padding:4px 0;color:#111827;"><strong>{safe_login}</strong></td></tr>
-                    <tr><td style="padding:4px 0;color:#374151;">Temporary Password</td><td style="padding:4px 0;color:#111827;"><strong>{safe_password}</strong></td></tr>
-                    <tr><td style="padding:4px 0;color:#374151;">Cafe PIN</td><td style="padding:4px 0;color:#111827;"><strong>{safe_pin}</strong></td></tr>
-                  </table>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#f9fafb;">
-                <div style="font-size:12px;line-height:1.6;color:#6b7280;">
-                  Need help? Contact <a href="mailto:{safe_support}" style="color:#2563eb;text-decoration:none;">{safe_support}</a>
-                </div>
-                <div style="margin-top:6px;font-size:12px;color:#6b7280;">Regards,<br/>Hash For Gamers Ops</div>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>"""
+        return f"""
+<p style="margin:0 0 10px 0;color:#e5e7eb;">Hello <strong>{safe_owner}</strong>,</p>
+<p style="margin:0 0 12px 0;color:#cbd5e1;line-height:1.7;">
+  We are offering your cafe <strong>{safe_cafe}</strong> the Early Onboard plan: <strong>1 month free</strong>.
+</p>
+<p style="margin:0 0 14px 0;color:#cbd5e1;line-height:1.7;">
+  Reply to this email with <strong>AVAIL</strong> or use the one-time activation link below.
+</p>
+<a href="{safe_claim_url}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:8px;font-size:14px;font-weight:700;">
+  Avail Early Onboard (One-Time)
+</a>
+<p style="margin:10px 0 16px 0;font-size:12px;color:#94a3b8;">Link expires: {expiry_text}</p>
+<div style="border:1px solid #1e2a44;border-radius:10px;padding:14px;background:#08142c;">
+  <div style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#22c55e;font-weight:700;margin-bottom:8px;">
+    Vendor Credentials
+  </div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;line-height:1.7;color:#e2e8f0;">
+    <tr><td style="padding:4px 0;color:#94a3b8;">Sent To</td><td style="padding:4px 0;">{safe_recipient}</td></tr>
+    <tr><td style="padding:4px 0;color:#94a3b8;">Dashboard</td><td style="padding:4px 0;"><a href="{safe_dashboard}" style="color:#60a5fa;text-decoration:none;">{safe_dashboard}</a></td></tr>
+    <tr><td style="padding:4px 0;color:#94a3b8;">Login Email</td><td style="padding:4px 0;"><strong>{safe_login}</strong></td></tr>
+    <tr><td style="padding:4px 0;color:#94a3b8;">Temporary Password</td><td style="padding:4px 0;"><strong>{safe_password}</strong></td></tr>
+    <tr><td style="padding:4px 0;color:#94a3b8;">Cafe PIN</td><td style="padding:4px 0;"><strong>{safe_pin}</strong></td></tr>
+  </table>
+</div>
+<p style="margin:14px 0 0 0;color:#94a3b8;font-size:13px;">
+  Need help? Contact <a href="mailto:{safe_support}" style="color:#60a5fa;text-decoration:none;">{safe_support}</a>
+</p>
+"""
 
     @staticmethod
     def _validate_newsletter_payload(topic: str, content: str):
@@ -2263,22 +2220,13 @@ class SuperAdminService:
         safe_recipient = html.escape(recipient_email or "")
         safe_support_email = html.escape(support_email or "support@hashforgamers.co.in")
         safe_subscription_url = html.escape(subscription_url or "https://dashboard.hashforgamers.com/subscription")
-        logo_url = (
-            os.getenv("HASH_EMAIL_LOGO_URL")
-            or "https://res.cloudinary.com/dxjjigepf/image/upload/v1774469992/hash_logo_fmngta.png"
-        ).strip()
-        logo_block = (
-            f"<img src=\"{html.escape(logo_url)}\" alt=\"Hash For Gamers\" style=\"display:block;height:42px;width:auto;margin:0 0 10px 0;\" />"
-            if logo_url else ""
-        )
         reason_section = ""
         if reason_text:
             reason_section = (
-                "<tr><td style='padding:0 24px 16px 24px;'>"
-                "<div style='border:1px solid #f59e0b;background:#fff8eb;border-radius:8px;padding:12px 14px;'>"
-                "<div style='font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#92400e;font-weight:700;margin-bottom:6px;'>Reason</div>"
-                f"<div style='font-size:14px;line-height:1.6;color:#111827;'>{html.escape(reason_text)}</div>"
-                "</div></td></tr>"
+                "<div style='margin-top:12px;border:1px solid #7c2d12;background:#2b170a;border-radius:8px;padding:12px;'>"
+                "<div style='font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#f59e0b;font-weight:700;margin-bottom:6px;'>Reason</div>"
+                f"<div style='font-size:14px;line-height:1.6;color:#fcd34d;'>{html.escape(reason_text)}</div>"
+                "</div>"
             )
 
         losses_list = "".join(
@@ -2286,71 +2234,29 @@ class SuperAdminService:
             for item in losses
         )
 
-        return f"""<!doctype html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hash For Gamers · Cafe Status Notice</title>
-  </head>
-  <body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;">
-      <tr>
-        <td align="center">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-            <tr>
-              <td style="padding:20px 24px;background:#0b1220;color:#ffffff;">
-                {logo_block}
-                <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#22c55e;font-weight:700;">Hash For Gamers</div>
-                <div style="margin-top:8px;font-size:22px;line-height:1.3;font-weight:700;">Cafe Status Notice</div>
-                <div style="margin-top:8px;font-size:13px;opacity:0.9;">Sent to: {safe_recipient}</div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:24px;">
-                <p style="margin:0 0 12px 0;font-size:16px;">Hello <strong>{safe_owner}</strong>,</p>
-                <p style="margin:0;font-size:15px;line-height:1.7;color:#1f2937;">
-                  Action required: cafe <strong>{safe_cafe}</strong> may be marked inactive on Hash For Gamers.
-                </p>
-              </td>
-            </tr>
-            {reason_section}
-            <tr>
-              <td style="padding:0 24px 8px 24px;">
-                <div style="font-size:15px;line-height:1.6;font-weight:700;color:#111827;">What you lose while inactive:</div>
-                <ul style="padding-left:20px;margin:10px 0 0 0;font-size:14px;line-height:1.6;color:#374151;">
-                  {losses_list}
-                </ul>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:20px 24px 12px 24px;">
-                <div style="font-size:15px;line-height:1.6;color:#111827;">
-                  To avoid deactivation, please renew subscription and complete pending compliance items.
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:0 24px 24px 24px;">
-                <a href="{safe_subscription_url}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:700;">
-                  Renew Subscription
-                </a>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:16px 24px;border-top:1px solid #e5e7eb;background:#f9fafb;">
-                <div style="font-size:12px;line-height:1.6;color:#6b7280;">
-                  Need help? Contact <a href="mailto:{safe_support_email}" style="color:#2563eb;text-decoration:none;">{safe_support_email}</a>
-                </div>
-                <div style="margin-top:6px;font-size:12px;color:#6b7280;">Regards,<br/>Hash For Gamers Ops</div>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>"""
+        return f"""
+<p style="margin:0 0 10px 0;color:#e5e7eb;">Hello <strong>{safe_owner}</strong>,</p>
+<p style="margin:0 0 12px 0;color:#cbd5e1;line-height:1.7;">
+  Action required: cafe <strong>{safe_cafe}</strong> may be marked inactive on Hash For Gamers.
+</p>
+<p style="margin:0 0 12px 0;color:#94a3b8;font-size:13px;">Sent to: {safe_recipient}</p>
+{reason_section}
+<div style="margin-top:12px;border:1px solid #1e2a44;border-radius:10px;background:#08142c;padding:14px;">
+  <div style="font-size:13px;font-weight:700;color:#22c55e;margin-bottom:8px;">What you lose while inactive</div>
+  <ul style="padding-left:20px;margin:0;color:#e2e8f0;font-size:14px;line-height:1.6;">
+    {losses_list}
+  </ul>
+</div>
+<p style="margin:14px 0;color:#cbd5e1;line-height:1.7;">
+  To avoid deactivation, renew your subscription and complete pending compliance items.
+</p>
+<a href="{safe_subscription_url}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:700;">
+  Renew Subscription
+</a>
+<p style="margin:14px 0 0 0;color:#94a3b8;font-size:13px;">
+  Need help? Contact <a href="mailto:{safe_support_email}" style="color:#60a5fa;text-decoration:none;">{safe_support_email}</a>
+</p>
+"""
 
     @staticmethod
     def get_deactivation_notice_summary(vendor_id: int) -> Dict[str, Any]:
