@@ -1665,7 +1665,7 @@ class VendorService:
 
     @staticmethod
     def build_welcome_email_html(vendor, password, email, pin_code, parent_email=None):
-        """Build simple, standards-based HTML email to reduce spam risk."""
+        """Build welcome email content fragment (wrapped by shared HFG template)."""
         dashboard_url = os.getenv("HASH_DASHBOARD_URL", "https://dashboard.hashforgamers.com")
         password_html = (
             f"<strong>{password}</strong>"
@@ -1673,57 +1673,31 @@ class VendorService:
             else "Use your existing password. If forgotten, reset from login."
         )
         parent_row = (
-            f"<tr><td style='padding:8px 0;color:#111827;'>Parent Account Email</td>"
-            f"<td style='padding:8px 0;color:#111827;'><strong>{parent_email}</strong></td></tr>"
+            f"<tr><td style='padding:8px 0;color:#94a3b8;'>Parent Account Email</td>"
+            f"<td style='padding:8px 0;color:#e2e8f0;'><strong>{parent_email}</strong></td></tr>"
             if parent_email and parent_email != email else ""
         )
 
-        return f"""<!doctype html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hash Onboarding Complete</title>
-  </head>
-  <body style="margin:0;padding:0;background:#f5f7fb;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;">
-      <tr>
-        <td align="center">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;">
-            <tr>
-              <td style="padding:22px 24px;border-bottom:1px solid #e5e7eb;">
-                <p style="margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#16a34a;">Hash for Gamers</p>
-                <h1 style="margin:10px 0 0 0;font-size:20px;line-height:1.3;">Onboarding Complete</h1>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding:24px;">
-                <p style="margin:0 0 12px 0;">Hello <strong>{vendor.owner_name}</strong>,</p>
-                <p style="margin:0 0 16px 0;line-height:1.6;">
-                  Your cafe <strong>{vendor.cafe_name}</strong> has been onboarded successfully.
-                </p>
-                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:8px;padding:12px;">
-                  <tr><td style="padding:8px 0;color:#111827;">Login Email</td><td style="padding:8px 0;color:#111827;"><strong>{email}</strong></td></tr>
-                  <tr><td style="padding:8px 0;color:#111827;">Password</td><td style="padding:8px 0;color:#111827;">{password_html}</td></tr>
-                  <tr><td style="padding:8px 0;color:#111827;">Vendor PIN</td><td style="padding:8px 0;color:#111827;"><strong>{pin_code}</strong></td></tr>
-                  <tr><td style="padding:8px 0;color:#111827;">Vendor ID</td><td style="padding:8px 0;color:#111827;"><strong>{vendor.id}</strong></td></tr>
-                  {parent_row}
-                </table>
-                <p style="margin:16px 0 6px 0;line-height:1.6;">
-                  Dashboard: <a href="{dashboard_url}" style="color:#2563eb;text-decoration:none;">{dashboard_url}</a>
-                </p>
-                <p style="margin:6px 0 0 0;line-height:1.6;">Status: <strong>Pending Verification</strong></p>
-                <p style="margin:20px 0 0 0;font-size:12px;color:#6b7280;line-height:1.6;">
-                  Keep your credentials confidential. If you did not request this onboarding, contact Hash support immediately.
-                </p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>"""
+        return f"""
+<p style="margin:0 0 12px 0;color:#e5e7eb;">Hello <strong>{vendor.owner_name}</strong>,</p>
+<p style="margin:0 0 16px 0;line-height:1.7;color:#cbd5e1;">
+  Your cafe <strong>{vendor.cafe_name}</strong> has been onboarded successfully.
+</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #1e2a44;border-radius:10px;padding:12px;background:#08142c;">
+  <tr><td style="padding:8px 0;color:#94a3b8;">Login Email</td><td style="padding:8px 0;color:#e2e8f0;"><strong>{email}</strong></td></tr>
+  <tr><td style="padding:8px 0;color:#94a3b8;">Password</td><td style="padding:8px 0;color:#e2e8f0;">{password_html}</td></tr>
+  <tr><td style="padding:8px 0;color:#94a3b8;">Vendor PIN</td><td style="padding:8px 0;color:#e2e8f0;"><strong>{pin_code}</strong></td></tr>
+  <tr><td style="padding:8px 0;color:#94a3b8;">Vendor ID</td><td style="padding:8px 0;color:#e2e8f0;"><strong>{vendor.id}</strong></td></tr>
+  {parent_row}
+</table>
+<p style="margin:16px 0 6px 0;line-height:1.6;color:#cbd5e1;">
+  Dashboard: <a href="{dashboard_url}" style="color:#60a5fa;text-decoration:none;">{dashboard_url}</a>
+</p>
+<p style="margin:6px 0 0 0;line-height:1.6;color:#cbd5e1;">Status: <strong>Pending Verification</strong></p>
+<p style="margin:18px 0 0 0;font-size:12px;color:#94a3b8;line-height:1.6;">
+  Keep credentials confidential. If you did not request this onboarding, contact Hash support immediately.
+</p>
+"""
 
       
     @staticmethod
@@ -1777,7 +1751,7 @@ class VendorService:
 
     @staticmethod
     def _build_deboard_email_html(owner_name: str, cafe_name: str, vendor_id: int) -> str:
-        """Build the dark-themed deboard warning HTML email."""
+        """Build deboard warning content fragment (wrapped by shared HFG template)."""
 
         deletion_items = [
             "All bookings, transactions &amp; payment records",
@@ -1799,160 +1773,32 @@ class VendorService:
             for item in deletion_items
         ])
 
-        return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Account Notice - Hash for Gamers</title>
-</head>
-<body style="margin:0;padding:0;background-color:#080808;font-family:'Segoe UI',Arial,sans-serif;">
-
-  <table width="100%" cellpadding="0" cellspacing="0" border="0"
-         style="background-color:#080808;padding:40px 0;">
-    <tr>
-      <td align="center">
-
-        <table width="600" cellpadding="0" cellspacing="0" border="0"
-               style="background-color:#0f0f0f;border-radius:12px;
-                      border:1px solid #1f1f1f;overflow:hidden;
-                      box-shadow:0 4px 40px rgba(0,0,0,0.8);">
-
-          <!-- HEADER -->
-          <tr>
-            <td style="background:linear-gradient(135deg,#0f0f0f 0%,#1a0000 50%,#0f0f0f 100%);
-                       border-bottom:1px solid #2a0000;padding:36px 40px;text-align:center;">
-
-              <div style="display:inline-block;background:#1a0000;border:1px solid #ff3333;
-                          border-radius:8px;padding:8px 20px;margin-bottom:20px;">
-                <span style="color:#ff3333;font-size:13px;font-weight:700;
-                             letter-spacing:3px;text-transform:uppercase;">
-                  Hash for Gamers
-                </span>
-              </div>
-
-              <div style="margin:0 auto 16px;width:64px;height:64px;
-                          background:#1a0000;border:2px solid #ff3333;
-                          border-radius:50%;line-height:64px;text-align:center;
-                          font-size:28px;">
-                &#9888;
-              </div>
-
-              <h1 style="color:#ffffff;font-size:22px;font-weight:700;
-                         margin:0;letter-spacing:0.5px;">
-                Important Account Notice
-              </h1>
-              <p style="color:#888888;font-size:13px;margin:8px 0 0;letter-spacing:0.5px;">
-                Action Required &mdash; Please Read Carefully
-              </p>
-            </td>
-          </tr>
-
-          <!-- BODY -->
-          <tr>
-            <td style="padding:40px 40px 20px;">
-
-              <p style="color:#cccccc;font-size:15px;line-height:1.6;margin:0 0 24px;">
-                Dear <strong style="color:#ffffff;">{owner_name}</strong>,
-              </p>
-
-              <p style="color:#cccccc;font-size:15px;line-height:1.6;margin:0 0 32px;">
-                We are reaching out regarding your gaming cafe registered with us &mdash;
-                <strong style="color:#ffffff;">{cafe_name}</strong>
-                <span style="color:#555555;font-size:12px;">(ID: #{vendor_id})</span>.
-              </p>
-
-              <!-- Alert Box -->
-              <table width="100%" cellpadding="0" cellspacing="0" border="0"
-                     style="background-color:#130000;border:1px solid #ff3333;
-                            border-left:4px solid #ff3333;border-radius:8px;
-                            margin-bottom:32px;">
-                <tr>
-                  <td style="padding:20px 24px;">
-                    <p style="color:#ff6666;font-size:14px;font-weight:700;
-                               margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">
-                      Deboarding Notice
-                    </p>
-                    <p style="color:#cccccc;font-size:14px;line-height:1.7;margin:0;">
-                      Your cafe account has been flagged for
-                      <strong style="color:#ffffff;">removal from the Hash for Gamers platform</strong>.
-                      All associated data &mdash; including bookings, slots, transactions,
-                      and configurations &mdash; will be
-                      <strong style="color:#ff6666;">permanently deleted</strong>.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- What will be removed -->
-              <p style="color:#888888;font-size:12px;font-weight:700;letter-spacing:2px;
-                         text-transform:uppercase;margin:0 0 12px;">
-                What will be removed
-              </p>
-
-              <table width="100%" cellpadding="0" cellspacing="0" border="0"
-                     style="margin-bottom:32px;">
-                {deletion_rows}
-              </table>
-
-              <p style="color:#cccccc;font-size:15px;line-height:1.6;margin:0 0 16px;">
-                If you believe this is an error or wish to dispute this action,
-                please contact our support team
-                <strong style="color:#ffffff;">immediately</strong>.
-              </p>
-
-              <!-- Support Button -->
-              <table cellpadding="0" cellspacing="0" border="0" style="margin:24px 0;">
-                <tr>
-                  <td style="background-color:#1a0000;border:1px solid #ff3333;
-                              border-radius:8px;padding:14px 32px;text-align:center;">
-                    <a href="mailto:support@hashforgamers.com"
-                       style="color:#ff6666;font-size:14px;font-weight:700;
-                              text-decoration:none;letter-spacing:0.5px;">
-                      Contact Support
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
-              <div style="border-top:1px solid #1a1a1a;margin:32px 0;"></div>
-
-              <!-- Info note -->
-              <table width="100%" cellpadding="0" cellspacing="0" border="0"
-                     style="background-color:#111111;border-radius:8px;
-                            border:1px solid #1f1f1f;margin-bottom:8px;">
-                <tr>
-                  <td style="padding:16px 20px;">
-                    <p style="color:#555555;font-size:12px;line-height:1.6;margin:0;">
-                      This is an automated notice sent by the Hash for Gamers admin platform.
-                      If you have already been in contact with our team, please disregard this email.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-
-            </td>
-          </tr>
-
-          <!-- FOOTER -->
-          <tr>
-            <td style="background-color:#0a0a0a;border-top:1px solid #1a1a1a;
-                       padding:24px 40px;text-align:center;">
-              <p style="color:#ff3333;font-size:12px;font-weight:700;
-                         letter-spacing:2px;text-transform:uppercase;margin:0 0 8px;">
-                Hash for Gamers
-              </p>
-              <p style="color:#333333;font-size:11px;margin:0;">
-                &copy; 2026 Hash for Gamers. All rights reserved.
-              </p>
-            </td>
-          </tr>
-
-        </table>
-
-      </td>
-    </tr>
-  </table>
-
-</body>
-</html>"""
+        return f"""
+<p style="margin:0 0 10px 0;color:#e5e7eb;">
+  Dear <strong>{owner_name}</strong>,
+</p>
+<p style="margin:0 0 12px 0;color:#cbd5e1;line-height:1.7;">
+  We are reaching out regarding your gaming cafe <strong>{cafe_name}</strong> (ID: #{vendor_id}).
+</p>
+<div style="border:1px solid #7f1d1d;background:#2b0b10;border-radius:8px;padding:14px;margin:0 0 16px 0;">
+  <div style="font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:#fca5a5;font-weight:700;margin-bottom:6px;">
+    Account Notice
+  </div>
+  <div style="color:#fecaca;line-height:1.65;">
+    Your cafe account is flagged for removal from the Hash For Gamers platform. Associated data will be permanently deleted.
+  </div>
+</div>
+<div style="font-size:13px;font-weight:700;color:#22c55e;margin:0 0 8px 0;">What will be removed</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #1e2a44;border-radius:10px;background:#08142c;margin-bottom:14px;">
+  {deletion_rows}
+</table>
+<p style="margin:0 0 12px 0;color:#cbd5e1;line-height:1.7;">
+  If you believe this is an error, contact our support team immediately.
+</p>
+<a href="mailto:support@hashforgamers.co.in" style="display:inline-block;background:#7f1d1d;color:#fee2e2;text-decoration:none;padding:10px 14px;border-radius:8px;font-size:14px;font-weight:700;">
+  Contact Support
+</a>
+<p style="margin:14px 0 0 0;color:#94a3b8;font-size:12px;line-height:1.6;">
+  This is an automated notice from Hash For Gamers admin platform.
+</p>
+"""

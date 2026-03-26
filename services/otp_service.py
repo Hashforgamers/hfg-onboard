@@ -77,60 +77,33 @@ class OTPService:
             page_name = "Bank Transfer" if page_type == "bank_transfer" else "Payout History"
             
             msg = Message(
-                subject=f'🔐 OTP for {page_name} Access - HashForGamers',
+                subject=f'OTP for {page_name} Access - Hash For Gamers',
                 recipients=[vendor_email],
                 sender=current_app.config['MAIL_DEFAULT_SENDER']
             )
             
             otp_html = f"""
-            <html>
-            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <div style="text-align: center; margin-bottom: 30px;">
-                        <h1 style="color: #2563eb; margin: 0;">🎮 HashForGamers</h1>
-                        <p style="color: #666; margin: 5px 0;">Gaming Cafe Dashboard</p>
-                    </div>
-                    
-                    <h2 style="color: #2563eb;">🔐 Security Verification Required</h2>
-                    <p>Hello <strong>{vendor_name}</strong>,</p>
-                    
-                    <p>You are trying to access the <strong>{page_name}</strong> section for <strong>{cafe_name}</strong>. For security purposes, please verify your identity with the OTP below:</p>
-                    
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 10px; text-align: center; margin: 30px 0; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <p style="color: white; margin: 0 0 10px 0; font-size: 16px;">Your OTP Code</p>
-                        <h1 style="color: white; font-size: 42px; margin: 0; letter-spacing: 8px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.2);">{otp}</h1>
-                    </div>
-                    
-                    <div style="background-color: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 25px 0;">
-                        <p style="margin: 0; color: #92400e;"><strong>⚠️ Important Security Information:</strong></p>
-                        <ul style="margin: 10px 0; color: #92400e;">
-                            <li>This OTP is valid for <strong>5 minutes only</strong></li>
-                            <li>Never share this OTP with anyone</li>
-                            <li>HashForGamers support will never ask for your OTP</li>
-                            <li>If you didn't request this access, please ignore this email</li>
-                        </ul>
-                    </div>
-                    
-                    <div style="margin: 30px 0; padding: 20px; background-color: #f8fafc; border-radius: 8px;">
-                        <p style="margin: 0; font-size: 14px; color: #475569;">
-                            <strong>🛡️ Why do we send this OTP?</strong><br>
-                            We protect sensitive areas like payment and banking information with additional security to keep your account safe.
-                        </p>
-                    </div>
-                    
-                    <hr style="margin: 30px 0; border: none; height: 1px; background-color: #e2e8f0;">
-                    
-                    <p style="font-size: 12px; color: #64748b; text-align: center; margin: 0;">
-                        This is an automated security email from HashForGamers Dashboard.<br>
-                        Please do not reply to this email. If you need assistance, contact our support team.
-                    </p>
-                    
-                    <div style="text-align: center; margin-top: 20px;">
-                        <p style="font-size: 10px; color: #94a3b8;">© 2025 HashForGamers. All rights reserved.</p>
-                    </div>
-                </div>
-            </body>
-            </html>
+            <p style="margin:0 0 12px 0;color:#e5e7eb;">Hello <strong>{vendor_name}</strong>,</p>
+            <p style="margin:0 0 14px 0;color:#cbd5e1;line-height:1.7;">
+                You are trying to access <strong>{page_name}</strong> for <strong>{cafe_name}</strong>.
+                Please verify with the OTP below.
+            </p>
+            <div style="background:#0a1f45;border:1px solid #1d4ed8;border-radius:10px;padding:18px;text-align:center;margin:16px 0;">
+                <div style="color:#93c5fd;font-size:13px;margin-bottom:6px;">One-Time Password</div>
+                <div style="color:#ffffff;font-size:36px;letter-spacing:8px;font-weight:700;">{otp}</div>
+            </div>
+            <div style="background:#2b170a;border:1px solid #7c2d12;border-radius:8px;padding:12px;color:#fcd34d;line-height:1.65;">
+                <strong>Important:</strong>
+                <ul style="margin:8px 0 0 18px;padding:0;">
+                    <li>This OTP is valid for 5 minutes.</li>
+                    <li>Never share this OTP with anyone.</li>
+                    <li>Hash For Gamers support will never ask for your OTP.</li>
+                    <li>If you did not request this, you can ignore this email.</li>
+                </ul>
+            </div>
+            <p style="margin:14px 0 0 0;color:#94a3b8;font-size:12px;">
+                This is an automated security email from Hash For Gamers dashboard.
+            </p>
             """
             msg.html = build_hfg_email_html(
                 subject=msg.subject,
@@ -150,14 +123,14 @@ OTP: {otp}
 Important:
 - This OTP is valid for 5 minutes only
 - Never share this OTP with anyone
-- HashForGamers support will never ask for your OTP
+- Hash For Gamers support will never ask for your OTP
 - If you didn't request this access, please ignore this email
 
 Why do we send this OTP?
 We protect sensitive areas like payment and banking information with additional security to keep your account safe.
 
 Best regards,
-HashForGamers Team
+Hash For Gamers Team
 
 ---
 This is an automated security email. Please do not reply.
