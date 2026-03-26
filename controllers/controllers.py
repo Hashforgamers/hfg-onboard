@@ -50,6 +50,7 @@ except Exception:
 
 INTERNAL_WS_URL = "https://hfg-dashboard-h9qq.onrender.com/internal/ws/unlock"
 DASHBOARD_SERVICE_URL = os.getenv("DASHBOARD_SERVICE_URL", "https://hfg-dashboard.onrender.com")
+BOOKING_SERVICE_URL = os.getenv("BOOKING_SERVICE_URL", "https://hfg-booking.onrender.com")
 
 vendor_bp = Blueprint('vendor', __name__)
 
@@ -1139,6 +1140,81 @@ def poll_queue():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+@vendor_bp.route('/bookingQueue/next-slot/check', methods=['POST'])
+def kiosk_next_slot_check_proxy():
+    """
+    Proxy for kiosk continuation availability check.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        vendor_id = data.get("vendor_id") or data.get("vendorId")
+        if not vendor_id:
+            return jsonify({"success": False, "message": "vendor_id is required"}), 400
+
+        payload = {
+            "current_booking_id": data.get("current_booking_id") or data.get("currentBookingId") or data.get("booking_id"),
+            "game_id": data.get("game_id") or data.get("gameId"),
+            "console_id": data.get("console_id") or data.get("consoleId"),
+            "user_id": data.get("user_id") or data.get("userId"),
+        }
+        # Keep backward compatibility for access-code based kiosk clients.
+        if data.get("access_code") or data.get("accessCode"):
+            payload["access_code"] = data.get("access_code") or data.get("accessCode")
+
+        response = requests.post(
+            f"{BOOKING_SERVICE_URL}/api/kiosk/next-slot/check/vendor/{int(vendor_id)}",
+            json=payload,
+            timeout=8,
+        )
+        try:
+            body = response.json()
+        except Exception:
+            body = {"success": False, "message": response.text}
+        return jsonify(body), response.status_code
+    except Exception as e:
+        current_app.logger.exception("kiosk_next_slot_check_proxy failed")
+        return jsonify({"success": False, "message": "Proxy error", "error": str(e)}), 500
+
+
+@vendor_bp.route('/bookingQueue/next-slot/confirm', methods=['POST'])
+def kiosk_next_slot_confirm_proxy():
+    """
+    Proxy for kiosk continuation booking confirmation.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        vendor_id = data.get("vendor_id") or data.get("vendorId")
+        if not vendor_id:
+            return jsonify({"success": False, "message": "vendor_id is required"}), 400
+
+        payload = {
+            "current_booking_id": data.get("current_booking_id") or data.get("currentBookingId") or data.get("booking_id"),
+            "game_id": data.get("game_id") or data.get("gameId"),
+            "console_id": data.get("console_id") or data.get("consoleId"),
+            "user_id": data.get("user_id") or data.get("userId"),
+            "slot_id": data.get("slot_id") or data.get("slotId"),
+            "paymentType": data.get("paymentType") or data.get("modeOfPayment") or "pending",
+            "autoStart": bool(data.get("autoStart", True)),
+            "kioskId": data.get("kioskId") or data.get("kiosk_id"),
+        }
+        if data.get("access_code") or data.get("accessCode"):
+            payload["access_code"] = data.get("access_code") or data.get("accessCode")
+
+        response = requests.post(
+            f"{BOOKING_SERVICE_URL}/api/kiosk/next-slot/vendor/{int(vendor_id)}",
+            json=payload,
+            timeout=10,
+        )
+        try:
+            body = response.json()
+        except Exception:
+            body = {"success": False, "message": response.text}
+        return jsonify(body), response.status_code
+    except Exception as e:
+        current_app.logger.exception("kiosk_next_slot_confirm_proxy failed")
+        return jsonify({"success": False, "message": "Proxy error", "error": str(e)}), 500
 
 
 @vendor_bp.route('/accessCodeUnlock', methods=['POST'])
