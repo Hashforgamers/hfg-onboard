@@ -581,15 +581,23 @@ def send_self_onboard_email_otp():
             "Team Hash"
         )
         otp_html = f"""
-        <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:560px;margin:0 auto;">
-          <h2 style="margin:0 0 12px;">Hash Cafe Self Onboarding</h2>
-          <p style="margin:0 0 8px;">Use this OTP to verify your email:</p>
-          <div style="font-size:32px;font-weight:700;letter-spacing:8px;padding:12px 16px;border:1px solid #d1d5db;border-radius:8px;display:inline-block;">
-            {otp}
+        <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.7;color:#e5e7eb;max-width:560px;margin:0 auto;">
+          <h2 style="margin:0 0 10px 0;color:#f8fafc;font-size:28px;line-height:1.25;">Hash Cafe Self Onboarding</h2>
+          <p style="margin:0 0 12px 0;color:#cbd5e1;">Use this OTP to verify your email:</p>
+
+          <div style="margin:0 0 14px 0;">
+            <span style="display:inline-block;background:#f8fafc;border:1px solid #dbeafe;border-radius:10px;padding:12px 18px;color:#0f172a;font-size:34px;font-weight:700;letter-spacing:8px;">
+              {otp}
+            </span>
           </div>
-          <p style="margin:16px 0 8px;">Cafe: <strong>{cafe_name}</strong></p>
-          <p style="margin:0 0 8px;">This OTP expires in {SELF_ONBOARD_OTP_EXPIRY_SECONDS // 60} minutes.</p>
-          <p style="color:#6b7280;margin:0;">If you did not request this, ignore this email.</p>
+
+          <div style="background:#08142c;border:1px solid #1e3a8a;border-radius:10px;padding:12px 14px;margin:0 0 12px 0;">
+            <p style="margin:0 0 6px 0;color:#93c5fd;font-size:13px;text-transform:uppercase;letter-spacing:.06em;">Cafe</p>
+            <p style="margin:0;color:#f8fafc;font-size:16px;font-weight:700;">{cafe_name}</p>
+          </div>
+
+          <p style="margin:0 0 8px 0;color:#cbd5e1;">This OTP expires in {SELF_ONBOARD_OTP_EXPIRY_SECONDS // 60} minutes.</p>
+          <p style="margin:0;color:#94a3b8;font-size:13px;">If you did not request this, ignore this email.</p>
         </div>
         """
         msg.html = build_hfg_email_html(
