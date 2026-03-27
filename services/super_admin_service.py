@@ -4,6 +4,7 @@ import string
 import html
 import hashlib
 import secrets
+import re
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional, Dict, List
 
@@ -1749,7 +1750,7 @@ class SuperAdminService:
     @staticmethod
     def _validate_newsletter_payload(topic: str, content: str):
         cleaned_topic = " ".join(str(topic or "").split()).strip()
-        cleaned_content = str(content or "").strip()
+        cleaned_content = SuperAdminService._normalize_newsletter_content(content)
         if len(cleaned_topic) < 3:
             return None, None, "Topic must be at least 3 characters."
         if len(cleaned_topic) > 140:
@@ -1759,6 +1760,29 @@ class SuperAdminService:
         if len(cleaned_content) > 10000:
             return None, None, "Content is too long. Keep it within 10000 characters."
         return cleaned_topic, cleaned_content, None
+
+    @staticmethod
+    def _normalize_newsletter_content(content: str) -> str:
+        raw = str(content or "").strip()
+        if not raw:
+            return ""
+
+        has_html_tags = "<" in raw and ">" in raw
+        if has_html_tags:
+            text_content = html.unescape(raw)
+            text_content = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", text_content)
+            text_content = re.sub(r"(?is)<\s*br\s*/?>", "\n", text_content)
+            text_content = re.sub(r"(?is)</\s*p\s*>", "\n\n", text_content)
+            text_content = re.sub(r"(?is)<\s*li\b[^>]*>", "• ", text_content)
+            text_content = re.sub(r"(?is)</\s*li\s*>", "\n", text_content)
+            text_content = re.sub(r"(?is)<[^>]+>", " ", text_content)
+            raw = text_content
+
+        raw = raw.replace("\r\n", "\n").replace("\r", "\n")
+        raw = re.sub(r"[ \t]+", " ", raw)
+        raw = re.sub(r"\n[ \t]+", "\n", raw)
+        raw = re.sub(r"\n{3,}", "\n\n", raw)
+        return raw.strip()
 
     @staticmethod
     def _resolve_newsletter_targets(mode: str = "all", vendor_ids: Optional[List[int]] = None):

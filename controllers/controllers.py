@@ -862,6 +862,69 @@ def get_unverified_documents(vendor_id):
     response, status_code = VendorService.get_unverified_documents(vendor_id)
     return jsonify(response), status_code
 
+
+@vendor_bp.route('/vendor/<int:vendor_id>/documents/<int:document_id>', methods=['PUT'])
+def replace_vendor_document(vendor_id, document_id):
+    """
+    Replace an existing vendor document file.
+    Note: Replaced doc status becomes 'unverified' and must be re-verified by super admin.
+    """
+    try:
+        vendor = Vendor.query.get(vendor_id)
+        if not vendor:
+            return jsonify({"success": False, "message": "Vendor not found"}), 404
+
+        document = Document.query.filter_by(id=document_id, vendor_id=vendor_id).first()
+        if not document:
+            return jsonify({"success": False, "message": "Document not found"}), 404
+
+        file_obj = request.files.get("document")
+        if not file_obj or not file_obj.filename:
+            return jsonify({"success": False, "message": "document file is required"}), 400
+
+        upload_result = CloudinaryGameImageService.upload_vendor_document(
+            document_file=file_obj,
+            cafe_name=vendor.cafe_name or "vendor",
+            document_type=document.document_type or "document",
+            vendor_id=vendor_id
+        )
+        if not upload_result.get("success"):
+            return jsonify({
+                "success": False,
+                "message": upload_result.get("error") or "Failed to upload document"
+            }), 500
+
+        old_public_id = document.public_id
+        document.document_url = upload_result.get("url")
+        document.public_id = upload_result.get("public_id")
+        document.status = "unverified"
+        document.uploaded_at = dt.utcnow()
+        db.session.commit()
+
+        # Best-effort cleanup for old file (ignore failures).
+        if old_public_id and old_public_id != document.public_id:
+            try:
+                CloudinaryGameImageService.delete_image(old_public_id)
+            except Exception:
+                pass
+
+        return jsonify({
+            "success": True,
+            "message": "Document updated and sent for re-verification",
+            "document": {
+                "id": document.id,
+                "name": (document.document_type or "").replace("_", " ").title(),
+                "status": document.status,
+                "uploadedAt": document.uploaded_at.isoformat() if document.uploaded_at else None,
+                "documentUrl": document.document_url,
+                "publicId": document.public_id,
+            }
+        }), 200
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.error("Failed to replace document vendor_id=%s document_id=%s err=%s", vendor_id, document_id, exc)
+        return jsonify({"success": False, "message": "Failed to update document"}), 500
+
 @vendor_bp.route('/vendor/document/<int:document_id>/verify', methods=['POST'])
 def verify_document(document_id):
     """API endpoint to mark a document as verified and update vendor status if applicable."""
@@ -1211,6 +1274,14 @@ def kiosk_next_slot_confirm_proxy():
             body = response.json()
         except Exception:
             body = {"success": False, "message": response.text}
+        if response.status_code >= 500:
+            current_app.logger.error(
+                "Next-slot confirm downstream failure vendor=%s status=%s payload=%s response=%s",
+                vendor_id,
+                response.status_code,
+                payload,
+                body,
+            )
         return jsonify(body), response.status_code
     except Exception as e:
         current_app.logger.exception("kiosk_next_slot_confirm_proxy failed")
