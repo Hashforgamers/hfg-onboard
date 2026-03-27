@@ -56,6 +56,12 @@ vendor_bp = Blueprint('vendor', __name__)
 
 GRACE_MIN = 30
 ALLOWED_EXTENSIONS = {'pdf', 'jpg', 'jpeg', 'png', 'gif', 'doc', 'docx'}
+ALLOWED_VENDOR_DOCUMENT_TYPES = {
+    "business_registration",
+    "owner_identification_proof",
+    "tax_identification_number",
+    "bank_acc_details",
+}
 WEEKDAY_MAP = {
     "mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6
 }
@@ -869,6 +875,89 @@ def get_unverified_documents(vendor_id):
     # Call the VendorService to get unverified documents
     response, status_code = VendorService.get_unverified_documents(vendor_id)
     return jsonify(response), status_code
+
+
+@vendor_bp.route('/vendor/<int:vendor_id>/documents', methods=['POST'])
+def upload_vendor_missing_document(vendor_id):
+    """
+    Upload a missing (or replace existing) required onboarding document by document_type.
+    """
+    try:
+        vendor = Vendor.query.get(vendor_id)
+        if not vendor:
+            return jsonify({"success": False, "message": "Vendor not found"}), 404
+
+        document_type = str(request.form.get("document_type") or "").strip().lower()
+        if document_type not in ALLOWED_VENDOR_DOCUMENT_TYPES:
+            return jsonify({
+                "success": False,
+                "message": "document_type must be one of business_registration, owner_identification_proof, tax_identification_number, bank_acc_details",
+            }), 400
+
+        file_obj = request.files.get("document")
+        if not file_obj or not file_obj.filename:
+            return jsonify({"success": False, "message": "document file is required"}), 400
+
+        upload_result = CloudinaryGameImageService.upload_vendor_document(
+            document_file=file_obj,
+            cafe_name=vendor.cafe_name or "vendor",
+            document_type=document_type,
+            vendor_id=vendor_id
+        )
+        if not upload_result.get("success"):
+            return jsonify({
+                "success": False,
+                "message": upload_result.get("error") or "Failed to upload document"
+            }), 500
+
+        existing = Document.query.filter_by(vendor_id=vendor_id, document_type=document_type).first()
+        if existing:
+            old_public_id = existing.public_id
+            existing.document_url = upload_result.get("url")
+            existing.public_id = upload_result.get("public_id")
+            existing.status = "unverified"
+            existing.uploaded_at = dt.utcnow()
+            document = existing
+            if old_public_id and old_public_id != existing.public_id:
+                try:
+                    CloudinaryGameImageService.delete_image(old_public_id)
+                except Exception:
+                    pass
+        else:
+            document = Document(
+                vendor_id=vendor_id,
+                document_type=document_type,
+                document_url=upload_result.get("url"),
+                public_id=upload_result.get("public_id"),
+                uploaded_at=dt.utcnow(),
+                status="unverified",
+            )
+            db.session.add(document)
+
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Document uploaded and sent for verification",
+            "document": {
+                "id": document.id,
+                "name": (document.document_type or "").replace("_", " ").title(),
+                "document_type": document.document_type,
+                "status": document.status,
+                "uploadedAt": document.uploaded_at.isoformat() if document.uploaded_at else None,
+                "documentUrl": document.document_url,
+                "publicId": document.public_id,
+            }
+        }), 200
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.error(
+            "upload_vendor_missing_document failed vendor_id=%s err=%s",
+            vendor_id,
+            exc,
+            exc_info=True,
+        )
+        return jsonify({"success": False, "message": "Failed to upload document"}), 500
 
 
 @vendor_bp.route('/vendor/<int:vendor_id>/documents/<int:document_id>', methods=['PUT'])
