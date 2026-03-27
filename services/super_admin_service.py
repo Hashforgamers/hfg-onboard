@@ -1121,6 +1121,65 @@ class SuperAdminService:
         db.session.add(VendorStatus(vendor_id=vendor_id, status=next_status, updated_at=datetime.utcnow()))
         db.session.commit()
 
+        try:
+            vendor = Vendor.query.get(vendor_id)
+            if vendor:
+                emails = SuperAdminService._resolve_vendor_emails(vendor)
+                recipient = emails.get("recipient")
+                if recipient:
+                    safe_cafe = html.escape(vendor.cafe_name or "Your cafe")
+                    safe_status = html.escape(target_status.title())
+                    docs_html = "".join(
+                        f"<li style='margin:4px 0;color:#e2e8f0;'>{html.escape((doc.document_type or '').replace('_', ' ').title())}</li>"
+                        for doc in docs
+                    )
+                    action_note = (
+                        "Please upload the corrected document again from Dashboard Settings."
+                        if target_status == "rejected"
+                        else "No action is needed from your side."
+                    )
+                    msg = Message(
+                        subject=f"Hash For Gamers · Document {target_status.title()} Update",
+                        recipients=[recipient],
+                    )
+                    msg.body = (
+                        f"Hello {vendor.owner_name or vendor.cafe_name or 'Partner'},\n\n"
+                        f"Document status updated for {vendor.cafe_name or 'your cafe'}.\n"
+                        f"Status: {target_status}\n"
+                        f"Documents: {', '.join([(doc.document_type or '').replace('_', ' ').title() for doc in docs])}\n"
+                        f"Vendor status: {next_status}\n\n"
+                        f"{action_note}\n\n"
+                        "Hash For Gamers Ops"
+                    )
+                    msg.html = build_hfg_email_html(
+                        subject=f"Document {target_status.title()} Update",
+                        content_html=f"""
+                          <p style="margin:0 0 12px 0;color:#cbd5e1;">Hello {html.escape(vendor.owner_name or vendor.cafe_name or "Partner")},</p>
+                          <p style="margin:0 0 12px 0;color:#cbd5e1;">
+                            Your document review status has been updated for <strong>{safe_cafe}</strong>.
+                          </p>
+                          <div style="margin:12px 0;padding:12px;border:1px solid #1e293b;border-radius:10px;background:#0f172a;">
+                            <p style="margin:0 0 8px 0;color:#94a3b8;">Review Status</p>
+                            <p style="margin:0;font-size:20px;font-weight:700;color:#e2e8f0;">{safe_status}</p>
+                          </div>
+                          <p style="margin:0 0 8px 0;color:#94a3b8;">Updated Documents</p>
+                          <ul style="margin:0 0 12px 16px;padding:0;">{docs_html}</ul>
+                          <p style="margin:0 0 12px 0;color:#cbd5e1;">
+                            Vendor account status: <strong>{html.escape(next_status)}</strong>
+                          </p>
+                          <p style="margin:0;color:#94a3b8;">{html.escape(action_note)}</p>
+                        """,
+                        preview_text=f"Document status updated to {target_status.title()} for {vendor.cafe_name or 'your cafe'}.",
+                    )
+                    mail.send(msg)
+        except Exception as mail_exc:
+            current_app.logger.warning(
+                "verify_documents email notify failed vendor_id=%s status=%s err=%s",
+                vendor_id,
+                target_status,
+                mail_exc,
+            )
+
         return True, f"Updated {len(docs)} documents to '{target_status}'. Vendor status -> {next_status}."
 
     @staticmethod
