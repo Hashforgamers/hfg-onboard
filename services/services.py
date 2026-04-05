@@ -55,6 +55,22 @@ from sqlalchemy.orm import joinedload
 
 
 class VendorService:
+
+    PAYMENT_METHOD_ALIASES = {
+        "pay_in_cafe": {"pay_in_cafe", "pay at cafe", "pay_at_cafe", "pay in cafe"},
+        "hash_global_pass": {"hash_global_pass", "hash global pass", "hash", "hash pass"},
+        "cafe_specific_pass": {"cafe_specific_pass", "cafe specific pass", "vendor pass"},
+    }
+
+    @staticmethod
+    def _normalize_payment_method_name(method_name):
+        if not method_name:
+            return None
+        cleaned = str(method_name).strip().lower().replace("-", " ").replace("_", " ")
+        for key, aliases in VendorService.PAYMENT_METHOD_ALIASES.items():
+            if cleaned == key.replace("_", " ") or cleaned in aliases:
+                return key
+        return None
     
     
     @staticmethod
@@ -1278,8 +1294,11 @@ class VendorService:
                     "images": images_map.get(result.vendor_id, []),
                     "subscription": sub_snapshot,
                     "payment_methods": payment_methods_map.get(result.vendor_id, {
+                        "pay_in_cafe": False,
+                        "hash_global_pass": False,
+                        "cafe_specific_pass": False,
                         "Pay at Cafe": False,
-                        "Hash": False
+                        "Hash": False,
                     })
                 })
 
@@ -1564,20 +1583,33 @@ class VendorService:
             ).join(
                 PaymentMethod
             ).filter(
-                PaymentVendorMap.vendor_id.in_(vendor_ids),
-                PaymentMethod.method_name.in_(['Pay at Cafe', 'Hash'])
+                PaymentVendorMap.vendor_id.in_(vendor_ids)
             ).all()
 
             # Pre-fill all vendors with False defaults
             payment_methods_map = {
-                vendor_id: {"Pay at Cafe": False, "Hash": False}
+                vendor_id: {
+                    "pay_in_cafe": False,
+                    "hash_global_pass": False,
+                    "cafe_specific_pass": False,
+                    "Pay at Cafe": False,
+                    "Hash": False,
+                }
                 for vendor_id in vendor_ids
             }
 
             # Set True only for what actually exists in DB
             for row in results:
                 if row.vendor_id in payment_methods_map:
-                    payment_methods_map[row.vendor_id][row.method_name] = True
+                    normalized = VendorService._normalize_payment_method_name(row.method_name)
+                    if normalized:
+                        payment_methods_map[row.vendor_id][normalized] = True
+
+            # Keep legacy aliases for compatibility with older clients.
+            for vendor_id in vendor_ids:
+                vendor_methods = payment_methods_map[vendor_id]
+                vendor_methods["Pay at Cafe"] = bool(vendor_methods["pay_in_cafe"])
+                vendor_methods["Hash"] = bool(vendor_methods["hash_global_pass"] or vendor_methods["cafe_specific_pass"])
 
             current_app.logger.info(f"Payment methods fetched for {len(vendor_ids)} vendors in 1 query.")
             return payment_methods_map
@@ -1586,7 +1618,16 @@ class VendorService:
             current_app.logger.error(f"Error in get_payment_methods_for_vendors: {e}")
             import traceback
             current_app.logger.error(traceback.format_exc())
-            return {vendor_id: {"Pay at Cafe": False, "Hash": False} for vendor_id in vendor_ids}
+            return {
+                vendor_id: {
+                    "pay_in_cafe": False,
+                    "hash_global_pass": False,
+                    "cafe_specific_pass": False,
+                    "Pay at Cafe": False,
+                    "Hash": False,
+                }
+                for vendor_id in vendor_ids
+            }
 
     
     
