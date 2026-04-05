@@ -1025,6 +1025,24 @@ class VendorService:
             ).all()
 
             for result in results:
+                vendor_payment_methods = payment_methods_map.get(result.vendor_id, {
+                    "pay_in_cafe": False,
+                    "hash_global_pass": False,
+                    "cafe_specific_pass": False,
+                    "Pay at Cafe": False,
+                    "Hash": False,
+                })
+                accepted_payment_methods = {
+                    "pay_in_cafe": bool(vendor_payment_methods.get("pay_in_cafe")),
+                    "hash_global_pass": bool(vendor_payment_methods.get("hash_global_pass")),
+                    "cafe_specific_pass": bool(vendor_payment_methods.get("cafe_specific_pass")),
+                }
+                accepted_payment_method_list = [
+                    method_name
+                    for method_name, enabled in accepted_payment_methods.items()
+                    if enabled
+                ]
+
                 vendors_data.append({
                     "vendor_id": result.vendor_id,
                     "cafe_name": result.cafe_name,
@@ -1293,13 +1311,9 @@ class VendorService:
                     "amenities": amenities_map.get(result.vendor_id, []),
                     "images": images_map.get(result.vendor_id, []),
                     "subscription": sub_snapshot,
-                    "payment_methods": payment_methods_map.get(result.vendor_id, {
-                        "pay_in_cafe": False,
-                        "hash_global_pass": False,
-                        "cafe_specific_pass": False,
-                        "Pay at Cafe": False,
-                        "Hash": False,
-                    })
+                    "payment_methods": vendor_payment_methods,
+                    "accepted_payment_methods": accepted_payment_methods,
+                    "accepted_payment_method_list": accepted_payment_method_list,
                 })
 
             return {"vendors": vendors_data}
