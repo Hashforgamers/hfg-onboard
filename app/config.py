@@ -1,9 +1,10 @@
 # app/config.py
 
 import os
-from datetime import timedelta
 
 class Config:
+    APP_ENV = os.getenv("APP_ENV", os.getenv("FLASK_ENV", "development")).lower()
+
     # Flask Secret Key
     SECRET_KEY = os.getenv('SECRET_KEY', 'your_secret_key')
 
@@ -22,7 +23,8 @@ class Config:
         "max_overflow": 20,          # Allow 20 extra connections
         "pool_timeout": 30,          # Wait 30s for available connection
         "connect_args": {
-            "connect_timeout": 10   # FIXED: Removed statement_timeout (not supported by Neon pooler)
+            "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT_SEC", "10")),
+            "options": f"-c statement_timeout={int(os.getenv('DB_STATEMENT_TIMEOUT_MS', '30000'))}"
         }
     }
 
@@ -44,6 +46,11 @@ class Config:
     # Redis Configuration
     REDIS_URL = os.getenv('REDIS_URL')
     REDIS_TLS_ENABLED = os.getenv('REDIS_TLS_ENABLED', 'false').lower() == 'true'
+
+    API_ENABLE_TIMING_HEADERS = os.getenv("API_ENABLE_TIMING_HEADERS", "true").lower() in ("true", "1", "t", "yes", "y")
+    API_SLOW_REQUEST_MS = int(os.getenv("API_SLOW_REQUEST_MS", "120") or 120)
+    API_DEFAULT_CACHE_CONTROL = os.getenv("API_DEFAULT_CACHE_CONTROL", "no-store")
+    TRUST_PROXY = os.getenv("TRUST_PROXY", "true").lower() in ("true", "1", "t", "yes", "y")
 
     # Google Drive Configuration
     GOOGLE_DRIVE_FOLDER_ID = os.getenv('GOOGLE_DRIVE_FOLDER_ID')
