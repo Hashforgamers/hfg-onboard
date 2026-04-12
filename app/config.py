@@ -1,6 +1,15 @@
 # app/config.py
 
 import os
+from urllib.parse import urlparse
+
+
+def _is_neon_pooler(database_uri: str) -> bool:
+    try:
+        host = (urlparse(database_uri).hostname or "").lower()
+    except Exception:
+        return False
+    return "neon.tech" in host and "-pooler." in host
 
 class Config:
     APP_ENV = os.getenv("APP_ENV", os.getenv("FLASK_ENV", "development")).lower()
@@ -14,18 +23,24 @@ class Config:
         'postgresql://postgres:postgres@db:5432/vendor_db'
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    _NEON_POOLER = _is_neon_pooler(SQLALCHEMY_DATABASE_URI)
 
-    # FIXED: Neon-compatible engine options (removed statement_timeout from options)
+    # Neon pooler rejects startup `options` (e.g. statement_timeout). Keep connect_args minimal there.
+    _CONNECT_ARGS = {
+        "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT_SEC", "10")),
+    }
+    if not _NEON_POOLER:
+        statement_timeout_ms = int(os.getenv("DB_STATEMENT_TIMEOUT_MS", "30000") or 30000)
+        if statement_timeout_ms > 0:
+            _CONNECT_ARGS["options"] = f"-c statement_timeout={statement_timeout_ms}"
+
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,       # Validate connections before using
         "pool_recycle": 1800,        # Recycle every 30 minutes
         "pool_size": 10,             # Maintain 10 connections
         "max_overflow": 20,          # Allow 20 extra connections
         "pool_timeout": 30,          # Wait 30s for available connection
-        "connect_args": {
-            "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT_SEC", "10")),
-            "options": f"-c statement_timeout={int(os.getenv('DB_STATEMENT_TIMEOUT_MS', '30000'))}"
-        }
+        "connect_args": _CONNECT_ARGS,
     }
 
     # File Upload Configuration
