@@ -103,6 +103,195 @@ def _normalize_cafe_name(value):
     return _normalize_whitespace(value).lower()
 
 
+def _is_missing_payload_value(value):
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return _normalize_whitespace(value) == ""
+    if isinstance(value, (list, dict)):
+        return len(value) == 0
+    return False
+
+
+def _build_branch_defaults_from_vendor(vendor):
+    if not vendor:
+        return {}
+
+    defaults = {}
+
+    owner_name = _normalize_whitespace(getattr(vendor, "owner_name", ""))
+    if owner_name:
+        defaults["owner_name"] = owner_name
+
+    contact = getattr(vendor, "contact_info", None)
+    account_email = _normalize_email((getattr(getattr(vendor, "account", None), "email", None)))
+    contact_email = _normalize_email(getattr(contact, "email", None))
+    defaults["contact_info"] = {
+        "email": contact_email or account_email,
+        "phone": str(getattr(contact, "phone", "") or "").strip(),
+    }
+
+    address = getattr(vendor, "physical_address", None)
+    if address:
+        defaults["physicalAddress"] = {
+            "street": str(getattr(address, "addressLine1", "") or "").strip(),
+            "city": str(getattr(address, "addressLine2", "") or "").strip(),
+            "zipCode": str(getattr(address, "pincode", "") or "").strip(),
+            "state": str(getattr(address, "state", "") or "").strip(),
+            "country": str(getattr(address, "country", "India") or "India").strip() or "India",
+            "latitude": getattr(address, "latitude", None),
+            "longitude": getattr(address, "longitude", None),
+        }
+
+    registration = getattr(vendor, "business_registration", None)
+    if registration:
+        defaults["business_registration_details"] = {
+            "registration_type": "Business Registration",
+            "registration_number": str(getattr(registration, "registration_number", "") or "").strip(),
+            "tax_id": "",
+        }
+
+    timing = getattr(vendor, "timing", None)
+    opening_days = {str(day.day).strip().lower(): bool(day.is_open) for day in (getattr(vendor, "opening_days", []) or [])}
+    if timing and getattr(timing, "opening_time", None) and getattr(timing, "closing_time", None):
+        open_time = str(timing.opening_time).strip()
+        close_time = str(timing.closing_time).strip()
+        day_keys = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+        defaults["timing"] = {
+            day: {
+                "open": open_time,
+                "close": close_time,
+                "closed": not opening_days.get(day, True),
+                "slot_duration": 30,
+                "is_24_hours": False,
+            }
+            for day in day_keys
+        }
+        defaults["opening_day"] = {day: not defaults["timing"][day]["closed"] for day in day_keys}
+
+    available_games = getattr(vendor, "available_games", []) or []
+    if available_games:
+        defaults["available_games"] = [
+            {
+                "name": str(getattr(game, "game_name", "") or "").strip().lower(),
+                "total_slot": int(getattr(game, "total_slot", 0) or 0),
+                "rate_per_slot": int(getattr(game, "single_slot_price", 0) or 0),
+            }
+            for game in available_games
+            if str(getattr(game, "game_name", "") or "").strip()
+        ]
+
+    submitted_records = getattr(vendor, "documents_submitted", []) or []
+    if submitted_records:
+        submitted_map = {}
+        for record in submitted_records:
+            key = str(getattr(record, "document_name", "") or "").strip()
+            if not key:
+                continue
+            submitted_map[key] = bool(getattr(record, "submitted", False))
+        if submitted_map:
+            defaults["document_submitted"] = submitted_map
+
+    return defaults
+
+
+def _apply_branch_defaults(data):
+    payload = dict(data or {})
+    contact_info = payload.get("contact_info") if isinstance(payload.get("contact_info"), dict) else {}
+    vendor_account_email = _normalize_email(payload.get("vendor_account_email") or contact_info.get("email"))
+    if not vendor_account_email:
+        return payload
+
+    account = (
+        VendorAccount.query
+        .filter(func.lower(VendorAccount.email) == vendor_account_email)
+        .first()
+    )
+    if not account:
+        return payload
+
+    template_vendor = (
+        Vendor.query
+        .filter(Vendor.account_id == account.id)
+        .order_by(Vendor.updated_at.desc(), Vendor.id.desc())
+        .first()
+    )
+    if not template_vendor:
+        return payload
+
+    defaults = _build_branch_defaults_from_vendor(template_vendor)
+    if not defaults:
+        return payload
+
+    # Top-level simple defaults
+    for top_key in ("owner_name", "description"):
+        if _is_missing_payload_value(payload.get(top_key)) and not _is_missing_payload_value(defaults.get(top_key)):
+            payload[top_key] = defaults.get(top_key)
+
+    # Nested object defaults
+    for nested_key in ("contact_info", "physicalAddress", "business_registration_details", "document_submitted"):
+        default_obj = defaults.get(nested_key)
+        if not isinstance(default_obj, dict):
+            continue
+        current_obj = payload.get(nested_key)
+        if not isinstance(current_obj, dict):
+            current_obj = {}
+        merged = dict(current_obj)
+        for field, default_value in default_obj.items():
+            if _is_missing_payload_value(merged.get(field)):
+                merged[field] = default_value
+        payload[nested_key] = merged
+
+    # Branch-critical defaults: timing/games/opening_day
+    if _is_missing_payload_value(payload.get("timing")) and defaults.get("timing"):
+        payload["timing"] = defaults["timing"]
+    if _is_missing_payload_value(payload.get("available_games")) and defaults.get("available_games"):
+        payload["available_games"] = defaults["available_games"]
+    if _is_missing_payload_value(payload.get("opening_day")) and defaults.get("opening_day"):
+        payload["opening_day"] = defaults["opening_day"]
+
+    # Keep normalized account email in payload for service layer consistency.
+    payload["vendor_account_email"] = vendor_account_email
+    return payload
+
+
+def _get_branch_defaults_for_email(email):
+    normalized_email = _normalize_email(email)
+    if not normalized_email:
+        return None
+
+    account = (
+        VendorAccount.query
+        .filter(func.lower(VendorAccount.email) == normalized_email)
+        .first()
+    )
+    if not account:
+        return None
+
+    template_vendor = (
+        Vendor.query
+        .filter(Vendor.account_id == account.id)
+        .order_by(Vendor.updated_at.desc(), Vendor.id.desc())
+        .first()
+    )
+    if not template_vendor:
+        return None
+
+    defaults = _build_branch_defaults_from_vendor(template_vendor)
+    defaults["vendor_account_email"] = normalized_email
+    defaults["source_vendor_id"] = int(template_vendor.id)
+    defaults["source_cafe_name"] = str(template_vendor.cafe_name or "").strip()
+
+    if _is_missing_payload_value(defaults.get("available_games")):
+        defaults["available_games"] = [
+            {"name": "pc", "total_slot": 0, "rate_per_slot": 0},
+            {"name": "ps5", "total_slot": 0, "rate_per_slot": 0},
+            {"name": "xbox", "total_slot": 0, "rate_per_slot": 0},
+        ]
+
+    return defaults
+
+
 def _self_onboard_duplicate_reason(email, owner_phone=None):
     normalized_email = _normalize_email(email)
     normalized_phone = _normalize_phone(owner_phone)
@@ -682,6 +871,11 @@ def onboard_vendor():
 
     onboarding_source = str(data.get("onboarding_source", "")).strip().lower()
 
+    # For dashboard branch onboarding, hydrate missing fields from the owner's latest existing cafe.
+    # Keeps "add branch" flows short while preserving full self-onboard validation strictness.
+    if onboarding_source != "self_onboard":
+        data = _apply_branch_defaults(data)
+
     if onboarding_source == "self_onboard":
         validation_error = _validate_self_onboard_payload(data)
         if validation_error:
@@ -855,6 +1049,31 @@ def onboard_vendor():
         import traceback
         current_app.logger.error(f"Full traceback: {traceback.format_exc()}")
         return jsonify({'message': 'An error occurred during onboarding', 'error': str(e)}), 500
+
+
+@vendor_bp.route('/vendor/branch-defaults', methods=['GET'])
+def get_branch_onboard_defaults():
+    """
+    Return reusable onboarding defaults for adding a new branch under an existing owner account.
+    Query params:
+      - email: owner/vendor account email
+    """
+    try:
+        email = _normalize_email(request.args.get("email"))
+        if not email:
+            return jsonify({"success": False, "message": "email is required"}), 400
+
+        defaults = _get_branch_defaults_for_email(email)
+        if not defaults:
+            return jsonify({"success": True, "defaults": None}), 200
+
+        return jsonify({
+            "success": True,
+            "defaults": defaults,
+        }), 200
+    except Exception as exc:
+        current_app.logger.error("Failed to load branch defaults for email=%s err=%s", request.args.get("email"), exc)
+        return jsonify({"success": False, "message": "Failed to load branch defaults"}), 500
 
 
 @vendor_bp.route('/deboard/<int:vendor_id>', methods=['DELETE'])
