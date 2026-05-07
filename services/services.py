@@ -1525,9 +1525,9 @@ class VendorService:
           LEFT JOIN (
                 SELECT b.slot_id,
                        CAST(t.booked_date AS date) AS booked_date,
-                       COUNT(*) AS booked_count
+                       COUNT(DISTINCT b.id) AS booked_count
                 FROM bookings b
-                JOIN transactions t ON t.id = b.transaction_id
+                JOIN transactions t ON t.booking_id = b.id
                 JOIN slots s2 ON s2.id = b.slot_id
                 JOIN available_games ag2 ON ag2.id = s2.gaming_type_id
                 WHERE ag2.vendor_id = :vendor_id
