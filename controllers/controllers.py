@@ -2319,6 +2319,7 @@ def cron_extend_slots_for_vendor(vendor_id):
     try:
         _ensure_vendor_slot_table_exists(vendor_id)
         inserted_rows = VendorService.extend_vendor_slot_window(vendor_id, start_date, end_date)
+        healed_rows = VendorService.reconcile_vendor_slot_capacity_window(vendor_id, start_date, end_date)
         db.session.commit()
         return jsonify({
             "success": True,
@@ -2328,6 +2329,7 @@ def cron_extend_slots_for_vendor(vendor_id):
             "end_date": end_date.isoformat(),
             "window_days": window_days,
             "inserted_rows": int(inserted_rows),
+            "healed_rows": int(healed_rows),
         }), 200
     except Exception as e:
         db.session.rollback()
@@ -2371,17 +2373,21 @@ def cron_extend_slots_for_all_active_cafes():
 
     results = []
     inserted_rows_total = 0
+    healed_rows_total = 0
 
     try:
         for v_id in vendor_ids:
             try:
                 _ensure_vendor_slot_table_exists(v_id)
                 inserted_rows = VendorService.extend_vendor_slot_window(v_id, start_date, end_date)
+                healed_rows = VendorService.reconcile_vendor_slot_capacity_window(v_id, start_date, end_date)
                 inserted_rows_total += int(inserted_rows)
+                healed_rows_total += int(healed_rows)
                 results.append({
                     "vendor_id": int(v_id),
                     "success": True,
                     "inserted_rows": int(inserted_rows),
+                    "healed_rows": int(healed_rows),
                 })
             except Exception as vendor_exc:
                 current_app.logger.error(
@@ -2403,6 +2409,7 @@ def cron_extend_slots_for_all_active_cafes():
             "end_date": end_date.isoformat(),
             "processed_vendors": len(vendor_ids),
             "inserted_rows_total": int(inserted_rows_total),
+            "healed_rows_total": int(healed_rows_total),
             "results": results,
         }), 200
     except Exception as e:

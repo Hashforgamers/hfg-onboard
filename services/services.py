@@ -1501,6 +1501,53 @@ class VendorService:
         return int(result.rowcount or 0)
 
     @staticmethod
+    def reconcile_vendor_slot_capacity_window(vendor_id, start_date, end_date):
+        """
+        Heal VENDOR_<id>_SLOT availability for a date window using:
+          available_slot = max(total_console_slots - active_bookings, 0)
+        This fixes stale capacities (e.g. lingering 4 when current console count is 11),
+        while preserving already-booked counts.
+        """
+        table_name = f"VENDOR_{vendor_id}_SLOT"
+        sql_reconcile = text(f"""
+        UPDATE {table_name} AS vs
+           SET available_slot = GREATEST(cap.max_capacity - COALESCE(booked.booked_count, 0), 0),
+               is_available   = CASE
+                                   WHEN GREATEST(cap.max_capacity - COALESCE(booked.booked_count, 0), 0) > 0
+                                   THEN TRUE ELSE FALSE
+                                END
+          FROM (
+                SELECT s.id AS slot_id, ag.total_slot AS max_capacity
+                FROM slots s
+                JOIN available_games ag ON ag.id = s.gaming_type_id
+                WHERE ag.vendor_id = :vendor_id
+               ) AS cap
+          LEFT JOIN (
+                SELECT b.slot_id,
+                       CAST(t.booked_date AS date) AS booked_date,
+                       COUNT(*) AS booked_count
+                FROM bookings b
+                JOIN transactions t ON t.id = b.transaction_id
+                JOIN slots s2 ON s2.id = b.slot_id
+                JOIN available_games ag2 ON ag2.id = s2.gaming_type_id
+                WHERE ag2.vendor_id = :vendor_id
+                  AND CAST(t.booked_date AS date) BETWEEN :start_date AND :end_date
+                  AND lower(COALESCE(b.status, '')) IN ('confirmed', 'current')
+                GROUP BY b.slot_id, CAST(t.booked_date AS date)
+          ) AS booked
+            ON booked.slot_id = vs.slot_id
+           AND booked.booked_date = vs.date
+         WHERE vs.vendor_id = :vendor_id
+           AND vs.date BETWEEN :start_date AND :end_date
+           AND vs.slot_id = cap.slot_id
+        """)
+        result = db.session.execute(
+            sql_reconcile,
+            {"vendor_id": vendor_id, "start_date": start_date, "end_date": end_date},
+        )
+        return int(result.rowcount or 0)
+
+    @staticmethod
     def create_vendor_console_availability_table(vendor_id):
         """Creates a table for tracking console availability for a vendor."""
         table_name = f"VENDOR_{vendor_id}_CONSOLE_AVAILABILITY"
