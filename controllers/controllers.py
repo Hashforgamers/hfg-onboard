@@ -2240,3 +2240,172 @@ def extend_slot_window(vendor_id):
         db.session.rollback()
         current_app.logger.error(f"[extend_slot_window] Error for vendor {vendor_id}: {e}")
         return jsonify({"message": "Failed to extend slot window", "error": str(e)}), 500
+
+
+def _is_valid_cron_request():
+    """
+    Optional shared-secret gate for cron endpoints.
+    If CRON_JOB_API_KEY is unset, requests are allowed.
+    """
+    configured_key = str(os.getenv("CRON_JOB_API_KEY", "") or "").strip()
+    if not configured_key:
+        return True
+
+    header_key = str(request.headers.get("X-Cron-Key", "") or "").strip()
+    auth_header = str(request.headers.get("Authorization", "") or "").strip()
+    bearer_key = ""
+    if auth_header.lower().startswith("bearer "):
+        bearer_key = auth_header[7:].strip()
+
+    return header_key == configured_key or bearer_key == configured_key
+
+
+def _ensure_vendor_slot_table_exists(vendor_id: int):
+    table_name = f"vendor_{int(vendor_id)}_slot"
+    exists = db.session.execute(
+        text("SELECT to_regclass(:table_name)"),
+        {"table_name": table_name},
+    ).scalar()
+    if not exists:
+        VendorService.create_vendor_slot_table(int(vendor_id))
+
+
+def _fetch_active_vendor_ids_for_slots():
+    """
+    Active vendors:
+    - latest status is 'active'
+    - at least one available_game exists
+    """
+    rows = db.session.execute(text("""
+        SELECT v.id AS vendor_id
+        FROM vendors v
+        JOIN (
+            SELECT DISTINCT ON (vendor_id) vendor_id, lower(status) AS status
+            FROM vendor_statuses
+            ORDER BY vendor_id, updated_at DESC, id DESC
+        ) vs ON vs.vendor_id = v.id
+        WHERE vs.status = 'active'
+          AND EXISTS (
+              SELECT 1
+              FROM available_games ag
+              WHERE ag.vendor_id = v.id
+          )
+        ORDER BY v.id
+    """)).mappings().all()
+    return [int(r["vendor_id"]) for r in rows if r.get("vendor_id") is not None]
+
+
+@vendor_bp.route('/cron/slots/vendors/<int:vendor_id>/next-20-days', methods=['POST'])
+def cron_extend_slots_for_vendor(vendor_id):
+    """
+    Cron endpoint: ensure next N days slots exist for one vendor (default 20).
+    Idempotent by design (uses NOT EXISTS in insert).
+    """
+    if not _is_valid_cron_request():
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        window_days = int(payload.get("window_days", 20))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "window_days must be an integer"}), 400
+
+    if window_days < 1 or window_days > 365:
+        return jsonify({"success": False, "message": "window_days must be between 1 and 365"}), 400
+
+    start_date = date.today() + timedelta(days=1)
+    end_date = start_date + timedelta(days=window_days - 1)
+
+    try:
+        _ensure_vendor_slot_table_exists(vendor_id)
+        inserted_rows = VendorService.extend_vendor_slot_window(vendor_id, start_date, end_date)
+        db.session.commit()
+        return jsonify({
+            "success": True,
+            "message": "Slot window ensured",
+            "vendor_id": int(vendor_id),
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "window_days": window_days,
+            "inserted_rows": int(inserted_rows),
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"[cron_extend_slots_for_vendor] vendor_id={vendor_id} error={e}", exc_info=True)
+        return jsonify({"success": False, "message": "Failed to ensure slots", "error": str(e)}), 500
+
+
+@vendor_bp.route('/cron/slots/active-cafes/next-20-days', methods=['POST'])
+def cron_extend_slots_for_all_active_cafes():
+    """
+    Cron endpoint: ensure next N days slots exist for all active cafes (default 20).
+    Safe to call every EOD; duplicate slot rows are not created.
+    """
+    if not _is_valid_cron_request():
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+
+    payload = request.get_json(silent=True) or {}
+    try:
+        window_days = int(payload.get("window_days", 20))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "window_days must be an integer"}), 400
+
+    if window_days < 1 or window_days > 365:
+        return jsonify({"success": False, "message": "window_days must be between 1 and 365"}), 400
+
+    start_date = date.today() + timedelta(days=1)
+    end_date = start_date + timedelta(days=window_days - 1)
+
+    vendor_ids = _fetch_active_vendor_ids_for_slots()
+    if not vendor_ids:
+        return jsonify({
+            "success": True,
+            "message": "No active cafes found",
+            "window_days": window_days,
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "processed_vendors": 0,
+            "inserted_rows_total": 0,
+            "results": [],
+        }), 200
+
+    results = []
+    inserted_rows_total = 0
+
+    try:
+        for v_id in vendor_ids:
+            try:
+                _ensure_vendor_slot_table_exists(v_id)
+                inserted_rows = VendorService.extend_vendor_slot_window(v_id, start_date, end_date)
+                inserted_rows_total += int(inserted_rows)
+                results.append({
+                    "vendor_id": int(v_id),
+                    "success": True,
+                    "inserted_rows": int(inserted_rows),
+                })
+            except Exception as vendor_exc:
+                current_app.logger.error(
+                    f"[cron_extend_slots_for_all_active_cafes] vendor_id={v_id} error={vendor_exc}",
+                    exc_info=True
+                )
+                results.append({
+                    "vendor_id": int(v_id),
+                    "success": False,
+                    "error": str(vendor_exc),
+                })
+
+        db.session.commit()
+        return jsonify({
+            "success": True,
+            "message": "Slot window ensured for active cafes",
+            "window_days": window_days,
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "processed_vendors": len(vendor_ids),
+            "inserted_rows_total": int(inserted_rows_total),
+            "results": results,
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"[cron_extend_slots_for_all_active_cafes] error={e}", exc_info=True)
+        return jsonify({"success": False, "message": "Failed to ensure slots", "error": str(e)}), 500

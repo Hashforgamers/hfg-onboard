@@ -1494,10 +1494,11 @@ class VendorService:
                 AND v.slot_id = s.id
           );
         """)
-        db.session.execute(
+        result = db.session.execute(
             sql_insert,
             {"start_date": start_date, "end_date": end_date, "vendor_id": vendor_id},
         )
+        return int(result.rowcount or 0)
 
     @staticmethod
     def create_vendor_console_availability_table(vendor_id):
