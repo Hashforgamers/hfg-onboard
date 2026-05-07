@@ -2390,6 +2390,7 @@ def cron_extend_slots_for_all_active_cafes():
                     "healed_rows": int(healed_rows),
                 })
             except Exception as vendor_exc:
+                db.session.rollback()
                 current_app.logger.error(
                     f"[cron_extend_slots_for_all_active_cafes] vendor_id={v_id} error={vendor_exc}",
                     exc_info=True
