@@ -1290,6 +1290,35 @@ def get_all_gaming_cafe():
         return jsonify({'message': 'An error occurred while fetching vendor data', 'error': str(e)}), 500
 
 
+@vendor_bp.route('/vendor/gaming-cafes/search', methods=['GET'])
+def search_gaming_cafes():
+    """
+    Lightweight app discovery API.
+    Filters cafes by game, budget, location, and open-now state with cursor pagination.
+    """
+    try:
+        open_now = str(request.args.get("open_now", "")).strip().lower() in {"1", "true", "yes", "y"}
+        response_data = VendorService.search_gaming_cafes(
+            game_id=request.args.get("game_id"),
+            game_name=request.args.get("game_name") or request.args.get("name"),
+            min_price=request.args.get("min_price"),
+            max_price=request.args.get("max_price"),
+            city=request.args.get("city"),
+            pincode=request.args.get("pincode"),
+            lat=request.args.get("lat"),
+            lng=request.args.get("lng"),
+            radius_km=request.args.get("radius_km"),
+            open_now=open_now,
+            limit=request.args.get("limit", 20),
+            cursor=request.args.get("cursor"),
+            sort=request.args.get("sort", "price"),
+        )
+        return jsonify(response_data), 200
+    except Exception as e:
+        current_app.logger.error(f"Error searching gaming cafes: {e}")
+        return jsonify({'message': 'An error occurred while searching gaming cafes', 'error': str(e)}), 500
+
+
 
 
 @vendor_bp.route('/upload-photos/<int:vendor_id>', methods=['POST'])

@@ -2,6 +2,8 @@
 
 import os
 import re  # ✅ ADDED for PIN validation
+import base64
+import json
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 from flask import current_app
@@ -34,7 +36,7 @@ from models.transaction import Transaction
 from models.paymentMethod import PaymentMethod
 from models.paymentVendorMap import PaymentVendorMap
 from sqlalchemy import exists
-from db.extensions import db
+from db.extensions import db, redis_client
 from .utils import send_email, generate_credentials, generate_unique_vendor_pin
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
@@ -1339,6 +1341,413 @@ class VendorService:
         except Exception as e:
             current_app.logger.error(f"Error in get_all_gaming_cafe: {e}")
             raise
+
+    @staticmethod
+    def _encode_search_cursor(value, vendor_id, sort="price"):
+        payload = {"value": float(value or 0), "vendor_id": int(vendor_id), "sort": str(sort or "price")}
+        raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        return base64.urlsafe_b64encode(raw).decode("utf-8").rstrip("=")
+
+    @staticmethod
+    def _decode_search_cursor(cursor):
+        if not cursor:
+            return None
+        try:
+            padded = str(cursor) + ("=" * (-len(str(cursor)) % 4))
+            payload = json.loads(base64.urlsafe_b64decode(padded.encode("utf-8")).decode("utf-8"))
+            return {
+                "value": float(payload.get("value", payload.get("price", 0))),
+                "vendor_id": int(payload.get("vendor_id", 0)),
+                "sort": str(payload.get("sort", "price")),
+            }
+        except Exception:
+            return None
+
+    @staticmethod
+    def search_gaming_cafes(
+        game_id=None,
+        game_name=None,
+        min_price=None,
+        max_price=None,
+        city=None,
+        pincode=None,
+        lat=None,
+        lng=None,
+        radius_km=None,
+        open_now=False,
+        limit=20,
+        cursor=None,
+        sort="price",
+    ):
+        """
+        Lightweight app discovery search for cafes offering a game.
+        Designed for high read volume: indexed filters, cursor pagination, and short Redis cache.
+        """
+        try:
+            limit = max(1, min(int(limit or 20), 50))
+        except Exception:
+            limit = 20
+
+        allowed_sorts = {"distance", "price", "rating", "popular"}
+        requested_sort = str(sort or "price").strip().lower()
+        if requested_sort not in allowed_sorts:
+            requested_sort = "price"
+
+        resolved_game_name = None
+        if game_id:
+            try:
+                game = db.session.get(Game, int(game_id))
+                resolved_game_name = game.name if game else None
+            except Exception:
+                resolved_game_name = None
+
+        normalized_game_name = str(game_name or resolved_game_name or "").strip().lower()
+        normalized_city = str(city or "").strip().lower()
+        normalized_pincode = str(pincode or "").strip()
+
+        cursor_data = VendorService._decode_search_cursor(cursor)
+        try:
+            min_price_value = float(min_price) if min_price not in (None, "") else None
+        except Exception:
+            min_price_value = None
+        try:
+            max_price_value = float(max_price) if max_price not in (None, "") else None
+        except Exception:
+            max_price_value = None
+
+        try:
+            lat_value = float(lat) if lat not in (None, "") else None
+            lng_value = float(lng) if lng not in (None, "") else None
+            radius_value = float(radius_km) if radius_km not in (None, "") else None
+        except Exception:
+            lat_value = lng_value = radius_value = None
+
+        if requested_sort == "distance" and (lat_value is None or lng_value is None):
+            requested_sort = "price"
+
+        cache_payload = {
+            "game_id": int(game_id) if str(game_id or "").isdigit() else None,
+            "game_name": normalized_game_name,
+            "min_price": min_price_value,
+            "max_price": max_price_value,
+            "city": normalized_city,
+            "pincode": normalized_pincode,
+            "lat": round(lat_value, 4) if lat_value is not None else None,
+            "lng": round(lng_value, 4) if lng_value is not None else None,
+            "radius_km": radius_value,
+            "open_now": bool(open_now),
+            "limit": limit,
+            "sort": requested_sort,
+            "cursor": cursor_data,
+        }
+        cache_key = f"cafe_search:v1:{json.dumps(cache_payload, sort_keys=True, separators=(',', ':'))}"
+        try:
+            cached = redis_client.get(cache_key)
+            if cached:
+                return json.loads(cached)
+        except Exception:
+            cached = None
+
+        ist = ZoneInfo("Asia/Kolkata")
+        now = datetime.now(ist)
+        current_day = now.strftime("%A").lower()
+        current_day_short = now.strftime("%a").lower()
+        current_time = now.strftime("%H:%M:%S")
+
+        where = [
+            "LOWER(COALESCE(ls.status, 'pending_verification')) = 'active'",
+        ]
+        params = {
+            "limit": limit + 1,
+            "current_day": current_day,
+            "current_day_short": current_day_short,
+            "current_time": current_time,
+            "game_id": int(game_id) if str(game_id or "").isdigit() else None,
+            "game_name": normalized_game_name or None,
+            "min_price": min_price_value,
+            "max_price": max_price_value,
+            "city": normalized_city or None,
+            "pincode": normalized_pincode or None,
+            "lat": lat_value,
+            "lng": lng_value,
+            "radius_km": radius_value,
+            "cursor_value": cursor_data["value"] if cursor_data and cursor_data.get("sort") == requested_sort else None,
+            "cursor_vendor_id": cursor_data["vendor_id"] if cursor_data else None,
+            "current_date": now.date(),
+        }
+
+        if params["game_id"] is not None:
+            where.append("""(
+                (
+                    vgm.vendor_id IS NOT NULL
+                    AND (
+                        :game_name IS NULL
+                        OR LOWER(ag.game_name) = :game_name
+                        OR LOWER(ag.game_name) LIKE CONCAT('%', :game_name, '%')
+                    )
+                )
+                OR (:game_name IS NOT NULL AND LOWER(ag.game_name) = :game_name)
+            )""")
+        elif params["game_name"]:
+            where.append("LOWER(ag.game_name) LIKE CONCAT('%', :game_name, '%')")
+        if min_price_value is not None:
+            where.append("COALESCE(ao.offered_price, ag.single_slot_price) >= :min_price")
+        if max_price_value is not None:
+            where.append("COALESCE(ao.offered_price, ag.single_slot_price) <= :max_price")
+        if normalized_city:
+            where.append("""(
+                LOWER(COALESCE(pa.addressLine2, '')) LIKE CONCAT('%', :city, '%')
+                OR LOWER(COALESCE(pa.addressLine1, '')) LIKE CONCAT('%', :city, '%')
+                OR LOWER(COALESCE(pa.state, '')) LIKE CONCAT('%', :city, '%')
+            )""")
+        if normalized_pincode:
+            where.append("pa.pincode = :pincode")
+
+        distance_sql = "NULL::double precision"
+        if lat_value is not None and lng_value is not None:
+            distance_sql = """
+                CASE
+                    WHEN pa.latitude ~ '^-?[0-9]+(\\.[0-9]+)?$'
+                     AND pa.longitude ~ '^-?[0-9]+(\\.[0-9]+)?$'
+                    THEN (
+                        6371 * acos(
+                            LEAST(1, GREATEST(-1,
+                                cos(radians(:lat)) * cos(radians(CAST(pa.latitude AS double precision))) *
+                                cos(radians(CAST(pa.longitude AS double precision)) - radians(:lng)) +
+                                sin(radians(:lat)) * sin(radians(CAST(pa.latitude AS double precision)))
+                            ))
+                        )
+                    )
+                    ELSE NULL
+                END
+            """
+            if radius_value is not None and radius_value > 0:
+                where.append(f"({distance_sql}) <= :radius_km")
+
+        sort_value_sql = "COALESCE(ao.offered_price, ag.single_slot_price)::double precision"
+        order_sql = "effective_price ASC, v.id ASC"
+        cursor_operator = ">"
+        if requested_sort == "distance":
+            sort_value_sql = f"COALESCE(({distance_sql}), 999999)::double precision"
+            order_sql = "distance_sort_value ASC, v.id ASC"
+        elif requested_sort == "rating":
+            sort_value_sql = "COALESCE(vgm.game_rating, 0)::double precision"
+            order_sql = "sort_value DESC, v.id ASC"
+            cursor_operator = "<"
+        elif requested_sort == "popular":
+            sort_value_sql = "COALESCE(ag.total_slot, 0)::double precision"
+            order_sql = "sort_value DESC, v.id ASC"
+            cursor_operator = "<"
+
+        if params["cursor_value"] is not None:
+            if cursor_operator == "<":
+                where.append(f"(({sort_value_sql}) < :cursor_value OR (({sort_value_sql}) = :cursor_value AND v.id > :cursor_vendor_id))")
+            else:
+                where.append(f"(({sort_value_sql}) > :cursor_value OR (({sort_value_sql}) = :cursor_value AND v.id > :cursor_vendor_id))")
+
+        is_open_sql = """
+            CASE
+                WHEN COALESCE(vdsc.opening_time, t.opening_time) IS NULL
+                  OR COALESCE(vdsc.closing_time, t.closing_time) IS NULL
+                THEN false
+                WHEN COALESCE(vdsc.opening_time, t.opening_time)::time = COALESCE(vdsc.closing_time, t.closing_time)::time
+                THEN true
+                WHEN COALESCE(vdsc.opening_time, t.opening_time)::time < COALESCE(vdsc.closing_time, t.closing_time)::time
+                THEN :current_time::time BETWEEN COALESCE(vdsc.opening_time, t.opening_time)::time AND COALESCE(vdsc.closing_time, t.closing_time)::time
+                ELSE :current_time::time >= COALESCE(vdsc.opening_time, t.opening_time)::time
+                  OR :current_time::time <= COALESCE(vdsc.closing_time, t.closing_time)::time
+            END
+        """
+        if open_now:
+            where.append(f"({is_open_sql}) = true")
+
+        sql = text(f"""
+            WITH latest_status_ts AS (
+                SELECT vendor_id, MAX(updated_at) AS updated_at
+                FROM vendor_statuses
+                GROUP BY vendor_id
+            ),
+            latest_status AS (
+                SELECT vs.vendor_id, vs.status
+                FROM vendor_statuses vs
+                JOIN latest_status_ts lst
+                  ON lst.vendor_id = vs.vendor_id
+                 AND lst.updated_at = vs.updated_at
+            ),
+            vendor_game_match AS (
+                SELECT
+                    vg.vendor_id,
+                    vg.game_id,
+                    MAX(g.name) AS game_name,
+                    MAX(COALESCE(g.average_rating, g.rawg_rating, 0)) AS game_rating
+                FROM vendor_games vg
+                JOIN games g ON g.id = vg.game_id
+                WHERE :game_id IS NOT NULL
+                  AND vg.game_id = :game_id
+                  AND COALESCE(vg.is_available, true) = true
+                GROUP BY vg.vendor_id, vg.game_id
+            ),
+            image_ranked AS (
+                SELECT
+                    vendor_id,
+                    COALESCE(url, path) AS image_url,
+                    ROW_NUMBER() OVER (PARTITION BY vendor_id ORDER BY id ASC) AS image_rank
+                FROM images
+                WHERE COALESCE(url, path) IS NOT NULL
+            ),
+            image_gallery AS (
+                SELECT
+                    vendor_id,
+                    ARRAY_AGG(image_url ORDER BY image_rank) AS image_urls
+                FROM image_ranked
+                WHERE image_rank <= 3
+                GROUP BY vendor_id
+            ),
+            active_offer AS (
+                SELECT DISTINCT ON (available_game_id)
+                    available_game_id,
+                    offered_price
+                FROM console_pricing_offers
+                WHERE is_active = true
+                  AND start_date <= :current_date
+                  AND end_date >= :current_date
+                  AND (
+                    (start_date = end_date AND :current_time::time BETWEEN start_time AND end_time)
+                    OR (start_date < end_date AND (
+                        (start_date = :current_date AND :current_time::time >= start_time)
+                        OR (end_date = :current_date AND :current_time::time <= end_time)
+                        OR (:current_date > start_date AND :current_date < end_date)
+                    ))
+                  )
+                ORDER BY available_game_id, offered_price ASC
+            )
+            SELECT
+                v.id AS vendor_id,
+                v.cafe_name,
+                ls.status,
+                ci.phone,
+                pa.addressLine1,
+                pa.addressLine2,
+                pa.pincode,
+                pa.state,
+                pa.country,
+                pa.latitude,
+                pa.longitude,
+                ag.id AS available_game_id,
+                ag.game_name,
+                vgm.game_id AS normalized_game_id,
+                vgm.game_name AS normalized_game_name,
+                COALESCE(vgm.game_rating, 0) AS game_rating,
+                ag.total_slot,
+                ag.single_slot_price,
+                ao.offered_price,
+                COALESCE(ao.offered_price, ag.single_slot_price) AS effective_price,
+                ig.image_urls,
+                COALESCE(vdsc.opening_time, t.opening_time) AS opening_time,
+                COALESCE(vdsc.closing_time, t.closing_time) AS closing_time,
+                {is_open_sql} AS is_open_now,
+                {distance_sql} AS distance_km,
+                {sort_value_sql} AS sort_value,
+                {sort_value_sql} AS distance_sort_value
+            FROM available_games ag
+            JOIN vendors v ON v.id = ag.vendor_id
+            LEFT JOIN latest_status ls ON ls.vendor_id = v.id
+            LEFT JOIN vendor_game_match vgm ON vgm.vendor_id = v.id
+            JOIN timing t ON t.id = v.timing_id
+            LEFT JOIN vendor_day_slot_config vdsc
+              ON vdsc.vendor_id = v.id
+             AND LOWER(vdsc.day) IN (:current_day, :current_day_short)
+            LEFT JOIN contact_info ci
+              ON ci.parent_id = v.id
+             AND ci.parent_type = 'vendor'
+            LEFT JOIN physical_address pa
+              ON pa.parent_id = v.id
+             AND pa.parent_type = 'vendor'
+             AND pa.is_active = true
+            LEFT JOIN image_gallery ig
+              ON ig.vendor_id = v.id
+            LEFT JOIN active_offer ao
+              ON ao.available_game_id = ag.id
+            WHERE {" AND ".join(where)}
+            ORDER BY {order_sql}
+            LIMIT :limit
+        """)
+
+        rows = db.session.execute(sql, params).mappings().all()
+        rows_for_response = rows[:limit]
+        vendor_ids = [row["vendor_id"] for row in rows_for_response]
+        payment_methods_map = VendorService.get_payment_methods_for_vendors(vendor_ids) if vendor_ids else {}
+
+        cafes = []
+        for row in rows_for_response:
+            payment_methods = payment_methods_map.get(row["vendor_id"], {})
+            cafes.append({
+                "vendor_id": row["vendor_id"],
+                "cafe_name": row["cafe_name"],
+                "status": row["status"],
+                "phone": row["phone"],
+                "address": {
+                    "addressLine1": row["addressline1"],
+                    "addressLine2": row["addressline2"],
+                    "pincode": row["pincode"],
+                    "state": row["state"],
+                    "country": row["country"],
+                    "latitude": row["latitude"],
+                    "longitude": row["longitude"],
+                },
+                "matched_game": {
+                    "available_game_id": row["available_game_id"],
+                    "game_id": row["normalized_game_id"],
+                    "game_name": row["game_name"],
+                    "normalized_game_name": row["normalized_game_name"],
+                    "total_slot": row["total_slot"],
+                    "price": float(row["effective_price"] or 0),
+                    "currency": "INR",
+                },
+                "starting_price": float(row["single_slot_price"] or 0),
+                "offer_price": float(row["offered_price"]) if row["offered_price"] is not None else None,
+                "images": list(row["image_urls"] or []),
+                "primary_image_url": (row["image_urls"] or [None])[0],
+                "opening_time": str(row["opening_time"]) if row["opening_time"] else None,
+                "closing_time": str(row["closing_time"]) if row["closing_time"] else None,
+                "is_open_now": bool(row["is_open_now"]),
+                "distance_km": round(float(row["distance_km"]), 2) if row["distance_km"] is not None else None,
+                "accepted_payment_methods": {
+                    "pay_in_cafe": bool(payment_methods.get("pay_in_cafe")),
+                    "hash_global_pass": bool(payment_methods.get("hash_global_pass")),
+                    "cafe_specific_pass": bool(payment_methods.get("cafe_specific_pass")),
+                },
+            })
+
+        next_cursor = None
+        if len(rows) > limit and rows_for_response:
+            last = rows_for_response[-1]
+            next_cursor = VendorService._encode_search_cursor(last["sort_value"], last["vendor_id"], requested_sort)
+
+        response = {
+            "cafes": cafes,
+            "count": len(cafes),
+            "next_cursor": next_cursor,
+            "filters": {
+                "game_id": params["game_id"],
+                "game_name": normalized_game_name or None,
+                "min_price": min_price_value,
+                "max_price": max_price_value,
+                "city": normalized_city or None,
+                "pincode": normalized_pincode or None,
+                "lat": lat_value,
+                "lng": lng_value,
+                "radius_km": radius_value,
+                "open_now": bool(open_now),
+                "limit": limit,
+                "sort": requested_sort,
+            },
+        }
+        try:
+            redis_client.setex(cache_key, int(os.getenv("CAFE_SEARCH_CACHE_TTL_SECONDS", "60")), json.dumps(response))
+        except Exception:
+            pass
+        return response
 
 
     @staticmethod
