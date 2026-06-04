@@ -19,6 +19,57 @@ def health_check():
         "message": "Games endpoint is working",
         "timestamp": "2025-07-24"
     }), 200
+
+
+@vendor_games_bp.route('/games/platforms', methods=['GET'])
+def list_game_discovery_platforms():
+    try:
+        include_empty = str(request.args.get("include_empty", "")).strip().lower() in {"1", "true", "yes", "y"}
+        return jsonify(GameService.list_discovery_platforms(include_empty=include_empty)), 200
+    except Exception as e:
+        current_app.logger.error(f"Failed to fetch game platforms: {str(e)}")
+        return jsonify({"message": f"Failed to fetch game platforms: {str(e)}"}), 500
+
+
+@vendor_games_bp.route('/games/search', methods=['GET'])
+def search_discovery_games():
+    try:
+        return jsonify(GameService.search_discovery_games(
+            q=request.args.get("q") or request.args.get("search"),
+            console_slug=request.args.get("console_slug") or request.args.get("platform_type"),
+            console_catalog_id=request.args.get("console_catalog_id"),
+            limit=request.args.get("limit", 20),
+            cursor=request.args.get("cursor"),
+        )), 200
+    except Exception as e:
+        current_app.logger.error(f"Failed to search games: {str(e)}")
+        return jsonify({"message": f"Failed to search games: {str(e)}"}), 500
+
+
+@vendor_games_bp.route('/games/popular', methods=['GET'])
+def popular_discovery_games():
+    try:
+        return jsonify(GameService.get_popular_discovery_games(
+            console_slug=request.args.get("console_slug") or request.args.get("platform_type"),
+            console_catalog_id=request.args.get("console_catalog_id"),
+            city=request.args.get("city"),
+            limit=request.args.get("limit", 20),
+        )), 200
+    except Exception as e:
+        current_app.logger.error(f"Failed to fetch popular games: {str(e)}")
+        return jsonify({"message": f"Failed to fetch popular games: {str(e)}"}), 500
+
+
+@vendor_games_bp.route('/games/discovery-events', methods=['POST'])
+def record_game_discovery_event():
+    try:
+        data = request.get_json(silent=True) or {}
+        return jsonify(GameService.record_discovery_event(data)), 201
+    except ValueError as e:
+        return jsonify({"message": str(e)}), 400
+    except Exception as e:
+        current_app.logger.error(f"Failed to record game discovery event: {str(e)}")
+        return jsonify({"message": f"Failed to record game discovery event: {str(e)}"}), 500
          
         # Route 2 (cloudinary configration testing)
 
@@ -306,6 +357,3 @@ def get_all_games():
         }), 200
     except Exception as e:
         return jsonify({"message": f"Failed to fetch games: {str(e)}"}), 500
-    
-    
- 
