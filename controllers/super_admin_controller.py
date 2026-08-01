@@ -117,8 +117,8 @@ def require_super_admin(fn):
     def wrapper(*args, **kwargs):
         expected = (os.getenv("SUPER_ADMIN_API_KEY") or "").strip()
         if not expected:
-            current_app.logger.warning("SUPER_ADMIN_API_KEY not configured; allowing super-admin route in open mode")
-            return fn(*args, **kwargs)
+            current_app.logger.critical("SUPER_ADMIN_API_KEY is not configured; denying super-admin request")
+            return jsonify({"success": False, "message": "Super-admin access is not configured"}), 503
 
         provided = _extract_admin_key()
         if not provided or provided != expected:
@@ -493,10 +493,12 @@ def send_vendor_early_onboard_promotion(vendor_id):
     data = request.get_json(silent=True) or {}
     sent_by = (data.get("sent_by") or "super_admin_dashboard").strip()
     custom_message = str(data.get("message") or "").strip() or None
+    package_code = str(data.get("package_code") or "early_onboard").strip().lower()
     ok, message, payload = SuperAdminService.send_early_onboard_promotion(
         vendor_id,
         sent_by=sent_by,
         custom_message=custom_message,
+        package_code=package_code,
     )
     if not ok:
         return jsonify({"success": False, "message": message, "details": payload}), 400

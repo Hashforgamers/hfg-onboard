@@ -1088,6 +1088,12 @@ class SuperAdminService:
             if new_status not in SuperAdminService.ALLOWED_STATUSES:
                 return False, f"Invalid status. Allowed: {', '.join(sorted(SuperAdminService.ALLOWED_STATUSES))}"
 
+            if new_status == "active":
+                total_documents = Document.query.filter_by(vendor_id=vendor_id).count()
+                verified_documents = Document.query.filter_by(vendor_id=vendor_id, status="verified").count()
+                if total_documents < 1 or verified_documents != total_documents:
+                    return False, "Activation requires every uploaded document to be verified."
+
             status_row = VendorStatus(vendor_id=vendor_id, status=new_status, updated_at=datetime.utcnow())
             db.session.add(status_row)
             db.session.commit()
@@ -1458,7 +1464,12 @@ class SuperAdminService:
         return True, body.get("models", [])
 
     @staticmethod
-    def send_early_onboard_promotion(vendor_id: int, sent_by: str = "super_admin", custom_message: Optional[str] = None):
+    def send_early_onboard_promotion(
+        vendor_id: int,
+        sent_by: str = "super_admin",
+        custom_message: Optional[str] = None,
+        package_code: str = "early_onboard",
+    ):
         vendor = Vendor.query.get(vendor_id)
         if not vendor:
             return False, "Vendor not found", None
@@ -1470,6 +1481,10 @@ class SuperAdminService:
 
         login_email = str(emails.get("login_email") or recipient)
         custom_message = (custom_message or "").strip() or None
+        package_code = (package_code or "early_onboard").strip().lower()
+        if not re.fullmatch(r"[a-z0-9_]{2,64}", package_code):
+            return False, "Invalid promotion plan", None
+        offer_name = package_code.replace("_", " ").title()
 
         dashboard_url = (os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
         support_email = (os.getenv("MAIL_REPLY_TO") or os.getenv("MAIL_DEFAULT_SENDER") or "support@hashforgamers.co.in").strip()
@@ -1485,7 +1500,7 @@ class SuperAdminService:
         expires_at = datetime.now(timezone.utc) + timedelta(hours=ttl_hours)
         claim_url = f"{onboard_base}/api/promotions/early-onboard/claim?token={token}"
 
-        subject = f"Hash For Gamers · Early Onboard Offer (1 Month Free) · {vendor.cafe_name}"
+        subject = f"Hash For Gamers · {offer_name} Promotion · {vendor.cafe_name}"
         msg = Message(
             subject=subject,
             sender=sender_email,
@@ -1501,6 +1516,7 @@ class SuperAdminService:
             expires_at=expires_at,
             support_email=support_email,
             custom_message=custom_message,
+            offer_name=offer_name,
         )
         msg.html = build_hfg_email_html(
             subject=subject,
@@ -1514,8 +1530,9 @@ class SuperAdminService:
             support_email=support_email,
             recipient_email=recipient,
             custom_message=custom_message,
+            offer_name=offer_name,
         ),
-            preview_text=f"Early onboard offer for {vendor.cafe_name}",
+            preview_text=f"{offer_name} promotion for {vendor.cafe_name}",
         )
 
         mail.send(msg)
@@ -1533,7 +1550,7 @@ class SuperAdminService:
                 ),
                 {
                     "vendor_id": int(vendor_id),
-                    "promo_code": "early_onboard_1m_free",
+                    "promo_code": f"package:{package_code}",
                     "token_hash": token_hash,
                     "recipient_email": recipient,
                     "login_email": login_email,
@@ -1543,7 +1560,7 @@ class SuperAdminService:
             )
             db.session.commit()
 
-        return True, "Early Onboard promotion mail sent", {
+        return True, f"{offer_name} promotion mail sent", {
             "vendor_id": int(vendor_id),
             "sent_to": recipient,
             "mail_subject": subject,
@@ -1552,6 +1569,7 @@ class SuperAdminService:
             "dashboard_url": dashboard_url,
             "login_email": login_email,
             "credentials_changed": False,
+            "package_code": package_code,
         }
 
     @staticmethod
@@ -1611,9 +1629,13 @@ class SuperAdminService:
                 return False, "Unable to claim this promotion right now. Please retry.", {"code": "unavailable"}
 
             vendor_id = int(reserve_row["vendor_id"])
+            promo_code = str(reserve_row.get("promo_code") or "").strip().lower()
+            package_code = "early_onboard" if promo_code == "early_onboard_1m_free" else promo_code.removeprefix("package:")
+            if not re.fullmatch(r"[a-z0-9_]{2,64}", package_code):
+                return False, "Promotion plan is invalid", {"code": "invalid_promotion_plan"}
             ok_change, payload = SuperAdminService.change_subscription(
                 vendor_id=vendor_id,
-                package_code="early_onboard",
+                package_code=package_code,
                 immediate=True,
                 unit_amount=0.0,
             )
@@ -1626,12 +1648,12 @@ class SuperAdminService:
                 if "duplicate key value" in conflict_text or "conflict" in conflict_text or "retry once" in conflict_text:
                     ok_change, payload = SuperAdminService.change_subscription(
                         vendor_id=vendor_id,
-                        package_code="early_onboard",
+                        package_code=package_code,
                         immediate=True,
                         unit_amount=0.0,
                     )
 
-            if not ok_change and SuperAdminService._vendor_has_active_package(vendor_id, "early_onboard"):
+            if not ok_change and SuperAdminService._vendor_has_active_package(vendor_id, package_code):
                 ok_change = True
 
             if not ok_change:
@@ -1659,11 +1681,11 @@ class SuperAdminService:
 
             db.session.commit()
             dashboard_url = (os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
-            return True, "Subscription enabled successfully. Early Onboard (1 month free) is now active.", {
+            return True, f"Subscription enabled successfully. {package_code.replace('_', ' ').title()} is now active.", {
                 "code": "claimed",
                 "vendor_id": vendor_id,
                 "dashboard_url": dashboard_url,
-                "package_code": "early_onboard",
+                "package_code": package_code,
                 "used_at": now_utc.isoformat(),
             }
         except Exception as exc:
@@ -1711,14 +1733,15 @@ class SuperAdminService:
         expires_at: datetime,
         support_email: str,
         custom_message: Optional[str] = None,
+        offer_name: str = "Early Onboard",
     ) -> str:
         expiry_text = expires_at.astimezone(timezone.utc).strftime("%d %b %Y, %H:%M UTC")
         lines = [
-            "HASH FOR GAMERS | EARLY ONBOARD PROMOTION",
+            f"HASH FOR GAMERS | {offer_name.upper()} PROMOTION",
             "",
             f"Hello {owner_name or 'Partner'},",
             "",
-            f"We are offering your cafe '{cafe_name}' the Early Onboard plan: 1 month FREE.",
+            f"We are offering your cafe '{cafe_name}' the {offer_name} plan promotion.",
             *([f"Message from Hash Ops: {custom_message}"] if custom_message else []),
             "Reply to this email with 'AVAIL' or click the one-time activation link below.",
             "",
@@ -1748,6 +1771,7 @@ class SuperAdminService:
         support_email: str,
         recipient_email: str,
         custom_message: Optional[str] = None,
+        offer_name: str = "Early Onboard",
     ) -> str:
         safe_owner = html.escape(owner_name or "Partner")
         safe_cafe = html.escape(cafe_name or "Cafe")
@@ -1756,6 +1780,7 @@ class SuperAdminService:
         safe_dashboard = html.escape(dashboard_url or "https://dashboard.hashforgamers.com")
         safe_support = html.escape(support_email or "support@hashforgamers.co.in")
         safe_recipient = html.escape(recipient_email or "")
+        safe_offer_name = html.escape(offer_name or "Promotion")
         custom_note = (
             f"<div style=\"margin:12px 0;padding:12px;border:1px solid #1e2a44;border-radius:10px;background:#08142c;color:#e2e8f0;\">{html.escape(custom_message).replace(chr(10), '<br />')}</div>"
             if custom_message else ""
@@ -1764,14 +1789,14 @@ class SuperAdminService:
         return f"""
 <p style="margin:0 0 10px 0;color:#e5e7eb;">Hello <strong>{safe_owner}</strong>,</p>
 <p style="margin:0 0 12px 0;color:#cbd5e1;line-height:1.7;">
-  We are offering your cafe <strong>{safe_cafe}</strong> the Early Onboard plan: <strong>1 month free</strong>.
+  We are offering your cafe <strong>{safe_cafe}</strong> the <strong>{safe_offer_name}</strong> plan promotion.
 </p>
 <p style="margin:0 0 14px 0;color:#cbd5e1;line-height:1.7;">
   Reply to this email with <strong>AVAIL</strong> or use the one-time activation link below.
 </p>
 {custom_note}
 <a href="{safe_claim_url}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:8px;font-size:14px;font-weight:700;">
-  Avail Early Onboard (One-Time)
+  Claim {safe_offer_name} (One-Time)
 </a>
 <p style="margin:10px 0 16px 0;font-size:12px;color:#94a3b8;">Link expires: {expiry_text}</p>
 <div style="border:1px solid #1e2a44;border-radius:10px;padding:14px;background:#08142c;">
@@ -2397,9 +2422,6 @@ class SuperAdminService:
             if isinstance(msg, dict):
                 msg["_status_code"] = response.status_code
             return False, msg
-        ok, message = SuperAdminService.update_vendor_status(vendor_id, "active", changed_by="subscription_change")
-        if not ok:
-            return False, {"error": message, "_status_code": 500}
         return True, response.json()
 
     @staticmethod
@@ -2418,7 +2440,4 @@ class SuperAdminService:
             if isinstance(msg, dict):
                 msg["_status_code"] = response.status_code
             return False, msg
-        ok, message = SuperAdminService.update_vendor_status(vendor_id, "active", changed_by="subscription_default")
-        if not ok:
-            return False, {"error": message, "_status_code": 500}
         return True, response.json()
