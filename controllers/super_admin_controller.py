@@ -56,7 +56,7 @@ def _promo_claim_html(ok: bool, message: str, dashboard_url: Optional[str] = Non
     if ok:
         helper_html = (
             "<p style=\"margin:10px 0 0 0;color:#475569;font-size:13px;\">"
-            "Use the login email and temporary password shared in the promotion mail, then set a new password at first login."
+            "Sign in with your existing vendor credentials. This offer does not change your password or cafe PIN."
             "</p>"
         )
     else:
@@ -394,6 +394,22 @@ def vendor_deactivation_notification_summary(vendor_id):
     return jsonify({"success": True, "vendor_id": vendor_id, "summary": summary}), 200
 
 
+@super_admin_bp.route('/admin/vendors/<int:vendor_id>/notifications/request-info', methods=['POST'])
+@require_super_admin
+def send_vendor_information_request(vendor_id):
+    data = request.get_json(silent=True) or {}
+    message = str(data.get("message") or "").strip() or None
+    sent_by = str(data.get("sent_by") or "super_admin_dashboard").strip()
+    ok, result_message, payload = SuperAdminService.send_document_information_request(
+        vendor_id,
+        message=message,
+        sent_by=sent_by,
+    )
+    if not ok:
+        return jsonify({"success": False, "message": result_message}), 400
+    return jsonify({"success": True, "message": result_message, "data": payload}), 200
+
+
 @super_admin_bp.route('/admin/newsletters/preview', methods=['POST'])
 @require_super_admin
 def preview_newsletter():
@@ -441,7 +457,12 @@ def send_newsletter():
 def send_vendor_early_onboard_promotion(vendor_id):
     data = request.get_json(silent=True) or {}
     sent_by = (data.get("sent_by") or "super_admin_dashboard").strip()
-    ok, message, payload = SuperAdminService.send_early_onboard_promotion(vendor_id, sent_by=sent_by)
+    custom_message = str(data.get("message") or "").strip() or None
+    ok, message, payload = SuperAdminService.send_early_onboard_promotion(
+        vendor_id,
+        sent_by=sent_by,
+        custom_message=custom_message,
+    )
     if not ok:
         return jsonify({"success": False, "message": message, "details": payload}), 400
     return jsonify({"success": True, "message": message, "data": payload}), 200
