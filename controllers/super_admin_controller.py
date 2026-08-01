@@ -7,6 +7,7 @@ from typing import Optional
 from flask import Blueprint, current_app, jsonify, make_response, request
 
 from db.extensions import db
+from models.bookingQueue import BookingQueue
 from services.super_admin_service import SuperAdminService
 
 super_admin_bp = Blueprint('super_admin', __name__)
@@ -210,6 +211,40 @@ def verify_vendor_documents(vendor_id):
 def get_vendor_subscriptions(vendor_id):
     subscriptions = SuperAdminService.list_vendor_subscriptions(vendor_id)
     return jsonify({"success": True, "vendor_id": vendor_id, "subscriptions": subscriptions}), 200
+
+
+@super_admin_bp.route('/admin/vendors/<int:vendor_id>/booking-queue', methods=['GET'])
+@require_super_admin
+def list_vendor_booking_queue(vendor_id):
+    rows = BookingQueue.query.filter_by(vendor_id=vendor_id).order_by(BookingQueue.start_time.desc(), BookingQueue.id.desc()).limit(100).all()
+    return jsonify({
+        "success": True,
+        "vendor_id": vendor_id,
+        "queue": [{
+            "id": row.id,
+            "booking_id": row.booking_id,
+            "console_id": row.console_id,
+            "game_id": row.game_id,
+            "user_id": row.user_id,
+            "status": row.status,
+            "start_time": row.start_time.isoformat() if row.start_time else None,
+            "end_time": row.end_time.isoformat() if row.end_time else None,
+        } for row in rows],
+    }), 200
+
+
+@super_admin_bp.route('/admin/vendors/<int:vendor_id>/booking-queue/<int:queue_id>', methods=['PATCH'])
+@require_super_admin
+def update_vendor_booking_queue(vendor_id, queue_id):
+    status = str((request.get_json(silent=True) or {}).get("status") or "").strip().lower()
+    if status not in {"queued", "started", "completed", "cancelled"}:
+        return jsonify({"success": False, "message": "Invalid queue status"}), 400
+    row = BookingQueue.query.filter_by(id=queue_id, vendor_id=vendor_id).first()
+    if not row:
+        return jsonify({"success": False, "message": "Queue entry not found"}), 404
+    row.status = status
+    db.session.commit()
+    return jsonify({"success": True, "queue": {"id": row.id, "status": row.status}}), 200
 
 
 @super_admin_bp.route('/admin/subscriptions', methods=['GET'])
