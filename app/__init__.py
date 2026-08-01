@@ -55,7 +55,7 @@ def create_app():
         app,
         resources={r"/*": {"origins": "*"}},
         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allow_headers=['Content-Type', 'Authorization'],
+        allow_headers=['Content-Type', 'Authorization', 'X-Admin-Key'],
         supports_credentials=False,
         expose_headers=['Content-Type', 'Authorization'],
         max_age=3600
