@@ -1458,7 +1458,7 @@ class SuperAdminService:
         return True, body.get("models", [])
 
     @staticmethod
-    def send_early_onboard_promotion(vendor_id: int, sent_by: str = "super_admin"):
+    def send_early_onboard_promotion(vendor_id: int, sent_by: str = "super_admin", custom_message: Optional[str] = None):
         vendor = Vendor.query.get(vendor_id)
         if not vendor:
             return False, "Vendor not found", None
@@ -1468,20 +1468,8 @@ class SuperAdminService:
         if not recipient:
             return False, "No vendor email available for promotion", None
 
-        pin_row = VendorPin.query.filter_by(vendor_id=vendor_id).first()
-        if not pin_row:
-            ok_pin, msg_pin, pin_payload = SuperAdminService.reset_vendor_pin(vendor_id)
-            if not ok_pin:
-                return False, msg_pin, None
-            pin_code = str((pin_payload or {}).get("pin_code") or "")
-        else:
-            pin_code = str(pin_row.pin_code or "")
-
-        ok_pwd, msg_pwd, pwd_payload = SuperAdminService.reset_vendor_password(vendor_id, notify=False)
-        if not ok_pwd:
-            return False, msg_pwd, None
-        temp_password = str((pwd_payload or {}).get("temporary_password") or "")
         login_email = str(emails.get("login_email") or recipient)
+        custom_message = (custom_message or "").strip() or None
 
         dashboard_url = (os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
         support_email = (os.getenv("MAIL_REPLY_TO") or os.getenv("MAIL_DEFAULT_SENDER") or "support@hashforgamers.co.in").strip()
@@ -1508,12 +1496,11 @@ class SuperAdminService:
             owner_name=vendor.owner_name or "Partner",
             cafe_name=vendor.cafe_name or f"Cafe #{vendor.id}",
             login_email=login_email,
-            temporary_password=temp_password,
-            pin_code=pin_code,
             dashboard_url=dashboard_url,
             claim_url=claim_url,
             expires_at=expires_at,
             support_email=support_email,
+            custom_message=custom_message,
         )
         msg.html = build_hfg_email_html(
             subject=subject,
@@ -1521,13 +1508,12 @@ class SuperAdminService:
             owner_name=vendor.owner_name or "Partner",
             cafe_name=vendor.cafe_name or f"Cafe #{vendor.id}",
             login_email=login_email,
-            temporary_password=temp_password,
-            pin_code=pin_code,
             dashboard_url=dashboard_url,
             claim_url=claim_url,
             expires_at=expires_at,
             support_email=support_email,
             recipient_email=recipient,
+            custom_message=custom_message,
         ),
             preview_text=f"Early onboard offer for {vendor.cafe_name}",
         )
@@ -1565,8 +1551,7 @@ class SuperAdminService:
             "expires_at": expires_at,
             "dashboard_url": dashboard_url,
             "login_email": login_email,
-            "temporary_password": temp_password,
-            "pin_code": pin_code,
+            "credentials_changed": False,
         }
 
     @staticmethod
@@ -1721,12 +1706,11 @@ class SuperAdminService:
         owner_name: str,
         cafe_name: str,
         login_email: str,
-        temporary_password: str,
-        pin_code: str,
         dashboard_url: str,
         claim_url: str,
         expires_at: datetime,
         support_email: str,
+        custom_message: Optional[str] = None,
     ) -> str:
         expiry_text = expires_at.astimezone(timezone.utc).strftime("%d %b %Y, %H:%M UTC")
         lines = [
@@ -1735,16 +1719,15 @@ class SuperAdminService:
             f"Hello {owner_name or 'Partner'},",
             "",
             f"We are offering your cafe '{cafe_name}' the Early Onboard plan: 1 month FREE.",
+            *([f"Message from Hash Ops: {custom_message}"] if custom_message else []),
             "Reply to this email with 'AVAIL' or click the one-time activation link below.",
             "",
             f"One-time avail link: {claim_url}",
             f"Link expiry: {expiry_text}",
             "",
-            "Vendor credentials:",
+            "Your existing vendor credentials remain unchanged:",
             f"- Dashboard: {dashboard_url}",
             f"- Login email: {login_email}",
-            f"- Temporary password: {temporary_password}",
-            f"- Cafe PIN: {pin_code}",
             "",
             "Important: the avail link works once only.",
             f"Need help? {support_email}",
@@ -1759,23 +1742,24 @@ class SuperAdminService:
         owner_name: str,
         cafe_name: str,
         login_email: str,
-        temporary_password: str,
-        pin_code: str,
         dashboard_url: str,
         claim_url: str,
         expires_at: datetime,
         support_email: str,
         recipient_email: str,
+        custom_message: Optional[str] = None,
     ) -> str:
         safe_owner = html.escape(owner_name or "Partner")
         safe_cafe = html.escape(cafe_name or "Cafe")
         safe_login = html.escape(login_email or "")
-        safe_password = html.escape(temporary_password or "")
-        safe_pin = html.escape(pin_code or "")
         safe_claim_url = html.escape(claim_url or "#")
         safe_dashboard = html.escape(dashboard_url or "https://dashboard.hashforgamers.com")
         safe_support = html.escape(support_email or "support@hashforgamers.co.in")
         safe_recipient = html.escape(recipient_email or "")
+        custom_note = (
+            f"<div style=\"margin:12px 0;padding:12px;border:1px solid #1e2a44;border-radius:10px;background:#08142c;color:#e2e8f0;\">{html.escape(custom_message).replace(chr(10), '<br />')}</div>"
+            if custom_message else ""
+        )
         expiry_text = html.escape(expires_at.astimezone(timezone.utc).strftime("%d %b %Y, %H:%M UTC"))
         return f"""
 <p style="margin:0 0 10px 0;color:#e5e7eb;">Hello <strong>{safe_owner}</strong>,</p>
@@ -1785,22 +1769,22 @@ class SuperAdminService:
 <p style="margin:0 0 14px 0;color:#cbd5e1;line-height:1.7;">
   Reply to this email with <strong>AVAIL</strong> or use the one-time activation link below.
 </p>
+{custom_note}
 <a href="{safe_claim_url}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:8px;font-size:14px;font-weight:700;">
   Avail Early Onboard (One-Time)
 </a>
 <p style="margin:10px 0 16px 0;font-size:12px;color:#94a3b8;">Link expires: {expiry_text}</p>
 <div style="border:1px solid #1e2a44;border-radius:10px;padding:14px;background:#08142c;">
   <div style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#22c55e;font-weight:700;margin-bottom:8px;">
-    Vendor Credentials
+    Existing Vendor Access
   </div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;line-height:1.7;color:#e2e8f0;">
     <tr><td style="padding:4px 0;color:#94a3b8;">Sent To</td><td style="padding:4px 0;">{safe_recipient}</td></tr>
     <tr><td style="padding:4px 0;color:#94a3b8;">Dashboard</td><td style="padding:4px 0;"><a href="{safe_dashboard}" style="color:#60a5fa;text-decoration:none;">{safe_dashboard}</a></td></tr>
     <tr><td style="padding:4px 0;color:#94a3b8;">Login Email</td><td style="padding:4px 0;"><strong>{safe_login}</strong></td></tr>
-    <tr><td style="padding:4px 0;color:#94a3b8;">Temporary Password</td><td style="padding:4px 0;"><strong>{safe_password}</strong></td></tr>
-    <tr><td style="padding:4px 0;color:#94a3b8;">Cafe PIN</td><td style="padding:4px 0;"><strong>{safe_pin}</strong></td></tr>
   </table>
 </div>
+<p style="margin:12px 0 0 0;color:#94a3b8;font-size:13px;">This promotion does not change your password or cafe PIN.</p>
 <p style="margin:14px 0 0 0;color:#94a3b8;font-size:13px;">
   Need help? Contact <a href="mailto:{safe_support}" style="color:#60a5fa;text-decoration:none;">{safe_support}</a>
 </p>
@@ -2161,6 +2145,49 @@ class SuperAdminService:
   </div>
 </div>
 """
+
+    @staticmethod
+    def send_document_information_request(vendor_id: int, message: Optional[str] = None, sent_by: str = "super_admin"):
+        vendor = Vendor.query.get(vendor_id)
+        if not vendor:
+            return False, "Vendor not found", None
+
+        recipient = SuperAdminService._resolve_vendor_emails(vendor).get("recipient")
+        if not recipient:
+            return False, "No vendor email available for notification", None
+
+        requested_message = (message or "Please review your uploaded documents and provide the requested clarification.").strip()
+        safe_cafe = html.escape(vendor.cafe_name or "your cafe")
+        safe_owner = html.escape(vendor.owner_name or "Partner")
+        safe_message = html.escape(requested_message).replace("\n", "<br />")
+        subject = "Hash For Gamers · Information Requested for Your Registration"
+        sender_email = (os.getenv("MAIL_DEFAULT_SENDER") or "support@hashforgamers.co.in").strip()
+        support_email = (os.getenv("MAIL_REPLY_TO") or sender_email).strip()
+
+        try:
+            msg = Message(subject=subject, recipients=[recipient], sender=sender_email, reply_to=support_email)
+            msg.body = (
+                f"Hello {vendor.owner_name or 'Partner'},\n\n"
+                f"Hash For Gamers needs more information to complete the registration for {vendor.cafe_name or 'your cafe'}.\n\n"
+                f"{requested_message}\n\n"
+                f"Please update the required documents from your dashboard or reply to this email.\n\nHash For Gamers Ops"
+            )
+            msg.html = build_hfg_email_html(
+                subject="Information Requested for Your Registration",
+                content_html=f"""
+                  <p style='margin:0 0 12px;color:#cbd5e1;'>Hello {safe_owner},</p>
+                  <p style='margin:0 0 12px;color:#cbd5e1;'>We need more information to complete the registration for <strong>{safe_cafe}</strong>.</p>
+                  <div style='margin:12px 0;padding:12px;border:1px solid #1e293b;border-radius:10px;background:#0f172a;color:#cbd5e1;'>{safe_message}</div>
+                  <p style='margin:0;color:#94a3b8;'>Please update the required documents from your dashboard or reply to this email.</p>
+                """,
+                preview_text=f"Information requested for {vendor.cafe_name or 'your cafe'}.",
+            )
+            mail.send(msg)
+        except Exception as exc:
+            current_app.logger.warning("Document information request email failed vendor_id=%s err=%s", vendor_id, exc)
+            return False, "Unable to send the information request email", None
+
+        return True, "Information request email sent", {"sent_to": recipient, "sent_by": sent_by, "subject": subject}
 
     @staticmethod
     def send_deactivation_notice(vendor_id: int, reason: Optional[str] = None, sent_by: str = "super_admin"):
