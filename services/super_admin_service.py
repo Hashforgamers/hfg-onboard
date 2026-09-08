@@ -5,7 +5,7 @@ import html
 import hashlib
 import secrets
 import re
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Optional, Dict, List
 
 import requests
@@ -709,6 +709,33 @@ class SuperAdminService:
         if getattr(value, "tzinfo", None) is None:
             return value.replace(tzinfo=timezone.utc)
         return value.astimezone(timezone.utc)
+
+    @staticmethod
+    def _parse_admin_period_datetime(value, *, end_of_day=False):
+        if value in (None, ""):
+            return None
+        raw = str(value).strip()
+        if not raw:
+            return None
+        try:
+            if len(raw) == 10:
+                parsed = datetime.combine(datetime.fromisoformat(raw).date(), time.max if end_of_day else time.min)
+            else:
+                parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+
+    @staticmethod
+    def _expects_active_subscription(immediate: bool, period_start: Optional[str], period_end: Optional[str]) -> bool:
+        if not immediate:
+            return False
+        now_utc = datetime.now(timezone.utc)
+        start_dt = SuperAdminService._parse_admin_period_datetime(period_start)
+        end_dt = SuperAdminService._parse_admin_period_datetime(period_end, end_of_day=True)
+        return (start_dt is None or start_dt <= now_utc) and (end_dt is None or end_dt > now_utc)
 
     @staticmethod
     def _subscription_source(external_ref: Optional[str]) -> str:
@@ -2484,9 +2511,12 @@ class SuperAdminService:
         code = (package_code or "").strip().lower()
         if code == "pro":
             code = "grow"
+        immediate_flag = immediate
+        if isinstance(immediate, str):
+            immediate_flag = immediate.strip().lower() not in {"0", "false", "no", "off"}
         payload = {
             "package_code": code,
-            "immediate": bool(immediate),
+            "immediate": bool(immediate_flag),
             "unit_amount": float(unit_amount or 0),
         }
         if period_start:
@@ -2510,7 +2540,43 @@ class SuperAdminService:
             if isinstance(msg, dict):
                 msg["_status_code"] = response.status_code
             return False, msg
-        return True, response.json()
+        try:
+            body = response.json()
+        except Exception:
+            body = {"ok": True}
+
+        status_url = f"{SuperAdminService._dashboard_service_url()}/api/vendors/{vendor_id}/subscription/status"
+        try:
+            status_response = requests.get(status_url, headers=SuperAdminService._admin_proxy_headers(), timeout=12)
+        except requests.RequestException as exc:
+            current_app.logger.error("Subscription status verification failed for vendor %s: %s", vendor_id, exc, exc_info=True)
+            if SuperAdminService._expects_active_subscription(bool(immediate_flag), period_start, period_end):
+                return False, {
+                    "error": "Subscription was changed, but dashboard status could not be verified.",
+                    "details": str(exc),
+                    "subscription_change": body,
+                    "_status_code": 502,
+                }
+            body["dashboard_status_error"] = str(exc)
+            return True, body
+
+        try:
+            dashboard_status = status_response.json()
+        except Exception:
+            dashboard_status = {"error": status_response.text}
+        body["dashboard_status"] = dashboard_status
+
+        expected_active = SuperAdminService._expects_active_subscription(bool(immediate_flag), period_start, period_end)
+        dashboard_is_active = bool(dashboard_status.get("is_active")) if isinstance(dashboard_status, dict) else False
+        if status_response.status_code >= 400 or (expected_active and not dashboard_is_active):
+            return False, {
+                "error": "Subscription was changed, but hash-dashboard still reports it inactive.",
+                "message": "Check that the selected From/To period includes today and that hfg-onboard points to the same dashboard service used by hash-dashboard.",
+                "subscription_change": body,
+                "dashboard_status": dashboard_status,
+                "_status_code": 409 if expected_active else status_response.status_code,
+            }
+        return True, body
 
     @staticmethod
     def provision_default_subscription(vendor_id: int):
