@@ -549,6 +549,7 @@ class SuperAdminService:
 
         vendor_ids = [int(row.vendor_id) for row in rows]
         subscription_map = SuperAdminService._subscription_snapshot_map(vendor_ids)
+        subscription_map.update(SuperAdminService._dashboard_subscription_snapshot_map(vendor_ids))
         pin_map = SuperAdminService._vendor_pin_map(vendor_ids)
         password_map = SuperAdminService._password_snapshot_map(vendor_ids)
         team_map = SuperAdminService._team_snapshot_map(vendor_ids)
@@ -641,6 +642,10 @@ class SuperAdminService:
 
     @staticmethod
     def list_vendor_subscriptions(vendor_id: int):
+        dashboard_rows = SuperAdminService._dashboard_vendor_subscriptions(vendor_id)
+        if dashboard_rows is not None:
+            return dashboard_rows
+
         if not SuperAdminService._has_table("subscriptions"):
             return []
 
@@ -756,6 +761,142 @@ class SuperAdminService:
             and (start_dt is None or start_dt <= now_utc)
             and (end_dt is None or end_dt > now_utc)
         )
+
+    @staticmethod
+    def _dashboard_subscription_status(vendor_id: int):
+        url = f"{SuperAdminService._dashboard_service_url()}/api/vendors/{vendor_id}/subscription/status"
+        try:
+            response = requests.get(url, headers=SuperAdminService._admin_proxy_headers(), timeout=8)
+        except requests.RequestException as exc:
+            current_app.logger.warning("Dashboard subscription status unavailable for vendor %s: %s", vendor_id, exc)
+            return None
+        if response.status_code >= 400:
+            current_app.logger.warning(
+                "Dashboard subscription status returned %s for vendor %s: %s",
+                response.status_code,
+                vendor_id,
+                response.text[:300],
+            )
+            return None
+        try:
+            payload = response.json()
+        except Exception:
+            return None
+        return payload if isinstance(payload, dict) else None
+
+    @staticmethod
+    def _dashboard_vendor_subscriptions(vendor_id: int):
+        status_payload = SuperAdminService._dashboard_subscription_status(vendor_id)
+        url = f"{SuperAdminService._dashboard_service_url()}/api/vendors/{vendor_id}/subscription/history"
+        try:
+            response = requests.get(url, headers=SuperAdminService._admin_proxy_headers(), timeout=8)
+        except requests.RequestException as exc:
+            current_app.logger.warning("Dashboard subscription history unavailable for vendor %s: %s", vendor_id, exc)
+            return None
+        if response.status_code >= 400:
+            current_app.logger.warning(
+                "Dashboard subscription history returned %s for vendor %s: %s",
+                response.status_code,
+                vendor_id,
+                response.text[:300],
+            )
+            return None
+        try:
+            payload = response.json()
+        except Exception:
+            return None
+        rows = payload.get("subscriptions") if isinstance(payload, dict) else None
+        if not isinstance(rows, list):
+            return None
+
+        active_sub = status_payload.get("active_subscription") if isinstance(status_payload, dict) else None
+        active_id = active_sub.get("id") if isinstance(active_sub, dict) else None
+        now_utc = datetime.now(timezone.utc)
+        data = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            external_ref = row.get("external_ref") or row.get("payment_ref")
+            source = SuperAdminService._subscription_source(external_ref)
+            period_start = SuperAdminService._parse_admin_period_datetime(row.get("period_start"))
+            period_end = SuperAdminService._parse_admin_period_datetime(row.get("period_end"), end_of_day=True)
+            status = str(row.get("status") or "")
+            is_active = (
+                bool(active_id is not None and str(row.get("id")) == str(active_id))
+                or SuperAdminService._subscription_is_effective(status, period_start, period_end, now_utc)
+            )
+            package = row.get("package") if isinstance(row.get("package"), dict) else {}
+            data.append(
+                {
+                    "id": row.get("id"),
+                    "vendor_id": vendor_id,
+                    "status": status,
+                    "is_active": bool(is_active),
+                    "set_by": source,
+                    "set_by_super_admin": source == "super_admin",
+                    "package": {
+                        "id": package.get("id"),
+                        "code": package.get("code"),
+                        "name": package.get("name"),
+                        "pc_limit": package.get("pc_limit"),
+                    },
+                    "period_start": period_start or row.get("period_start"),
+                    "period_end": period_end or row.get("period_end"),
+                    "amount_paid": float(row.get("amount_paid") or 0),
+                    "currency": row.get("currency") or "INR",
+                    "external_ref": external_ref,
+                    "created_at": row.get("created_at"),
+                    "updated_at": row.get("updated_at"),
+                    "source": "dashboard_service",
+                }
+            )
+        return data
+
+    @staticmethod
+    def _dashboard_subscription_snapshot_map(vendor_ids: List[int]) -> Dict[int, Dict[str, Any]]:
+        mapped: Dict[int, Dict[str, Any]] = {}
+        for vendor_id in vendor_ids:
+            rows = SuperAdminService._dashboard_vendor_subscriptions(int(vendor_id))
+            if rows is None:
+                continue
+            selected = next((row for row in rows if row.get("is_active")), rows[0] if rows else None)
+            if not selected:
+                mapped[int(vendor_id)] = {
+                    "status": "none",
+                    "is_active": False,
+                    "set_by": "system",
+                    "set_by_super_admin": False,
+                    "inactive_for_days": None,
+                    "inactive_over_90_days": False,
+                    "package": None,
+                    "amount_paid": 0,
+                    "period_start": None,
+                    "period_end": None,
+                    "created_at": None,
+                    "source": "dashboard_service",
+                }
+                continue
+            end_dt = selected.get("period_end")
+            if isinstance(end_dt, str):
+                end_dt = SuperAdminService._parse_admin_period_datetime(end_dt, end_of_day=True)
+            inactive_for_days = None
+            if not selected.get("is_active") and end_dt is not None:
+                inactive_for_days = max((datetime.now(timezone.utc).date() - end_dt.date()).days, 0)
+            mapped[int(vendor_id)] = {
+                "status": selected.get("status") or "none",
+                "is_active": bool(selected.get("is_active")),
+                "set_by": selected.get("set_by") or "system",
+                "set_by_super_admin": bool(selected.get("set_by_super_admin")),
+                "inactive_for_days": inactive_for_days,
+                "inactive_over_90_days": bool((inactive_for_days or 0) >= 90),
+                "package": selected.get("package"),
+                "amount_paid": float(selected.get("amount_paid") or 0),
+                "period_start": selected.get("period_start"),
+                "period_end": selected.get("period_end"),
+                "created_at": selected.get("created_at"),
+                "source": "dashboard_service",
+            }
+        return mapped
 
     @staticmethod
     def list_subscriptions(page=1, per_page=20, status=None, search=None):
