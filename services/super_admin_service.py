@@ -338,6 +338,7 @@ class SuperAdminService:
                    package_name,
                    pc_limit,
                    unit_amount,
+                   external_ref,
                    current_period_start,
                    current_period_end,
                    created_at
@@ -349,6 +350,7 @@ class SuperAdminService:
                        p.name AS package_name,
                        p.pc_limit,
                        s.unit_amount,
+                       s.external_ref,
                        s.current_period_start,
                        s.current_period_end,
                        s.created_at,
@@ -368,17 +370,24 @@ class SuperAdminService:
         rows = db.session.execute(sql, {"vendor_ids": vendor_ids}).mappings().all()
         result: Dict[int, Dict[str, Any]] = {}
         for row in rows:
-            end_dt = row["current_period_end"]
-            if end_dt and getattr(end_dt, "tzinfo", None) is None:
-                end_dt = end_dt.replace(tzinfo=timezone.utc)
+            start_dt = SuperAdminService._as_utc_datetime(row["current_period_start"])
+            end_dt = SuperAdminService._as_utc_datetime(row["current_period_end"])
             status = str(row["status"] or "").lower()
-            is_active = status in {"active", "trialing", "past_due"} and (end_dt is None or end_dt >= now_utc)
+            source = SuperAdminService._subscription_source(row["external_ref"])
+            is_active = SuperAdminService._subscription_is_effective(
+                status,
+                row["current_period_start"],
+                row["current_period_end"],
+                now_utc,
+            )
             inactive_for_days = None
             if not is_active and end_dt is not None:
                 inactive_for_days = max((now_utc.date() - end_dt.date()).days, 0)
             result[int(row["vendor_id"])] = {
                 "status": status or "none",
                 "is_active": bool(is_active),
+                "set_by": source,
+                "set_by_super_admin": source == "super_admin",
                 "inactive_for_days": inactive_for_days,
                 "inactive_over_90_days": bool((inactive_for_days or 0) >= 90),
                 "package": {
@@ -388,8 +397,8 @@ class SuperAdminService:
                     "pc_limit": row["pc_limit"],
                 },
                 "amount_paid": float(row["unit_amount"] or 0),
-                "period_start": row["current_period_start"],
-                "period_end": row["current_period_end"],
+                "period_start": start_dt or row["current_period_start"],
+                "period_end": end_dt or row["current_period_end"],
                 "created_at": row["created_at"],
             }
         return result
@@ -659,20 +668,31 @@ class SuperAdminService:
         )
         rows = db.session.execute(sql, {"vendor_id": vendor_id}).mappings().all()
         data = []
+        now_utc = datetime.now(timezone.utc)
         for row in rows:
+            status = str(row["status"] or "")
+            source = SuperAdminService._subscription_source(row["external_ref"])
             data.append(
                 {
                     "id": row["id"],
                     "vendor_id": row["vendor_id"],
-                    "status": str(row["status"] or ""),
+                    "status": status,
+                    "is_active": SuperAdminService._subscription_is_effective(
+                        status,
+                        row["current_period_start"],
+                        row["current_period_end"],
+                        now_utc,
+                    ),
+                    "set_by": source,
+                    "set_by_super_admin": source == "super_admin",
                     "package": {
                         "id": row["package_id"],
                         "code": row["package_code"],
                         "name": row["package_name"],
                         "pc_limit": row["pc_limit"],
                     },
-                    "period_start": row["current_period_start"],
-                    "period_end": row["current_period_end"],
+                    "period_start": SuperAdminService._as_utc_datetime(row["current_period_start"]) or row["current_period_start"],
+                    "period_end": SuperAdminService._as_utc_datetime(row["current_period_end"]) or row["current_period_end"],
                     "amount_paid": float(row["unit_amount"] or 0),
                     "currency": row["currency"],
                     "external_ref": row["external_ref"],
@@ -681,6 +701,34 @@ class SuperAdminService:
                 }
             )
         return data
+
+    @staticmethod
+    def _as_utc_datetime(value):
+        if value is None:
+            return None
+        if getattr(value, "tzinfo", None) is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+
+    @staticmethod
+    def _subscription_source(external_ref: Optional[str]) -> str:
+        ref = str(external_ref or "").strip().lower()
+        if ref in {"super_admin_dashboard", "super_admin"} or ref.startswith("super_admin"):
+            return "super_admin"
+        if ref.startswith("pay_") or ref.startswith("order_") or ref.startswith("rzp_"):
+            return "payment"
+        return "system" if not ref else "external"
+
+    @staticmethod
+    def _subscription_is_effective(status: str, period_start, period_end, now_utc) -> bool:
+        start_dt = SuperAdminService._as_utc_datetime(period_start)
+        end_dt = SuperAdminService._as_utc_datetime(period_end)
+        normalized_status = str(status or "").lower()
+        return (
+            normalized_status in {"active", "trialing", "past_due"}
+            and (start_dt is None or start_dt <= now_utc)
+            and (end_dt is None or end_dt > now_utc)
+        )
 
     @staticmethod
     def list_subscriptions(page=1, per_page=20, status=None, search=None):
@@ -743,21 +791,32 @@ class SuperAdminService:
 
         rows = db.session.execute(list_sql, params).mappings().all()
         items = []
+        now_utc = datetime.now(timezone.utc)
         for row in rows:
+            row_status = str(row["status"] or "")
+            source = SuperAdminService._subscription_source(row["external_ref"])
             items.append(
                 {
                     "id": row["id"],
                     "vendor_id": row["vendor_id"],
                     "cafe_name": row["cafe_name"],
                     "owner_name": row["owner_name"],
-                    "status": str(row["status"] or ""),
+                    "status": row_status,
+                    "is_active": SuperAdminService._subscription_is_effective(
+                        row_status,
+                        row["current_period_start"],
+                        row["current_period_end"],
+                        now_utc,
+                    ),
+                    "set_by": source,
+                    "set_by_super_admin": source == "super_admin",
                     "package": {
                         "code": row["package_code"],
                         "name": row["package_name"],
                         "pc_limit": row["pc_limit"],
                     },
-                    "period_start": row["current_period_start"],
-                    "period_end": row["current_period_end"],
+                    "period_start": SuperAdminService._as_utc_datetime(row["current_period_start"]) or row["current_period_start"],
+                    "period_end": SuperAdminService._as_utc_datetime(row["current_period_end"]) or row["current_period_end"],
                     "amount_paid": float(row["unit_amount"] or 0),
                     "currency": row["currency"],
                     "external_ref": row["external_ref"],
@@ -1462,6 +1521,20 @@ class SuperAdminService:
             return False, out
         body = response.json()
         return True, body.get("models", [])
+
+    @staticmethod
+    def delete_subscription_model(package_code: str):
+        code = (package_code or "").strip().lower()
+        url = f"{SuperAdminService._dashboard_service_url()}/api/packages/admin/catalog/{code}"
+        response = requests.delete(url, headers=SuperAdminService._admin_proxy_headers(), timeout=12)
+        if response.status_code >= 400:
+            try:
+                out = response.json()
+            except Exception:
+                out = {"error": response.text}
+            return False, out
+        body = response.json()
+        return True, body
 
     @staticmethod
     def send_early_onboard_promotion(
@@ -2399,7 +2472,15 @@ class SuperAdminService:
         return summary or {"sent_count": 0, "last_sent_at": None}
 
     @staticmethod
-    def change_subscription(vendor_id: int, package_code: str, immediate: bool = True, unit_amount: float = 0.0):
+    def change_subscription(
+        vendor_id: int,
+        package_code: str,
+        immediate: bool = True,
+        unit_amount: float = 0.0,
+        period_start: Optional[str] = None,
+        period_end: Optional[str] = None,
+        changed_by: str = "super_admin_dashboard",
+    ):
         code = (package_code or "").strip().lower()
         if code == "pro":
             code = "grow"
@@ -2408,6 +2489,13 @@ class SuperAdminService:
             "immediate": bool(immediate),
             "unit_amount": float(unit_amount or 0),
         }
+        if period_start:
+            payload["period_start"] = period_start
+        if period_end:
+            payload["period_end"] = period_end
+        if changed_by:
+            payload["changed_by"] = str(changed_by).strip()[:64]
+            payload["external_ref"] = str(changed_by).strip()[:64]
         url = f"{SuperAdminService._dashboard_service_url()}/api/vendors/{vendor_id}/subscription/change"
         try:
             response = requests.post(url, json=payload, headers=SuperAdminService._admin_proxy_headers(), timeout=12)

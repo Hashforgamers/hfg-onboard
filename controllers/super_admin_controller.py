@@ -285,6 +285,22 @@ def update_subscription_models():
     return jsonify({"success": True, "models": payload}), 200
 
 
+@super_admin_bp.route('/admin/subscription-models/<package_code>', methods=['DELETE'])
+@require_super_admin
+def delete_subscription_model(package_code):
+    ok, payload = SuperAdminService.delete_subscription_model(package_code)
+    if not ok:
+        detail_message = ""
+        if isinstance(payload, dict):
+            detail_message = str(payload.get("message") or payload.get("error") or "")
+        return jsonify({
+            "success": False,
+            "message": detail_message or "Failed to delete subscription model",
+            "details": payload,
+        }), 400
+    return jsonify({"success": True, **payload}), 200
+
+
 @super_admin_bp.route('/admin/vendors/<int:vendor_id>/subscriptions/change', methods=['POST'])
 @require_super_admin
 def change_subscription(vendor_id):
@@ -292,11 +308,22 @@ def change_subscription(vendor_id):
     package_code = (data.get("package_code") or "").strip().lower()
     immediate = _parse_bool(data.get("immediate"), True)
     unit_amount = float(data.get("unit_amount") or 0)
+    period_start = (data.get("period_start") or "").strip() or None
+    period_end = (data.get("period_end") or "").strip() or None
+    changed_by = (data.get("changed_by") or data.get("sent_by") or "super_admin_dashboard").strip()
 
     if not package_code:
         return jsonify({"success": False, "message": "package_code is required"}), 400
 
-    ok, payload = SuperAdminService.change_subscription(vendor_id, package_code, immediate=immediate, unit_amount=unit_amount)
+    ok, payload = SuperAdminService.change_subscription(
+        vendor_id,
+        package_code,
+        immediate=immediate,
+        unit_amount=unit_amount,
+        period_start=period_start,
+        period_end=period_end,
+        changed_by=changed_by,
+    )
     if not ok:
         detail_message = ""
         if isinstance(payload, dict):
