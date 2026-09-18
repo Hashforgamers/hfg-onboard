@@ -1,3 +1,4 @@
+import html
 # services/otp_service.py
 
 import random
@@ -77,20 +78,20 @@ class OTPService:
             page_name = "Bank Transfer" if page_type == "bank_transfer" else "Payout History"
             
             msg = Message(
-                subject=f'OTP for {page_name} Access - Hash For Gamers',
+                subject=f'Verify access to {page_name} | Hash For Gamers',
                 recipients=[vendor_email],
                 sender=current_app.config['MAIL_DEFAULT_SENDER']
             )
             
             otp_html = f"""
-            <p style="margin:0 0 12px 0;color:#e5e7eb;">Hello <strong>{vendor_name}</strong>,</p>
+            <p style="margin:0 0 12px 0;color:#e5e7eb;">Hello <strong>{html.escape(str(vendor_name))}</strong>,</p>
             <p style="margin:0 0 14px 0;color:#cbd5e1;line-height:1.7;">
-                You are trying to access <strong>{page_name}</strong> for <strong>{cafe_name}</strong>.
-                Please verify with the OTP below.
+                You are trying to access <strong>{page_name}</strong> for <strong>{html.escape(str(cafe_name))}</strong>.
+                Enter the verification code below to continue.
             </p>
             <div style="background:#0a1f45;border:1px solid #1d4ed8;border-radius:10px;padding:18px;text-align:center;margin:16px 0;">
-                <div style="color:#93c5fd;font-size:13px;margin-bottom:6px;">One-Time Password</div>
-                <div style="color:#ffffff;font-size:36px;letter-spacing:8px;font-weight:700;">{otp}</div>
+                <div style="color:#93c5fd;font-size:13px;margin-bottom:6px;">Verification code</div>
+                <div style="color:#ffffff;font-size:30px;letter-spacing:5px;font-weight:700;">{otp}</div>
             </div>
             <div style="background:#2b170a;border:1px solid #7c2d12;border-radius:8px;padding:12px;color:#fcd34d;line-height:1.65;">
                 <strong>Important:</strong>
@@ -108,15 +109,15 @@ class OTPService:
             msg.html = build_hfg_email_html(
                 subject=msg.subject,
                 content_html=otp_html,
-                preview_text=f"Your OTP for {page_name} is {otp}",
+                preview_text=f"Confirm access to {page_name}. Your code is valid for 5 minutes.",
             )
             
             msg.body = f"""
-HashForGamers - Security Verification Required
+Verify your identity | Hash For Gamers
 
 Hello {vendor_name},
 
-You are trying to access the {page_name} section for {cafe_name}. For security purposes, please verify your identity with the OTP below:
+You are trying to access the {page_name} section for {cafe_name}. For security purposes, enter the verification code below:
 
 OTP: {otp}
 

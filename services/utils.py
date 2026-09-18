@@ -1,5 +1,6 @@
 # app/utils.py
 
+import html as html_lib
 import string
 import secrets
 from flask_mail import Message
@@ -35,8 +36,8 @@ def send_email(subject, recipients, body, html=None):
     msg.body = body
     msg.html = build_hfg_email_html(
         subject=subject,
-        content_html=html or f"<p>{body}</p>",
-        preview_text=body,
+        content_html=html or "<p>" + html_lib.escape(str(body)).replace("\n", "<br />") + "</p>",
+        preview_text=subject,
     )
     current_app.logger.info(f"msg: {msg}")
     try:
