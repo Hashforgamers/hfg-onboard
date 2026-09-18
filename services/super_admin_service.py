@@ -1369,10 +1369,10 @@ class SuperAdminService:
                     action_note = (
                         "Please upload the corrected document again from Dashboard Settings."
                         if target_status == "rejected"
-                        else "No action is needed from your side."
+                        else "No further action is required."
                     )
                     msg = Message(
-                        subject=f"Hash For Gamers · Document {target_status.title()} Update",
+                        subject=f"Document review: {target_status.title()} | Hash For Gamers",
                         recipients=[recipient],
                     )
                     msg.body = (
@@ -1382,7 +1382,7 @@ class SuperAdminService:
                         f"Documents: {', '.join([(doc.document_type or '').replace('_', ' ').title() for doc in docs])}\n"
                         f"Vendor status: {next_status}\n\n"
                         f"{action_note}\n\n"
-                        "Hash For Gamers Ops"
+                        "The Hash For Gamers team"
                     )
                     msg.html = build_hfg_email_html(
                         subject=f"Document {target_status.title()} Update",
@@ -1626,30 +1626,30 @@ class SuperAdminService:
 
                 if recipient:
                     msg = Message(
-                        subject="Hash Vendor Dashboard Credentials Updated",
+                        subject="Your dashboard password has been reset | Hash For Gamers",
                         recipients=[recipient],
                     )
                     msg.body = (
                         f"Hello {vendor.owner_name or 'Partner'},\n\n"
-                        f"Your dashboard credentials were reset by super admin.\n"
+                        f"A Hash administrator has reset your dashboard password.\n"
                         f"Cafe: {vendor.cafe_name}\n"
                         f"Login email: {recipient}\n"
                         f"Temporary password: {password}\n\n"
-                        "Please login and change your password immediately.\n"
+                        "Sign in with the temporary password and set a new password to continue. If you did not expect this change, contact support.\n"
                         "Team Hash"
                     )
                     msg.html = build_hfg_email_html(
                         subject=msg.subject,
                         content_html=(
                             f"<p>Hello {html.escape(vendor.owner_name or 'Partner')},</p>"
-                            f"<p>Your dashboard credentials were reset by super admin for <strong>{html.escape(vendor.cafe_name or f'Cafe #{vendor_id}')}</strong>.</p>"
+                            f"<p>A Hash administrator has reset the dashboard password for <strong>{html.escape(vendor.cafe_name or f'Cafe #{vendor_id}')}</strong>.</p>"
                             "<ul>"
                             f"<li>Login email: <strong>{html.escape(recipient)}</strong></li>"
                             f"<li>Temporary password: <strong>{html.escape(password)}</strong></li>"
                             "</ul>"
-                            "<p>Please login and change your password immediately.</p>"
+                            "<p>Sign in with the temporary password and set a new password to continue. If you did not expect this change, contact support.</p>"
                         ),
-                        preview_text="Your dashboard credentials were reset by Hash super admin.",
+                        preview_text="Your temporary dashboard password is ready. Set a new password when you sign in.",
                     )
                     mail.send(msg)
                     notified_to = recipient
@@ -1982,22 +1982,22 @@ class SuperAdminService:
             "",
             f"Hello {owner_name or 'Partner'},",
             "",
-            f"We are offering your cafe '{cafe_name}' the {offer_name} plan promotion.",
-            *([f"Message from Hash Ops: {custom_message}"] if custom_message else []),
+            f"Your cafe '{cafe_name}' is eligible for the {offer_name} offer.",
+            *([f"A note from Hash For Gamers: {custom_message}"] if custom_message else []),
             "Reply to this email with 'AVAIL' or click the one-time activation link below.",
             "",
-            f"One-time avail link: {claim_url}",
-            f"Link expiry: {expiry_text}",
+            f"Claim your offer: {claim_url}",
+            f"Available until: {expiry_text}",
             "",
             "Your existing vendor credentials remain unchanged:",
             f"- Dashboard: {dashboard_url}",
             f"- Login email: {login_email}",
             "",
-            "Important: the avail link works once only.",
+            "This link can be used once. Your existing login details remain unchanged.",
             f"Need help? {support_email}",
             "",
             "Regards,",
-            "Hash For Gamers Ops",
+            "The Hash For Gamers team",
         ]
         return "\n".join(lines)
 
@@ -2030,19 +2030,19 @@ class SuperAdminService:
         return f"""
 <p style="margin:0 0 10px 0;color:#e5e7eb;">Hello <strong>{safe_owner}</strong>,</p>
 <p style="margin:0 0 12px 0;color:#cbd5e1;line-height:1.7;">
-  We are offering your cafe <strong>{safe_cafe}</strong> the <strong>{safe_offer_name}</strong> plan promotion.
+  Your cafe <strong>{safe_cafe}</strong> is eligible for the <strong>{safe_offer_name}</strong> offer.
 </p>
 <p style="margin:0 0 14px 0;color:#cbd5e1;line-height:1.7;">
   Reply to this email with <strong>AVAIL</strong> or use the one-time activation link below.
 </p>
 {custom_note}
 <a href="{safe_claim_url}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:8px;font-size:14px;font-weight:700;">
-  Claim {safe_offer_name} (One-Time)
+  Claim your offer
 </a>
 <p style="margin:10px 0 16px 0;font-size:12px;color:#94a3b8;">Link expires: {expiry_text}</p>
 <div style="border:1px solid #1e2a44;border-radius:10px;padding:14px;background:#08142c;">
   <div style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#22c55e;font-weight:700;margin-bottom:8px;">
-    Existing Vendor Access
+    Your dashboard access
   </div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;line-height:1.7;color:#e2e8f0;">
     <tr><td style="padding:4px 0;color:#94a3b8;">Sent To</td><td style="padding:4px 0;">{safe_recipient}</td></tr>
@@ -2359,7 +2359,7 @@ class SuperAdminService:
         dashboard_url: str,
     ) -> str:
         lines = [
-            "HASH FOR GAMERS | OWNER NEWSLETTER",
+            "Updates from Hash For Gamers",
             "",
             f"Hello {owner_name or 'Partner'},",
             "",
@@ -2372,7 +2372,7 @@ class SuperAdminService:
             f"Support: {support_email}",
             "",
             "Regards,",
-            "Hash For Gamers Team",
+            "The Hash For Gamers team",
         ]
         return "\n".join(lines)
 
@@ -2426,7 +2426,7 @@ class SuperAdminService:
         safe_cafe = html.escape(vendor.cafe_name or "your cafe")
         safe_owner = html.escape(vendor.owner_name or "Partner")
         safe_message = html.escape(requested_message).replace("\n", "<br />")
-        subject = "Hash For Gamers · Information Requested for Your Registration"
+        subject = "Action required: registration information | Hash For Gamers"
         sender_email = (os.getenv("MAIL_DEFAULT_SENDER") or "support@hashforgamers.co.in").strip()
         support_email = (os.getenv("MAIL_REPLY_TO") or sender_email).strip()
 
@@ -2436,7 +2436,7 @@ class SuperAdminService:
                 f"Hello {vendor.owner_name or 'Partner'},\n\n"
                 f"Hash For Gamers needs more information to complete the registration for {vendor.cafe_name or 'your cafe'}.\n\n"
                 f"{requested_message}\n\n"
-                f"Please update the required documents from your dashboard or reply to this email.\n\nHash For Gamers Ops"
+                f"Please update the required documents from your dashboard or reply to this email.\n\nThe Hash For Gamers team"
             )
             msg.html = build_hfg_email_html(
                 subject="Information Requested for Your Registration",
@@ -2566,18 +2566,15 @@ class SuperAdminService:
             ])
         lines.extend([
             "Impact while inactive:",
-            f"- {losses[0]}",
-            f"- {losses[1]}",
-            f"- {losses[2]}",
-            f"- {losses[3]}",
+            *[f"- {item}" for item in losses],
             "",
-            "To avoid deactivation: renew subscription and complete pending compliance items.",
-            f"Renew link: {subscription_url}",
+            "To keep your cafe active, review your subscription and complete any outstanding document requirements.",
+            f"Manage your subscription: {subscription_url}",
             "",
             f"Support: {support_email}",
             "",
             "Regards,",
-            "Hash For Gamers Ops",
+            "The Hash For Gamers team",
         ])
         return "\n".join(lines)
 
@@ -2618,13 +2615,13 @@ class SuperAdminService:
 <p style="margin:0 0 12px 0;color:#94a3b8;font-size:13px;">Sent to: {safe_recipient}</p>
 {reason_section}
 <div style="margin-top:12px;border:1px solid #1e2a44;border-radius:10px;background:#08142c;padding:14px;">
-  <div style="font-size:13px;font-weight:700;color:#22c55e;margin-bottom:8px;">What you lose while inactive</div>
+  <div style="font-size:13px;font-weight:700;color:#22c55e;margin-bottom:8px;">Services affected while your cafe is inactive</div>
   <ul style="padding-left:20px;margin:0;color:#e2e8f0;font-size:14px;line-height:1.6;">
     {losses_list}
   </ul>
 </div>
 <p style="margin:14px 0;color:#cbd5e1;line-height:1.7;">
-  To avoid deactivation, renew your subscription and complete pending compliance items.
+  To keep your cafe active, review your subscription and complete any outstanding document requirements.
 </p>
 <a href="{safe_subscription_url}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:700;">
   Renew Subscription

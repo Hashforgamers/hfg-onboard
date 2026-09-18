@@ -1,6 +1,7 @@
+import html
 from flask import current_app
 from flask_mail import Message
-from db.extensions import db
+from db.extensions import db, mail
 from models.order import Order
 from models.collaborator import Collaborator
 from models.vendor import Vendor
@@ -29,7 +30,7 @@ class NotificationService:
             vendor_email = getattr(vendor.contact_info, 'email', 'N/A') if vendor and vendor.contact_info else 'N/A'
             vendor_phone = getattr(vendor.contact_info, 'phone', 'N/A') if vendor and vendor.contact_info else 'N/A'
 
-            subject = f"Order Confirmation - {order.order_id}"
+            subject = f"New order #{order.order_id} | Hash For Gamers"
            
             # Products table (HTML)
             items_table = """
@@ -44,7 +45,7 @@ class NotificationService:
                 p = Product.query.get(item.product_id)
                 items_table += f"""
                 <tr>
-                    <td style="border-bottom:1px solid #1e2a44; padding:8px; color:#e2e8f0;">{p.name}</td>
+                    <td style="border-bottom:1px solid #1e2a44; padding:8px; color:#e2e8f0;">{html.escape(str(p.name))}</td>
                     <td style="border-bottom:1px solid #1e2a44; padding:8px; text-align:center; color:#e2e8f0;">{item.quantity}</td>
                     <td style="border-bottom:1px solid #1e2a44; padding:8px; text-align:right; color:#e2e8f0;">₹{float(item.unit_price):.2f}</td>
                     <td style="border-bottom:1px solid #1e2a44; padding:8px; text-align:right; color:#e2e8f0;">₹{float(item.subtotal):.2f}</td>
@@ -71,11 +72,18 @@ class NotificationService:
 
             # Main HTML body fragment (wrapped by shared template)
             html_body = f"""
-            <p style="margin:0 0 12px 0;color:#e5e7eb;">Dear <strong>{collaborator.name}</strong>,</p>
+            <p style="margin:0 0 12px 0;color:#e5e7eb;">Dear <strong>{html.escape(str(collaborator.name))}</strong>,</p>
             <p style="margin:0 0 14px 0;color:#cbd5e1;">
                 Your order was received on {order.order_date.strftime('%Y-%m-%d %H:%M')}. Details are below.
             </p>
-            <div style="font-size:14px;font-weight:700;color:#22c55e;margin:0 0 8px 0;">Order and Cafe Info</div>
+            <div style="font-size:14px;font-weight:700;color:#22c55e;margin:0 0 8px 0;">Order summary</div>
+            <p style="color:#cbd5e1;font-size:14px;line-height:1.6;">
+                Order #{order.order_id}<br />
+                Cafe: {html.escape(str(vendor.cafe_name))}<br />
+                Contact: {html.escape(str(vendor.owner_name))}<br />
+                Email: {html.escape(str(vendor_email))}<br />
+                Phone: {html.escape(str(vendor_phone))}
+            </p>
             {order_summary_table}
             <div style="font-size:14px;font-weight:700;color:#22c55e;margin:12px 0 8px 0;">Products</div>
             {items_table}
@@ -117,7 +125,7 @@ Please review and confirm your order within 24 hours.
 
 For help, email support@hashforgamers.co.in
 
-HashForGamers © {order.order_date.year}
+Hash For Gamers © {order.order_date.year}
 """
 
             msg = Message(
@@ -132,8 +140,7 @@ HashForGamers © {order.order_date.year}
                 )
             )
             
-            mail = current_app.extensions.get('mail')
-            if mail:
+            if current_app.extensions.get('mail'):
                 mail.send(msg)
                 status = 'sent'
             else:
@@ -160,12 +167,12 @@ HashForGamers © {order.order_date.year}
     def send_invoice_notification_email(collaborator_email, collaborator_name, invoice_data):
         """Send invoice notification email with table format"""
         try:
-            subject = "Monthly Commission Invoice - Hash For Gamers"
+            subject = "Your monthly commission invoice | Hash For Gamers"
             invoice_table = f"""
             <table style="width:100%; border-collapse:collapse; margin-bottom:15px; border:1px solid #1e2a44; border-radius:8px; overflow:hidden; background:#08142c;">
                 <tr>
                     <th style="border-bottom:1px solid #1e2a44; padding:8px; background:#050f23; color:#cbd5e1;">Invoice ID</th>
-                    <td style="border-bottom:1px solid #1e2a44; padding:8px; color:#e2e8f0;">{invoice_data.get('invoice_id')}</td>
+                    <td style="border-bottom:1px solid #1e2a44; padding:8px; color:#e2e8f0;">{html.escape(str(invoice_data.get('invoice_id')))}</td>
                 </tr>
                 <tr>
                     <th style="border-bottom:1px solid #1e2a44; padding:8px; background:#050f23; color:#cbd5e1;">Total Commission</th>
@@ -173,16 +180,16 @@ HashForGamers © {order.order_date.year}
                 </tr>
                 <tr>
                     <th style="border-bottom:1px solid #1e2a44; padding:8px; background:#050f23; color:#cbd5e1;">Due Date</th>
-                    <td style="border-bottom:1px solid #1e2a44; padding:8px; color:#e2e8f0;">{invoice_data.get('due_date')}</td>
+                    <td style="border-bottom:1px solid #1e2a44; padding:8px; color:#e2e8f0;">{html.escape(str(invoice_data.get('due_date')))}</td>
                 </tr>
             </table>
             """
             html_body = f"""
-            <p style="margin:0 0 12px 0;color:#e5e7eb;">Dear <strong>{collaborator_name}</strong>,</p>
+            <p style="margin:0 0 12px 0;color:#e5e7eb;">Dear <strong>{html.escape(str(collaborator_name))}</strong>,</p>
             <p style="margin:0 0 14px 0;color:#cbd5e1;">Your monthly commission invoice is ready.</p>
             {invoice_table}
             <p style="margin:12px 0 0 0;color:#cbd5e1;">
-                Please login to your dashboard to download the invoice and process payment by the due date.
+                Sign in to your dashboard to download the invoice and arrange payment by the due date.
             </p>
             <p style="margin:10px 0 0 0;color:#94a3b8;font-size:12px;">
                 For support: <a href="mailto:support@hashforgamers.co.in" style="color:#60a5fa;text-decoration:none;">support@hashforgamers.co.in</a>
@@ -199,9 +206,9 @@ Invoice ID: {invoice_data.get('invoice_id')}
 Total Commission: ₹{invoice_data.get('total_commission', 0):.2f}
 Due Date: {invoice_data.get('due_date')}
 
-Please login to your dashboard to download the invoice and process payment by the due date.
+Sign in to your dashboard to download the invoice and arrange payment by the due date.
 
-HashForGamers © {datetime.now().year}
+Hash For Gamers © {datetime.now().year}
 Support: support@hashforgamers.co.in
 """
             msg = Message(
@@ -214,8 +221,7 @@ Support: support@hashforgamers.co.in
                     preview_text=f"Invoice {invoice_data.get('invoice_id')}",
                 )
             )
-            mail = current_app.extensions.get('mail')
-            if mail:
+            if current_app.extensions.get('mail'):
                 mail.send(msg)
                 return True
             else:

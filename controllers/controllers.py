@@ -1,3 +1,4 @@
+import html
 # app/controllers.py
 
 from flask import Blueprint, request, jsonify, current_app
@@ -789,13 +790,13 @@ def send_self_onboard_email_otp():
         redis_client.delete(_self_onboard_verify_key(email))
 
         msg = Message(
-            subject="Hash Self Onboarding - Email Verification OTP",
+            subject="Verify your email | Hash For Gamers",
             recipients=[email],
             sender=current_app.config.get("MAIL_DEFAULT_SENDER"),
         )
         msg.body = (
             f"Hello,\n\n"
-            f"Use OTP {otp} to verify your email for Hash cafe onboarding.\n"
+            f"Enter {otp} to verify your email and continue setting up your cafe.\n"
             f"Cafe: {cafe_name}\n\n"
             f"This OTP expires in {SELF_ONBOARD_OTP_EXPIRY_SECONDS // 60} minutes.\n"
             f"If you did not request this, you can ignore this email.\n\n"
@@ -803,18 +804,17 @@ def send_self_onboard_email_otp():
         )
         otp_html = f"""
         <div style="font-family:Arial,Helvetica,sans-serif;line-height:1.7;color:#e5e7eb;max-width:560px;margin:0 auto;">
-          <h2 style="margin:0 0 10px 0;color:#f8fafc;font-size:28px;line-height:1.25;">Hash Cafe Self Onboarding</h2>
-          <p style="margin:0 0 12px 0;color:#cbd5e1;">Use this OTP to verify your email:</p>
+          <p style="margin:0 0 12px 0;color:#cbd5e1;">Enter the verification code below to continue setting up your cafe:</p>
 
           <div style="margin:0 0 14px 0;">
-            <span style="display:inline-block;background:#f8fafc;border:1px solid #dbeafe;border-radius:10px;padding:12px 18px;color:#0f172a;font-size:34px;font-weight:700;letter-spacing:8px;">
+            <span style="display:inline-block;background:#f8fafc;border:1px solid #dbeafe;border-radius:10px;padding:12px 18px;color:#0f172a;font-size:30px;font-weight:700;letter-spacing:5px;">
               {otp}
             </span>
           </div>
 
           <div style="background:#08142c;border:1px solid #1e3a8a;border-radius:10px;padding:12px 14px;margin:0 0 12px 0;">
             <p style="margin:0 0 6px 0;color:#93c5fd;font-size:13px;text-transform:uppercase;letter-spacing:.06em;">Cafe</p>
-            <p style="margin:0;color:#f8fafc;font-size:16px;font-weight:700;">{cafe_name}</p>
+            <p style="margin:0;color:#f8fafc;font-size:16px;font-weight:700;">{html.escape(cafe_name)}</p>
           </div>
 
           <p style="margin:0 0 8px 0;color:#cbd5e1;">This OTP expires in {SELF_ONBOARD_OTP_EXPIRY_SECONDS // 60} minutes.</p>
@@ -824,7 +824,7 @@ def send_self_onboard_email_otp():
         msg.html = build_hfg_email_html(
             subject=msg.subject,
             content_html=otp_html,
-            preview_text=f"Your Hash onboarding OTP is {otp}",
+            preview_text="Verify your email to continue setting up your cafe.",
         )
 
         mail.send(msg)

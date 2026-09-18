@@ -2132,7 +2132,7 @@ class VendorService:
             html_body = VendorService.build_welcome_email_html(vendor, password, email, pin_code, parent_email, activated)
             text_body = VendorService.build_welcome_email_text(vendor, password, email, pin_code, parent_email, activated)
             msg = Message(
-                subject=f"Hash Onboarding Complete | {vendor.cafe_name} | Credentials",
+                subject=f"Welcome to Hash For Gamers | {vendor.cafe_name}",
                 sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@hashforgamers.com'),
                 recipients=[email]
             )
@@ -2141,6 +2141,7 @@ class VendorService:
                 subject=msg.subject,
                 content_html=html_body,
                 preview_text=f"Your cafe {vendor.cafe_name} onboarding is complete.",
+                heading="Your cafe is ready" if activated else "Welcome to Hash",
             )
             # Complete dispatch before reporting delivery; daemon threads can be lost
             # when a worker restarts after the onboarding response.
@@ -2161,13 +2162,13 @@ class VendorService:
         )
 
         lines = [
-            "Hash for Gamers - Onboarding Complete",
+            "Welcome to Hash For Gamers",
             "",
             f"Hello {vendor.owner_name},",
             "",
             f"Your cafe '{vendor.cafe_name}' has been onboarded successfully.",
             "",
-            "Login Credentials",
+            "Your dashboard access",
             f"Login Email: {email}",
             password_line,
             f"Vendor PIN: {pin_code}",
@@ -2184,7 +2185,7 @@ class VendorService:
             "Please keep credentials confidential.",
             "If you did not request this onboarding, contact Hash support immediately.",
             "",
-            "Team Hash"
+            "The Hash For Gamers team"
         ])
         return "\n".join(lines)
 
@@ -2192,37 +2193,40 @@ class VendorService:
     def build_welcome_email_html(vendor, password, email, pin_code, parent_email=None, activated=False):
         """Build welcome email content fragment (wrapped by shared HFG template)."""
         dashboard_url = (os.getenv("SELF_ONBOARD_DASHBOARD_URL") or os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
-        password_html = (
-            f"<strong>{html.escape(str(password))}</strong>"
-            if password
-            else "Use your existing password. If forgotten, reset from login."
+        credentials = [
+            ("Login email", email),
+            ("Password", password or "Use your existing password. If forgotten, reset from login."),
+            ("Cafe PIN", pin_code),
+        ]
+        if parent_email and parent_email != email:
+            credentials.append(("Parent account email", parent_email))
+        rows = "".join(
+            f'<tr><td style="padding:12px 16px;color:#e5e7eb;">'
+            f'<div style="font-size:12px;line-height:1.5;color:#b8c5d6;">{html.escape(label)}</div>'
+            f'<div style="margin-top:3px;font-size:17px;line-height:1.5;font-weight:700;'
+            f'color:#f8fafc;word-break:break-word;overflow-wrap:anywhere;">{html.escape(str(value))}</div>'
+            f'</td></tr>' for label, value in credentials
         )
-        parent_row = (
-            f"<tr><td style='padding:8px 0;color:#94a3b8;'>Parent Account Email</td>"
-            f"<td style='padding:8px 0;color:#e2e8f0;'><strong>{html.escape(str(parent_email))}</strong></td></tr>"
-            if parent_email and parent_email != email else ""
+        status = "Active" if activated else "Pending verification"
+        next_step = (
+            "Sign in with these details, select your cafe, and enter your cafe PIN. "
+            "Then open Subscription to choose and buy your plan."
+            if activated else "Your account is created. We will notify you when verification is complete."
         )
-
         return f"""
-<p style="margin:0 0 12px 0;color:#e5e7eb;">Hello <strong>{html.escape(str(vendor.owner_name))}</strong>,</p>
-<p style="margin:0 0 16px 0;line-height:1.7;color:#cbd5e1;">
-  Your cafe <strong>{html.escape(str(vendor.cafe_name))}</strong> has been onboarded successfully.
-</p>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #1e2a44;border-radius:10px;padding:12px;background:#08142c;">
-  <tr><td style="padding:8px 0;color:#94a3b8;">Login Email</td><td style="padding:8px 0;color:#e2e8f0;"><strong>{html.escape(str(email))}</strong></td></tr>
-  <tr><td style="padding:8px 0;color:#94a3b8;">Password</td><td style="padding:8px 0;color:#e2e8f0;">{password_html}</td></tr>
-  <tr><td style="padding:8px 0;color:#94a3b8;">Vendor PIN</td><td style="padding:8px 0;color:#e2e8f0;"><strong>{html.escape(str(pin_code))}</strong></td></tr>
-  <tr><td style="padding:8px 0;color:#94a3b8;">Vendor ID</td><td style="padding:8px 0;color:#e2e8f0;"><strong>{vendor.id}</strong></td></tr>
-  {parent_row}
+<p style="margin:0 0 12px;color:#e5e7eb;">Hello <strong>{html.escape(str(vendor.owner_name))}</strong>,</p>
+<p style="margin:0 0 16px;color:#e5e7eb;">Welcome to Hash. <strong>{html.escape(str(vendor.cafe_name))}</strong> has been onboarded successfully.</p>
+<p style="margin:0 0 20px;font-size:14px;color:#b8c5d6;">Cafe #{vendor.id} &nbsp;·&nbsp; {status}</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#162235" style="table-layout:fixed;background-color:#162235;border:1px solid #334155;border-radius:10px;">
+{rows}
 </table>
-<p style="margin:16px 0 6px 0;line-height:1.6;color:#cbd5e1;">
-  Dashboard: <a href="{html.escape(str(dashboard_url))}" style="color:#60a5fa;text-decoration:none;">{html.escape(str(dashboard_url))}</a>
-</p>
-<p style="margin:6px 0 0 0;line-height:1.6;color:#cbd5e1;">Status: <strong>{"Active" if activated else "Pending Verification"}</strong></p>
-<p>{"Sign in, select your cafe, and enter the Vendor PIN. Open Subscription to choose and buy a plan." if activated else "We will notify you when verification is complete."}</p>
-<p style="margin:18px 0 0 0;font-size:12px;color:#94a3b8;line-height:1.6;">
-  Keep credentials confidential. If you did not request this onboarding, contact Hash support immediately.
-</p>
+<p style="margin:20px 0;color:#e5e7eb;font-size:15px;line-height:1.6;">{next_step}</p>
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+<tr><td align="center" bgcolor="#2563eb" style="background-color:#2563eb;border-radius:8px;">
+<a href="{html.escape(dashboard_url, quote=True)}" style="display:block;padding:14px 20px;font-size:16px;line-height:1.5;font-weight:700;color:#ffffff;text-decoration:none;">Sign in to dashboard</a>
+</td></tr>
+</table>
+<p style="margin:20px 0 0;font-size:12px;line-height:1.6;color:#b8c5d6;">Keep your password and cafe PIN private. If you did not request this onboarding, contact Hash support.</p>
 """
 
       
@@ -2281,11 +2285,11 @@ class VendorService:
 
         deletion_items = [
             "All bookings, transactions &amp; payment records",
-            "Slots, available games &amp; console associations",
+            "Session schedules, games &amp; console assignments",
             "Cafe passes &amp; user passes",
             "Amenities, opening days &amp; timing configuration",
             "Uploaded documents &amp; business registration",
-            "All vendor-specific data tables",
+            "Cafe settings and associated account data",
         ]
 
         deletion_rows = "".join([
@@ -2301,10 +2305,10 @@ class VendorService:
 
         return f"""
 <p style="margin:0 0 10px 0;color:#e5e7eb;">
-  Dear <strong>{owner_name}</strong>,
+  Dear <strong>{html.escape(str(owner_name))}</strong>,
 </p>
 <p style="margin:0 0 12px 0;color:#cbd5e1;line-height:1.7;">
-  We are reaching out regarding your gaming cafe <strong>{cafe_name}</strong> (ID: #{vendor_id}).
+  We are reaching out regarding your gaming cafe <strong>{html.escape(str(cafe_name))}</strong> (ID: #{vendor_id}).
 </p>
 <div style="border:1px solid #7f1d1d;background:#2b0b10;border-radius:8px;padding:14px;margin:0 0 16px 0;">
   <div style="font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:#fca5a5;font-weight:700;margin-bottom:6px;">
@@ -2325,6 +2329,6 @@ class VendorService:
   Contact Support
 </a>
 <p style="margin:14px 0 0 0;color:#94a3b8;font-size:12px;line-height:1.6;">
-  This is an automated notice from Hash For Gamers admin platform.
+  If you have questions about this change, contact Hash For Gamers support.
 </p>
 """
