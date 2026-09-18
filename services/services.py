@@ -2,6 +2,7 @@
 
 import os
 import re  # ✅ ADDED for PIN validation
+import html
 import base64
 import json
 from werkzeug.security import generate_password_hash
@@ -44,7 +45,6 @@ from google.oauth2 import service_account
 import io
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-from threading import Thread
 from flask_mail import Message
 from db.extensions import mail
 from services.email_template import build_hfg_email_html
@@ -95,9 +95,9 @@ class VendorService:
             return None
         
     @staticmethod
-    def onboard_vendor(data, files):
+    def onboard_vendor(data, files, *, commit=True):
         current_app.logger.debug("Onboard Vendor Started.")
-        current_app.logger.debug(f"Received data: {data}")
+        current_app.logger.debug("Preparing vendor account and inventory")
         current_app.logger.debug(f"Received files: {files}")
     
         try:
@@ -125,13 +125,22 @@ class VendorService:
            # Keep normalized value for downstream workflows and transparency
            data["vendor_account_email"] = vendor_account_email
 
+           timing_data = data.get("timing", {})
+           opening_parsed = VendorService.safe_strptime(timing_data.get("opening_time"), "%I:%M %p")
+           closing_parsed = VendorService.safe_strptime(timing_data.get("closing_time"), "%I:%M %p")
+           if not opening_parsed or not closing_parsed:
+               raise ValueError("Valid opening and closing times are required")
+           timing = Timing(opening_time=opening_parsed.strftime("%H:%M:%S"), closing_time=closing_parsed.strftime("%H:%M:%S"))
+           db.session.add(timing)
+           db.session.flush()
+
         # Step 1: Vendor creation with explicit account_id
            vendor = Vendor(
                cafe_name=data.get("cafe_name"),
                owner_name=data.get("owner_name"),
                description=data.get("description", ""),
                business_registration_id=None,
-               timing_id=None,
+               timing_id=timing.id,
                account_id=vendor_account.id if vendor_account else None
            )
            db.session.add(vendor)
@@ -238,8 +247,8 @@ class VendorService:
            opening_time = opening_time_parsed.time()
            closing_time = closing_time_parsed.time()
 
-           timing = Timing(opening_time=opening_time, closing_time=closing_time)
-           db.session.add(timing)
+           timing.opening_time = opening_time.isoformat()
+           timing.closing_time = closing_time.isoformat()
 
         # Step 7: Update Vendor with foreign keys
            db.session.flush()
@@ -394,57 +403,40 @@ class VendorService:
 
 
 
-        # Step 11: Slot Creation
-           current_app.logger.debug("Creating slots for the vendor.")
-           try:
-              game_slots = {
-                 game_name.lower(): details.get("total_slot", 0)
-                 for game_name, details in available_games_data.items()
-               }
-              game_ids = {
-                  game.game_name.lower(): game.id
-                 for game in available_games_instances
-               }
-
-              today = datetime.today()
-              current_time = datetime.combine(today, opening_time)
-              closing_datetime = datetime.combine(today, closing_time)
-
-            # Handle 12:00 AM case (i.e., after midnight)
-              if closing_datetime <= current_time:
-                closing_datetime += timedelta(days=1)
-
-              slot_duration = data.get("slot_duration", 30)
-              slot_data = []
-
-              while current_time < closing_datetime:
-                   end_time = current_time + timedelta(minutes=slot_duration)
-                   if end_time > closing_datetime:
-                      break
-
-                   for game_name, total_slots in game_slots.items():
-                       game_id = game_ids.get(game_name)
-                       if not game_id:
-                          current_app.logger.warning(f"Game '{game_name}' not found.")
-                          continue
-
-                       slot = Slot(
-                          gaming_type_id=game_id,
-                          start_time=current_time.time(),
-                          end_time=end_time.time(),
-                          available_slot=total_slots,
-                          is_available=True
-                       )
-                       slot_data.append(slot)
-
-                   current_time = end_time
-
-                   db.session.add_all(slot_data)
-                   current_app.logger.info(f"{len(slot_data)} slots created for vendor.")
-
-           except Exception as e:
-              current_app.logger.error(f"Error creating slots: {e}")
-              raise
+        # Preserve each day's hours and duration; build the union of reusable slots.
+           schedule = data.get("day_schedule") or {
+               day: {"open": opening_time_str, "close": closing_time_str,
+                     "closed": not is_open, "slot_duration": data.get("slot_duration", 30)}
+               for day, is_open in opening_day_data.items()
+           }
+           slot_windows = set()
+           for day, config in schedule.items():
+               if config.get("closed"):
+                   continue
+               duration = int(config.get("slot_duration", 30))
+               if duration not in (15, 30, 45, 60, 90, 120):
+                   raise ValueError("Invalid slot duration")
+               opens = VendorService.safe_strptime(config.get("open"), "%I:%M %p")
+               closes = VendorService.safe_strptime(config.get("close"), "%I:%M %p")
+               if not opens or not closes:
+                   raise ValueError("Invalid daily operating hours")
+               db.session.add(VendorDaySlotConfig(
+                   vendor_id=vendor.id, day=day,
+                   opening_time=opens.strftime("%H:%M"), closing_time=closes.strftime("%H:%M"),
+                   slot_duration=duration,
+               ))
+               if closes <= opens:
+                   closes += timedelta(days=1)
+               while opens + timedelta(minutes=duration) <= closes:
+                   ends = opens + timedelta(minutes=duration)
+                   slot_windows.add((opens.time(), ends.time()))
+                   opens = ends
+           db.session.add_all([
+               Slot(gaming_type_id=game.id, start_time=start, end_time=end,
+                    available_slot=game.total_slot, is_available=True)
+               for game in available_games_instances for start, end in sorted(slot_windows)
+           ])
+           db.session.flush()
 
            # ✅ NEW Step 11.5: Create VendorGame entries (Link games to consoles)
            current_app.logger.debug("Creating vendor game associations for consoles.")
@@ -487,10 +479,9 @@ class VendorService:
                            vendor_games_created += 1
                            current_app.logger.debug(f"Added game '{game.name}' (ID:{game.id}) to console {console.id} ({console.console_type})")
                        except Exception as inner_e:
-                           # Skip duplicates (unique constraint violation)
-                           current_app.logger.debug(f"Skipping game {game.id} for console {console.id}: {inner_e}")
-                           db.session.rollback()
-                           continue
+                           # Abort so no partially-created account can be committed.
+                           current_app.logger.error("Unable to link game %s to console %s", game.id, console.id)
+                           raise
                
                if vendor_games_created > 0:
                    db.session.flush()
@@ -500,9 +491,9 @@ class VendorService:
                    
            except Exception as e:
                current_app.logger.error(f"Error creating vendor games: {e}")
-               pass  # Don't raise - vendor can add games manually later
+               raise
 
-           db.session.commit()
+           db.session.commit() if commit else db.session.flush()
 
 
         # Final verification
@@ -517,10 +508,10 @@ class VendorService:
             
 
         # Step 12: Vendor-specific table creations
-           VendorService.create_vendor_slot_table(vendor.id)
-           VendorService.create_vendor_console_availability_table(vendor.id)
-           VendorService.create_vendor_dashboard_table(vendor.id)
-           VendorService.create_vendor_promo_table(vendor.id)
+           VendorService.create_vendor_slot_table(vendor.id, commit=commit)
+           VendorService.create_vendor_console_availability_table(vendor.id, commit=commit)
+           VendorService.create_vendor_dashboard_table(vendor.id, commit=commit)
+           VendorService.create_vendor_promo_table(vendor.id, commit=commit)
 
            current_app.logger.info(f"Vendor onboarding completed successfully: {vendor.id}")
            return vendor
@@ -734,7 +725,7 @@ class VendorService:
         db.session.commit()
 
     @staticmethod
-    def generate_credentials_and_notify(vendor):
+    def generate_credentials_and_notify(vendor, *, activate=False, commit=True, notify=True):
         """Generate account credentials and notify vendor with login details."""
 
         contact_info = ContactInfo.query.filter_by(
@@ -789,7 +780,7 @@ class VendorService:
             
             password_manager = PasswordManager(
                userid=vendor.id,
-               password=password,
+               password=generate_password_hash(password),
                parent_id=vendor.id,
                parent_type="vendor"
             )
@@ -800,12 +791,12 @@ class VendorService:
         # Step 2: Create VendorStatus regardless
         vendor_status = VendorStatus(
             vendor_id=vendor.id,
-            status="pending_verification"
+            status="active" if activate else "pending_verification"
          )
         db.session.add(vendor_status)
         db.session.flush()
 
-        db.session.commit()
+        db.session.commit() if commit else db.session.flush()
         
         # ✅ UPDATED: Get the PIN and pass to email
         vendor_pin = VendorPin.query.filter_by(vendor_id=vendor.id).first()
@@ -819,8 +810,11 @@ class VendorService:
         ):
             password_to_email = None
 
-        VendorService.send_welcome_email(vendor, password_to_email, email, pin_code, parent_email=parent_email)
-        current_app.logger.info(f"Completed credentials generation for vendor {vendor.id}")
+        delivery = dict(password=password_to_email, email=email, pin_code=pin_code,
+                        parent_email=parent_email, activated=activate)
+        if notify:
+            VendorService.send_welcome_email(vendor, **delivery)
+        return delivery
 
     @staticmethod
     def get_drive_service():
@@ -1831,7 +1825,7 @@ class VendorService:
         return photo_links
     
     @staticmethod
-    def create_vendor_slot_table(vendor_id):
+    def create_vendor_slot_table(vendor_id, *, commit=True):
         """Creates a table for tracking daily slot availability for a vendor."""
         table_name = f"VENDOR_{vendor_id}_SLOT"
 
@@ -1851,7 +1845,7 @@ class VendorService:
         """)
 
         db.session.execute(sql_create)
-        db.session.commit()
+        db.session.commit() if commit else db.session.flush()
 
         # Populate the table initially with a rolling window (default 60 days).
         seed_days = int(os.getenv("ONBOARD_SLOT_SEED_DAYS", "60"))
@@ -1873,7 +1867,7 @@ class VendorService:
         """)
 
         db.session.execute(sql_insert, {"start_date": start_date, "end_date": end_date, "vendor_id": vendor_id})
-        db.session.commit()
+        db.session.commit() if commit else db.session.flush()
 
         current_app.logger.info(
             f"Table {table_name} created and populated successfully. seed_days={seed_days}"
@@ -1968,7 +1962,7 @@ class VendorService:
         return int(result.rowcount or 0)
 
     @staticmethod
-    def create_vendor_console_availability_table(vendor_id):
+    def create_vendor_console_availability_table(vendor_id, *, commit=True):
         """Creates a table for tracking console availability for a vendor."""
         table_name = f"VENDOR_{vendor_id}_CONSOLE_AVAILABILITY"
         
@@ -2002,12 +1996,12 @@ class VendorService:
         """)
         db.session.execute(sql_insert, {"vendor_id": vendor_id})
         
-        db.session.commit()
+        db.session.commit() if commit else db.session.flush()
         current_app.logger.info(f"Table {table_name} created and populated successfully.")
 
 
     @staticmethod
-    def create_vendor_dashboard_table(vendor_id):
+    def create_vendor_dashboard_table(vendor_id, *, commit=True):
         """Creates a table for tracking vendor dashboard details."""
         table_name = f"VENDOR_{vendor_id}_DASHBOARD"
 
@@ -2036,12 +2030,12 @@ class VendorService:
         """)
 
         db.session.execute(sql_create)
-        db.session.commit()
+        db.session.commit() if commit else db.session.flush()
 
         current_app.logger.info(f"Table {table_name} created successfully.")
 
     @staticmethod
-    def create_vendor_promo_table(vendor_id: int):
+    def create_vendor_promo_table(vendor_id: int, *, commit=True):
         """Creates a vendor-specific promo detail table."""
         table_name = f"VENDOR_{vendor_id}_PROMO_DETAIL"
 
@@ -2062,7 +2056,7 @@ class VendorService:
         """)
 
         db.session.execute(sql_create)
-        db.session.commit()
+        db.session.commit() if commit else db.session.flush()
         current_app.logger.info(f"Table {table_name} created successfully.")
         
     @staticmethod
@@ -2132,11 +2126,11 @@ class VendorService:
     
     
     @staticmethod
-    def send_welcome_email(vendor, password, email, pin_code, parent_email=None):
+    def send_welcome_email(vendor, password, email, pin_code, parent_email=None, activated=False):
         """Send standardized onboarding email with vendor credentials."""
         try:
-            html_body = VendorService.build_welcome_email_html(vendor, password, email, pin_code, parent_email)
-            text_body = VendorService.build_welcome_email_text(vendor, password, email, pin_code, parent_email)
+            html_body = VendorService.build_welcome_email_html(vendor, password, email, pin_code, parent_email, activated)
+            text_body = VendorService.build_welcome_email_text(vendor, password, email, pin_code, parent_email, activated)
             msg = Message(
                 subject=f"Hash Onboarding Complete | {vendor.cafe_name} | Credentials",
                 sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@hashforgamers.com'),
@@ -2148,29 +2142,18 @@ class VendorService:
                 content_html=html_body,
                 preview_text=f"Your cafe {vendor.cafe_name} onboarding is complete.",
             )
-            app_obj = current_app._get_current_object()
-            Thread(
-                target=VendorService._send_email_async,
-                args=(app_obj, msg, email, vendor.id),
-                daemon=True,
-            ).start()
-            current_app.logger.info(f"Welcome email queued for {email} (vendor {vendor.id})")
-        except Exception as e:
-            current_app.logger.error(f"Failed to send welcome email to {email} for vendor {vendor.id}: {str(e)}")
-            pass  # Don't raise — email failure shouldn't stop onboarding
+            # Complete dispatch before reporting delivery; daemon threads can be lost
+            # when a worker restarts after the onboarding response.
+            mail.send(msg)
+            current_app.logger.info("Welcome email sent for vendor %s", vendor.id)
+            return True
+        except Exception:
+            current_app.logger.exception("Welcome email delivery failed for vendor %s", vendor.id)
+            return False
 
     @staticmethod
-    def _send_email_async(app, msg, email, vendor_id):
-        with app.app_context():
-            try:
-                mail.send(msg)
-                app.logger.info(f"Welcome email sent successfully to {email} for vendor {vendor_id}")
-            except Exception as exc:
-                app.logger.error(f"Failed to send welcome email to {email} for vendor {vendor_id}: {str(exc)}")
-
-    @staticmethod
-    def build_welcome_email_text(vendor, password, email, pin_code, parent_email=None):
-        dashboard_url = os.getenv("HASH_DASHBOARD_URL", "https://dashboard.hashforgamers.com")
+    def build_welcome_email_text(vendor, password, email, pin_code, parent_email=None, activated=False):
+        dashboard_url = (os.getenv("SELF_ONBOARD_DASHBOARD_URL") or os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
         password_line = (
             f"Password: {password}"
             if password
@@ -2191,7 +2174,8 @@ class VendorService:
             "",
             f"Dashboard: {dashboard_url}",
             f"Vendor ID: {vendor.id}",
-            "Status: Pending Verification",
+            "Status: Active" if activated else "Status: Pending Verification",
+            "Sign in, select your cafe, and enter the Vendor PIN. Open Subscription to choose and buy a plan." if activated else "We will notify you when verification is complete.",
         ]
         if parent_email and parent_email != email:
             lines.append(f"Parent Account Email: {parent_email}")
@@ -2205,36 +2189,37 @@ class VendorService:
         return "\n".join(lines)
 
     @staticmethod
-    def build_welcome_email_html(vendor, password, email, pin_code, parent_email=None):
+    def build_welcome_email_html(vendor, password, email, pin_code, parent_email=None, activated=False):
         """Build welcome email content fragment (wrapped by shared HFG template)."""
-        dashboard_url = os.getenv("HASH_DASHBOARD_URL", "https://dashboard.hashforgamers.com")
+        dashboard_url = (os.getenv("SELF_ONBOARD_DASHBOARD_URL") or os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
         password_html = (
-            f"<strong>{password}</strong>"
+            f"<strong>{html.escape(str(password))}</strong>"
             if password
             else "Use your existing password. If forgotten, reset from login."
         )
         parent_row = (
             f"<tr><td style='padding:8px 0;color:#94a3b8;'>Parent Account Email</td>"
-            f"<td style='padding:8px 0;color:#e2e8f0;'><strong>{parent_email}</strong></td></tr>"
+            f"<td style='padding:8px 0;color:#e2e8f0;'><strong>{html.escape(str(parent_email))}</strong></td></tr>"
             if parent_email and parent_email != email else ""
         )
 
         return f"""
-<p style="margin:0 0 12px 0;color:#e5e7eb;">Hello <strong>{vendor.owner_name}</strong>,</p>
+<p style="margin:0 0 12px 0;color:#e5e7eb;">Hello <strong>{html.escape(str(vendor.owner_name))}</strong>,</p>
 <p style="margin:0 0 16px 0;line-height:1.7;color:#cbd5e1;">
-  Your cafe <strong>{vendor.cafe_name}</strong> has been onboarded successfully.
+  Your cafe <strong>{html.escape(str(vendor.cafe_name))}</strong> has been onboarded successfully.
 </p>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #1e2a44;border-radius:10px;padding:12px;background:#08142c;">
-  <tr><td style="padding:8px 0;color:#94a3b8;">Login Email</td><td style="padding:8px 0;color:#e2e8f0;"><strong>{email}</strong></td></tr>
+  <tr><td style="padding:8px 0;color:#94a3b8;">Login Email</td><td style="padding:8px 0;color:#e2e8f0;"><strong>{html.escape(str(email))}</strong></td></tr>
   <tr><td style="padding:8px 0;color:#94a3b8;">Password</td><td style="padding:8px 0;color:#e2e8f0;">{password_html}</td></tr>
-  <tr><td style="padding:8px 0;color:#94a3b8;">Vendor PIN</td><td style="padding:8px 0;color:#e2e8f0;"><strong>{pin_code}</strong></td></tr>
+  <tr><td style="padding:8px 0;color:#94a3b8;">Vendor PIN</td><td style="padding:8px 0;color:#e2e8f0;"><strong>{html.escape(str(pin_code))}</strong></td></tr>
   <tr><td style="padding:8px 0;color:#94a3b8;">Vendor ID</td><td style="padding:8px 0;color:#e2e8f0;"><strong>{vendor.id}</strong></td></tr>
   {parent_row}
 </table>
 <p style="margin:16px 0 6px 0;line-height:1.6;color:#cbd5e1;">
-  Dashboard: <a href="{dashboard_url}" style="color:#60a5fa;text-decoration:none;">{dashboard_url}</a>
+  Dashboard: <a href="{html.escape(str(dashboard_url))}" style="color:#60a5fa;text-decoration:none;">{html.escape(str(dashboard_url))}</a>
 </p>
-<p style="margin:6px 0 0 0;line-height:1.6;color:#cbd5e1;">Status: <strong>Pending Verification</strong></p>
+<p style="margin:6px 0 0 0;line-height:1.6;color:#cbd5e1;">Status: <strong>{"Active" if activated else "Pending Verification"}</strong></p>
+<p>{"Sign in, select your cafe, and enter the Vendor PIN. Open Subscription to choose and buy a plan." if activated else "We will notify you when verification is complete."}</p>
 <p style="margin:18px 0 0 0;font-size:12px;color:#94a3b8;line-height:1.6;">
   Keep credentials confidential. If you did not request this onboarding, contact Hash support immediately.
 </p>

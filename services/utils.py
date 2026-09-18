@@ -1,7 +1,7 @@
 # app/utils.py
 
 import string
-import random
+import secrets
 from flask_mail import Message
 from db.extensions import mail
 from flask import current_app
@@ -20,13 +20,13 @@ def allowed_file(filename):
 def generate_credentials(length=8):
     letters = string.ascii_letters
     digits = string.digits
-    username = ''.join(random.choice(letters) for i in range(6))
-    password = ''.join(random.choice(letters + digits) for i in range(length))
+    username = ''.join(secrets.choice(letters) for i in range(6))
+    password = ''.join(secrets.choice(letters + digits) for i in range(length))
     return username, password
 
 def generate_unique_vendor_pin():
     while True:
-        pin = "{:04d}".format(random.randint(0, 9999))
+        pin = "{:04d}".format(secrets.randbelow(10000))
         if not VendorPin.query.filter_by(pin_code=pin).first():
             return pin
 

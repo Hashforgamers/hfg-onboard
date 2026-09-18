@@ -4,6 +4,8 @@ from flask import Blueprint, request, jsonify, current_app
 import os
 import re
 import random
+import secrets
+import math
 import string
 from services.services import VendorService
 from werkzeug.utils import secure_filename
@@ -80,7 +82,7 @@ FUTURE_WINDOW_DAYS = int(os.getenv("SLOT_ROLLING_WINDOW_DAYS", "60"))
 SELF_ONBOARD_OTP_EXPIRY_SECONDS = int(os.getenv("SELF_ONBOARD_OTP_EXPIRY_SECONDS", "300"))
 SELF_ONBOARD_VERIFY_EXPIRY_SECONDS = int(os.getenv("SELF_ONBOARD_VERIFY_EXPIRY_SECONDS", "1800"))
 SELF_ONBOARD_OTP_COOLDOWN_SECONDS = int(os.getenv("SELF_ONBOARD_OTP_COOLDOWN_SECONDS", "45"))
-SELF_ONBOARD_DASHBOARD_URL = (os.getenv("SELF_ONBOARD_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
+SELF_ONBOARD_DASHBOARD_URL = (os.getenv("SELF_ONBOARD_DASHBOARD_URL") or os.getenv("HASH_DASHBOARD_URL") or "https://dashboard.hashforgamers.com").rstrip("/")
 
 
 def _normalize_email(value):
@@ -333,6 +335,11 @@ def _self_onboard_duplicate_reason(email, owner_phone=None):
 
 
 def _validate_self_onboard_payload(data):
+    for key in ("contact_info", "physicalAddress", "business_registration_details", "owner_proof_details", "document_submitted"):
+        if not isinstance(data.get(key), dict):
+            return f"{key} must be an object."
+    if not all(data["document_submitted"].get(key) is True for key in ALLOWED_VENDOR_DOCUMENT_TYPES):
+        return "All required documents must be submitted."
     owner_name = _normalize_whitespace(data.get("owner_name"))
     cafe_name = _normalize_whitespace(data.get("cafe_name"))
     contact_info = data.get("contact_info") or {}
@@ -387,8 +394,18 @@ def _validate_self_onboard_payload(data):
         return "At least one console inventory item is required."
     enabled_games = 0
     for game in games:
-        total_slot = int(game.get("total_slot") or 0)
-        rate = float(game.get("rate_per_slot") or 0)
+        if not isinstance(game, dict):
+            return "Invalid console inventory item."
+        try:
+            quantity = float(game.get("total_slot") or 0)
+            rate = float(game.get("rate_per_slot") or 0)
+            if not math.isfinite(quantity) or not quantity.is_integer() or not math.isfinite(rate):
+                return "Console quantity and price must be valid numbers."
+            total_slot = int(quantity)
+        except (TypeError, ValueError, OverflowError):
+            return "Console quantity and price must be valid numbers."
+        game["total_slot"] = total_slot
+        game["rate_per_slot"] = rate
         if total_slot < 0 or total_slot > 500:
             return "Console quantity must be between 0 and 500."
         if rate < 0 or rate > 100000:
@@ -408,7 +425,12 @@ def _validate_self_onboard_payload(data):
         if day_data.get("closed"):
             continue
         has_open_day = True
-        slot_duration = int(day_data.get("slot_duration") or 0)
+        if day_key not in WEEKDAY_MAP:
+            return "Invalid operating day."
+        try:
+            slot_duration = int(day_data.get("slot_duration") or 0)
+        except (TypeError, ValueError, OverflowError):
+            return "Invalid slot duration."
         if slot_duration not in (15, 30, 45, 60, 90, 120):
             return "Slot duration must be one of 15, 30, 45, 60, 90, or 120 minutes."
         open_time = str(day_data.get("open") or "").strip()
@@ -453,8 +475,12 @@ def _consume_self_onboard_verification_token(token, email):
         return False, "Email verification token expired. Please verify email again."
     if stored_email != normalized_email:
         return False, "Email verification token does not match the owner email."
-    redis_client.delete(token_key)
-    redis_client.setex(_self_onboard_verify_key(normalized_email), SELF_ONBOARD_VERIFY_EXPIRY_SECONDS, "1")
+    consumed = redis_client.eval(
+        "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+        1, token_key, stored_email,
+    )
+    if not consumed:
+        return False, "Email verification token already used. Please verify email again."
     return True, None
 
 
@@ -647,7 +673,7 @@ def upload_documents_to_cloudinary(files, vendor_id, cafe_name):
     
     return document_urls
 
-def save_vendor_documents(vendor_id, document_urls, document_submitted):
+def save_vendor_documents(vendor_id, document_urls, document_submitted, *, commit=True):
     """Save uploaded document metadata once; avoid duplicate inserts and loop commits."""
     try:
         saved_count = 0
@@ -674,7 +700,7 @@ def save_vendor_documents(vendor_id, document_urls, document_submitted):
                 )
             saved_count += 1
 
-        db.session.commit()
+        db.session.commit() if commit else db.session.flush()
         current_app.logger.info(f"Saved {saved_count} documents for vendor {vendor_id}")
     except Exception as e:
         db.session.rollback()
@@ -757,7 +783,7 @@ def send_self_onboard_email_otp():
                 "message": "Please wait before requesting another OTP."
             }), 429
 
-        otp = ''.join(random.choices(string.digits, k=6))
+        otp = ''.join(secrets.choice(string.digits) for _ in range(6))
         redis_client.setex(_self_onboard_otp_key(email), SELF_ONBOARD_OTP_EXPIRY_SECONDS, otp)
         redis_client.setex(cooldown_key, SELF_ONBOARD_OTP_COOLDOWN_SECONDS, "1")
         redis_client.delete(_self_onboard_verify_key(email))
@@ -853,7 +879,7 @@ def verify_self_onboard_email_otp():
 def onboard_vendor():
     current_app.logger.debug("Received onboarding request")
 
-    if not request.content_type.startswith('multipart/form-data'):
+    if not (request.content_type or "").startswith('multipart/form-data'):
         current_app.logger.warning("Invalid content type for onboarding request")
         return jsonify({'message': 'Content-Type must be multipart/form-data'}), 400
 
@@ -864,7 +890,8 @@ def onboard_vendor():
 
     try:
         data = json.loads(json_data)
-        current_app.logger.debug(f"Parsed JSON data: {data}")
+        if not isinstance(data, dict):
+            return jsonify({"message": "JSON data must be an object"}), 400
     except json.JSONDecodeError:
         current_app.logger.error("Invalid JSON format in form data")
         return jsonify({'message': 'Invalid JSON format'}), 400
@@ -883,13 +910,11 @@ def onboard_vendor():
 
     verification_token = str(data.pop("self_onboard_email_verification_token", "") or "").strip()
     contact_email = _normalize_email((data.get("contact_info") or {}).get("email"))
-    if verification_token:
-        valid, verify_error = _consume_self_onboard_verification_token(verification_token, contact_email)
-        if not valid:
-            current_app.logger.warning(f"Self-onboard email verification failed: {verify_error}")
-            return jsonify({'message': verify_error}), 400
-    elif onboarding_source == "self_onboard":
-        return jsonify({'message': 'Email verification is required before onboarding'}), 400
+    if onboarding_source == "self_onboard":
+        if not verification_token:
+            return jsonify({'message': 'Email verification is required before onboarding'}), 400
+        # Verified owners cannot attach their cafe to somebody else's account.
+        data["vendor_account_email"] = contact_email
 
     if onboarding_source == "self_onboard":
         duplicate_info = _self_onboard_duplicate_reason(
@@ -909,6 +934,7 @@ def onboard_vendor():
 
     # Transform timing data from day-wise to single opening/closing times
     if 'timing' in data:
+        data["day_schedule"] = dict(data["timing"])
         current_app.logger.debug(f"Raw timing data: {data['timing']}")
         
         # Find the first open day to get opening and closing times
@@ -993,7 +1019,7 @@ def onboard_vendor():
     if 'business_registration_details' in data:
         reg_data = data['business_registration_details']
         if 'registration_date' not in reg_data:
-            reg_data['registration_date'] = data.get('opening_day', dt.now().strftime('%Y-%m-%d'))
+            reg_data['registration_date'] = dt.now().strftime('%Y-%m-%d')
         current_app.logger.debug(f"Business registration data: {reg_data}")
 
     # Validate required fields
@@ -1020,35 +1046,52 @@ def onboard_vendor():
         current_app.logger.error(f"File processing error: {error_message}")
         return jsonify({'message': error_message}), 400
     
+    token_consumed = False
     try:
-        # Onboard the vendor
-        current_app.logger.debug("Onboarding vendor...")
-        current_app.logger.debug(f"Final data being sent to VendorService: {data}")
-        vendor = VendorService.onboard_vendor(data, files)
+        # Validate files and payload before consuming the one-time proof.
+        if verification_token:
+            valid, verify_error = _consume_self_onboard_verification_token(verification_token, contact_email)
+            if not valid:
+                return jsonify({'message': verify_error}), 400
+            token_consumed = True
 
-        # Upload documents to Cloudinary
-        current_app.logger.debug("Uploading documents to Cloudinary...")
+        vendor = VendorService.onboard_vendor(data, files, commit=False)
         document_urls = upload_documents_to_cloudinary(files, vendor.id, vendor.cafe_name)
-        
-        # Save document information to database
-        save_vendor_documents(vendor.id, document_urls, data['document_submitted'])
+        save_vendor_documents(vendor.id, document_urls, data['document_submitted'], commit=False)
+        activated = onboarding_source == "self_onboard"
+        delivery = VendorService.generate_credentials_and_notify(
+            vendor, activate=activated, commit=False, notify=False,
+        )
+        # Account, inventory, documents, credentials and activation succeed together.
+        vendor_id = vendor.id
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        if token_consumed:
+            try:
+                redis_client.set(_self_onboard_verify_token_key(verification_token), contact_email,
+                                 ex=SELF_ONBOARD_VERIFY_EXPIRY_SECONDS, nx=True)
+            except Exception:
+                current_app.logger.exception("Unable to restore onboarding verification; owner must verify again")
+        current_app.logger.exception("Onboarding failed")
+        return jsonify({'message': 'Onboarding could not be completed. Please retry.'}), 500
 
-        # Generate credentials and notify
-        current_app.logger.debug("Generating credentials and notifications...")
-        VendorService.generate_credentials_and_notify(vendor)
-        
-        current_app.logger.info(f"Vendor onboarded successfully: {vendor.id}")
-        return jsonify({
-            'message': 'Vendor onboarded successfully', 
-            'vendor_id': vendor.id,
-            'documents_uploaded': len(document_urls)
-        }), 201
-        
-    except Exception as e:
-        current_app.logger.error(f"Onboarding error: {e}")
-        import traceback
-        current_app.logger.error(f"Full traceback: {traceback.format_exc()}")
-        return jsonify({'message': 'An error occurred during onboarding', 'error': str(e)}), 500
+    email_sent = VendorService.send_welcome_email(vendor, **delivery)
+    message = ('Your cafe is active. Check your email for your login credentials and cafe PIN. '
+               'Sign in to choose and buy a subscription.' if activated else 'Vendor onboarded successfully.')
+    if not email_sent:
+        message = ('Your cafe was created, but the credentials email could not be sent. '
+                   'Use Forgot Password on the dashboard login page or contact support with your vendor ID. '
+                   'Do not submit onboarding again.')
+    return jsonify({
+        'success': True,
+        'message': message,
+        'vendor_id': vendor_id,
+        'status': 'active' if activated else 'pending_verification',
+        'email_sent': email_sent,
+        'dashboard_url': SELF_ONBOARD_DASHBOARD_URL,
+        'documents_uploaded': len(document_urls),
+    }), 201
 
 
 @vendor_bp.route('/vendor/branch-defaults', methods=['GET'])
