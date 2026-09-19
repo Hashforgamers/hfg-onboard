@@ -15,6 +15,7 @@ from models.communication import Communication
 from db.extensions import mail
 from services.order_notification import NotificationService
 from flask_mail import Message
+from sqlalchemy.orm import joinedload
 
 order_bp = Blueprint('order', __name__)
 
@@ -33,10 +34,12 @@ def _notify_store_updated(vendor_id: int | None = None) -> None:
 
 @order_bp.route('/vendor/products', methods=['GET'])
 def vendor_all_products():
-    products = Product.query.filter_by(status='active').all()
+    products = Product.query.options(joinedload(Product.collaborator)).filter_by(status='active').all()
     res = []
     for p in products:
-        c = Collaborator.query.get(p.collaborator_id)
+        c = p.collaborator
+        if c is None:
+            continue
         res.append({
             'product_id': str(p.product_id),
             'name': p.name,
