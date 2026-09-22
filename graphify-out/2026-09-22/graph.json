@@ -10,8 +10,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_init",
-      "community": 37,
-      "community_name": "__init__.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "__init__.py"
     },
     {
@@ -21,8 +21,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "app_init_is_insecure_secret",
-      "community": 37,
-      "community_name": "__init__.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "_is_insecure_secret()"
     },
     {
@@ -32,8 +32,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "app_init_validate_production_config",
-      "community": 37,
-      "community_name": "__init__.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "_validate_production_config()"
     },
     {
@@ -43,8 +43,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "flask",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "flask"
     },
     {
@@ -54,8 +54,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "app_init_create_app",
-      "community": 37,
-      "community_name": "__init__.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "create_app()"
     },
     {
@@ -65,8 +65,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_config",
-      "community": 37,
-      "community_name": "__init__.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "config.py"
     },
     {
@@ -76,8 +76,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "app_config_is_neon_pooler",
-      "community": 37,
-      "community_name": "__init__.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "_is_neon_pooler()"
     },
     {
@@ -87,8 +87,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "app_config_config",
-      "community": 37,
-      "community_name": "__init__.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "config"
     },
     {
@@ -99,7 +99,7 @@
       "_origin": "ast",
       "id": "controllers_collaborator_controller",
       "community": 3,
-      "community_name": "collaborator_controller.py",
+      "community_name": "extensions.py",
       "norm_label": "collaborator_controller.py"
     },
     {
@@ -110,7 +110,7 @@
       "_origin": "ast",
       "id": "controllers_collaborator_controller_notify_store_updated",
       "community": 3,
-      "community_name": "collaborator_controller.py",
+      "community_name": "extensions.py",
       "norm_label": "_notify_store_updated()"
     },
     {
@@ -121,7 +121,7 @@
       "_origin": "ast",
       "id": "controllers_collaborator_controller_py_route",
       "community": 3,
-      "community_name": "collaborator_controller.py",
+      "community_name": "extensions.py",
       "norm_label": "route"
     },
     {
@@ -132,7 +132,7 @@
       "_origin": "ast",
       "id": "controllers_collaborator_controller_create_collaborator",
       "community": 3,
-      "community_name": "collaborator_controller.py",
+      "community_name": "extensions.py",
       "norm_label": "create_collaborator()"
     },
     {
@@ -143,7 +143,7 @@
       "_origin": "ast",
       "id": "controllers_collaborator_controller_list_collaborators",
       "community": 3,
-      "community_name": "collaborator_controller.py",
+      "community_name": "extensions.py",
       "norm_label": "list_collaborators()"
     },
     {
@@ -154,7 +154,7 @@
       "_origin": "ast",
       "id": "controllers_collaborator_controller_update_collaborator",
       "community": 3,
-      "community_name": "collaborator_controller.py",
+      "community_name": "extensions.py",
       "norm_label": "update_collaborator()"
     },
     {
@@ -165,7 +165,7 @@
       "_origin": "ast",
       "id": "controllers_collaborator_controller_delete_collaborator",
       "community": 3,
-      "community_name": "collaborator_controller.py",
+      "community_name": "extensions.py",
       "norm_label": "delete_collaborator()"
     },
     {
@@ -176,7 +176,7 @@
       "_origin": "ast",
       "id": "controllers_collaborator_controller_add_product",
       "community": 3,
-      "community_name": "collaborator_controller.py",
+      "community_name": "extensions.py",
       "norm_label": "add_product()"
     },
     {
@@ -187,7 +187,7 @@
       "_origin": "ast",
       "id": "controllers_collaborator_controller_list_products",
       "community": 3,
-      "community_name": "collaborator_controller.py",
+      "community_name": "extensions.py",
       "norm_label": "list_products()"
     },
     {
@@ -198,7 +198,7 @@
       "_origin": "ast",
       "id": "controllers_collaborator_controller_update_product",
       "community": 3,
-      "community_name": "collaborator_controller.py",
+      "community_name": "extensions.py",
       "norm_label": "update_product()"
     },
     {
@@ -209,7 +209,7 @@
       "_origin": "ast",
       "id": "controllers_collaborator_controller_delete_product",
       "community": 3,
-      "community_name": "collaborator_controller.py",
+      "community_name": "extensions.py",
       "norm_label": "delete_product()"
     },
     {
@@ -473,7 +473,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_upload_documents_to_cloudinary",
       "community": 11,
-      "community_name": "upload_vendor_missing_document",
+      "community_name": "Document",
       "norm_label": "upload_documents_to_cloudinary()"
     },
     {
@@ -483,7 +483,7 @@
       "source_location": "L677",
       "_origin": "ast",
       "id": "controllers_controllers_save_vendor_documents",
-      "community": 40,
+      "community": 11,
       "community_name": "Document",
       "norm_label": "save_vendor_documents()"
     },
@@ -594,7 +594,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_upload_vendor_missing_document",
       "community": 11,
-      "community_name": "upload_vendor_missing_document",
+      "community_name": "Document",
       "norm_label": "upload_vendor_missing_document()"
     },
     {
@@ -605,7 +605,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_replace_vendor_document",
       "community": 11,
-      "community_name": "upload_vendor_missing_document",
+      "community_name": "Document",
       "norm_label": "replace_vendor_document()"
     },
     {
@@ -700,7 +700,7 @@
       "label": "_emit_unlock()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1497",
+      "source_location": "L1474",
       "_origin": "ast",
       "id": "controllers_controllers_emit_unlock",
       "community": 7,
@@ -711,7 +711,7 @@
       "label": "poll_queue()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1515",
+      "source_location": "L1492",
       "_origin": "ast",
       "id": "controllers_controllers_poll_queue",
       "community": 5,
@@ -722,7 +722,7 @@
       "label": "kiosk_next_slot_check_proxy()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1620",
+      "source_location": "L1597",
       "_origin": "ast",
       "id": "controllers_controllers_kiosk_next_slot_check_proxy",
       "community": 5,
@@ -733,7 +733,7 @@
       "label": "kiosk_next_slot_confirm_proxy()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1656",
+      "source_location": "L1633",
       "_origin": "ast",
       "id": "controllers_controllers_kiosk_next_slot_confirm_proxy",
       "community": 5,
@@ -744,7 +744,7 @@
       "label": "unlock_with_code()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1703",
+      "source_location": "L1680",
       "_origin": "ast",
       "id": "controllers_controllers_unlock_with_code",
       "community": 5,
@@ -755,7 +755,7 @@
       "label": "upload_vendor_image()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1743",
+      "source_location": "L1720",
       "_origin": "ast",
       "id": "controllers_controllers_upload_vendor_image",
       "community": 5,
@@ -766,7 +766,7 @@
       "label": "get_vendor_dashboard_data()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1834",
+      "source_location": "L1811",
       "_origin": "ast",
       "id": "controllers_controllers_get_vendor_dashboard_data",
       "community": 5,
@@ -777,29 +777,29 @@
       "label": "delete_vendor_image()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1890",
+      "source_location": "L1867",
       "_origin": "ast",
       "id": "controllers_controllers_delete_vendor_image",
       "community": 11,
-      "community_name": "upload_vendor_missing_document",
+      "community_name": "Document",
       "norm_label": "delete_vendor_image()"
     },
     {
       "label": "delete_vendor_image_by_url()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1982",
+      "source_location": "L1959",
       "_origin": "ast",
       "id": "controllers_controllers_delete_vendor_image_by_url",
       "community": 11,
-      "community_name": "upload_vendor_missing_document",
+      "community_name": "Document",
       "norm_label": "delete_vendor_image_by_url()"
     },
     {
       "label": "send_otp()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2039",
+      "source_location": "L2016",
       "_origin": "ast",
       "id": "controllers_controllers_send_otp",
       "community": 5,
@@ -810,7 +810,7 @@
       "label": "verify_otp()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2066",
+      "source_location": "L2043",
       "_origin": "ast",
       "id": "controllers_controllers_verify_otp",
       "community": 5,
@@ -821,7 +821,7 @@
       "label": "check_verification()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2100",
+      "source_location": "L2077",
       "_origin": "ast",
       "id": "controllers_controllers_check_verification",
       "community": 5,
@@ -832,7 +832,7 @@
       "label": "update_slot()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2126",
+      "source_location": "L2103",
       "_origin": "ast",
       "id": "controllers_controllers_update_slot",
       "community": 7,
@@ -843,7 +843,7 @@
       "label": "extend_slot_window()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2295",
+      "source_location": "L2272",
       "_origin": "ast",
       "id": "controllers_controllers_extend_slot_window",
       "community": 9,
@@ -854,7 +854,7 @@
       "label": "_is_valid_cron_request()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2340",
+      "source_location": "L2317",
       "_origin": "ast",
       "id": "controllers_controllers_is_valid_cron_request",
       "community": 9,
@@ -865,7 +865,7 @@
       "label": "_ensure_vendor_slot_table_exists()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2358",
+      "source_location": "L2335",
       "_origin": "ast",
       "id": "controllers_controllers_ensure_vendor_slot_table_exists",
       "community": 9,
@@ -876,7 +876,7 @@
       "label": "_fetch_active_vendor_ids_for_slots()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2368",
+      "source_location": "L2345",
       "_origin": "ast",
       "id": "controllers_controllers_fetch_active_vendor_ids_for_slots",
       "community": 9,
@@ -887,7 +887,7 @@
       "label": "cron_extend_slots_for_vendor()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2394",
+      "source_location": "L2371",
       "_origin": "ast",
       "id": "controllers_controllers_cron_extend_slots_for_vendor",
       "community": 9,
@@ -898,7 +898,7 @@
       "label": "cron_extend_slots_for_all_active_cafes()",
       "file_type": "code",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2436",
+      "source_location": "L2413",
       "_origin": "ast",
       "id": "controllers_controllers_cron_extend_slots_for_all_active_cafes",
       "community": 9,
@@ -935,7 +935,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_rationale_645",
       "community": 11,
-      "community_name": "upload_vendor_missing_document",
+      "community_name": "Document",
       "norm_label": "upload vendor documents to cloudinary and return urls"
     },
     {
@@ -945,7 +945,7 @@
       "source_location": "L678",
       "_origin": "ast",
       "id": "controllers_controllers_rationale_678",
-      "community": 40,
+      "community": 11,
       "community_name": "Document",
       "norm_label": "save uploaded document metadata once; avoid duplicate inserts and loop commits."
     },
@@ -1001,7 +1001,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_rationale_1144",
       "community": 11,
-      "community_name": "upload_vendor_missing_document",
+      "community_name": "Document",
       "norm_label": "upload a missing (or replace existing) required onboarding document by..."
     },
     {
@@ -1012,7 +1012,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_rationale_1227",
       "community": 11,
-      "community_name": "upload_vendor_missing_document",
+      "community_name": "Document",
       "norm_label": "replace an existing vendor document file. note: replaced doc status becomes..."
     },
     {
@@ -1096,9 +1096,9 @@
       "label": "Emit unlock signal to internal WebSocket service",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1498",
+      "source_location": "L1475",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_1498",
+      "id": "controllers_controllers_rationale_1475",
       "community": 7,
       "community_name": "controllers.py",
       "norm_label": "emit unlock signal to internal websocket service"
@@ -1107,9 +1107,9 @@
       "label": "Proxy for kiosk continuation availability check.",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1621",
+      "source_location": "L1598",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_1621",
+      "id": "controllers_controllers_rationale_1598",
       "community": 5,
       "community_name": "route",
       "norm_label": "proxy for kiosk continuation availability check."
@@ -1118,9 +1118,9 @@
       "label": "Proxy for kiosk continuation booking confirmation.",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1657",
+      "source_location": "L1634",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_1657",
+      "id": "controllers_controllers_rationale_1634",
       "community": 5,
       "community_name": "route",
       "norm_label": "proxy for kiosk continuation booking confirmation."
@@ -1129,9 +1129,9 @@
       "label": "Uploads an image for a vendor to Cloudinary and saves the URL in the DB,\u2026",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1744",
+      "source_location": "L1721",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_1744",
+      "id": "controllers_controllers_rationale_1721",
       "community": 5,
       "community_name": "route",
       "norm_label": "uploads an image for a vendor to cloudinary and saves the url in the db,..."
@@ -1140,9 +1140,9 @@
       "label": "API to retrieve vendor dashboard data with real document information",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1835",
+      "source_location": "L1812",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_1835",
+      "id": "controllers_controllers_rationale_1812",
       "community": 5,
       "community_name": "route",
       "norm_label": "api to retrieve vendor dashboard data with real document information"
@@ -1151,31 +1151,31 @@
       "label": "Deletes a vendor image from both Cloudinary and the database by image ID.",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1891",
+      "source_location": "L1868",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_1891",
+      "id": "controllers_controllers_rationale_1868",
       "community": 11,
-      "community_name": "upload_vendor_missing_document",
+      "community_name": "Document",
       "norm_label": "deletes a vendor image from both cloudinary and the database by image id."
     },
     {
       "label": "Deletes a vendor image by URL from both Cloudinary and the database.",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1983",
+      "source_location": "L1960",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_1983",
+      "id": "controllers_controllers_rationale_1960",
       "community": 11,
-      "community_name": "upload_vendor_missing_document",
+      "community_name": "Document",
       "norm_label": "deletes a vendor image by url from both cloudinary and the database."
     },
     {
       "label": "Send OTP for accessing restricted pages",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2040",
+      "source_location": "L2017",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_2040",
+      "id": "controllers_controllers_rationale_2017",
       "community": 5,
       "community_name": "route",
       "norm_label": "send otp for accessing restricted pages"
@@ -1184,9 +1184,9 @@
       "label": "Verify OTP for accessing restricted pages",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2067",
+      "source_location": "L2044",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_2067",
+      "id": "controllers_controllers_rationale_2044",
       "community": 5,
       "community_name": "route",
       "norm_label": "verify otp for accessing restricted pages"
@@ -1195,9 +1195,9 @@
       "label": "Check if vendor is already verified for a page",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2101",
+      "source_location": "L2078",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_2101",
+      "id": "controllers_controllers_rationale_2078",
       "community": 5,
       "community_name": "route",
       "norm_label": "check if vendor is already verified for a page"
@@ -1206,9 +1206,9 @@
       "label": "Update slot windows for ALL AvailableGame (console types) for ALL future dates\u2026",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2127",
+      "source_location": "L2104",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_2127",
+      "id": "controllers_controllers_rationale_2104",
       "community": 7,
       "community_name": "controllers.py",
       "norm_label": "update slot windows for all availablegame (console types) for all future dates..."
@@ -1217,9 +1217,9 @@
       "label": "Extend slot inventory horizon without regenerating existing dates. Payload: {\u2026",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2296",
+      "source_location": "L2273",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_2296",
+      "id": "controllers_controllers_rationale_2273",
       "community": 9,
       "community_name": "cron_extend_slots_for_all_active_cafes",
       "norm_label": "extend slot inventory horizon without regenerating existing dates. payload: {..."
@@ -1228,9 +1228,9 @@
       "label": "Optional shared-secret gate for cron endpoints. If CRON_JOB_API_KEY is unset,\u2026",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2341",
+      "source_location": "L2318",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_2341",
+      "id": "controllers_controllers_rationale_2318",
       "community": 9,
       "community_name": "cron_extend_slots_for_all_active_cafes",
       "norm_label": "optional shared-secret gate for cron endpoints. if cron_job_api_key is unset,..."
@@ -1239,9 +1239,9 @@
       "label": "Active vendors: - latest status is 'active' - at least one available_game exists",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2369",
+      "source_location": "L2346",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_2369",
+      "id": "controllers_controllers_rationale_2346",
       "community": 9,
       "community_name": "cron_extend_slots_for_all_active_cafes",
       "norm_label": "active vendors: - latest status is 'active' - at least one available_game exists"
@@ -1250,9 +1250,9 @@
       "label": "Cron endpoint: ensure next N days slots exist for one vendor (default 20).\u2026",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2395",
+      "source_location": "L2372",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_2395",
+      "id": "controllers_controllers_rationale_2372",
       "community": 9,
       "community_name": "cron_extend_slots_for_all_active_cafes",
       "norm_label": "cron endpoint: ensure next n days slots exist for one vendor (default 20)...."
@@ -1261,9 +1261,9 @@
       "label": "Cron endpoint: ensure next N days slots exist for all active cafes (default\u2026",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2437",
+      "source_location": "L2414",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_2437",
+      "id": "controllers_controllers_rationale_2414",
       "community": 9,
       "community_name": "cron_extend_slots_for_all_active_cafes",
       "norm_label": "cron endpoint: ensure next n days slots exist for all active cafes (default..."
@@ -1272,9 +1272,9 @@
       "label": "# IMPORTANT: Fetch real documents from your Document model",
       "file_type": "rationale",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1852",
+      "source_location": "L1829",
       "_origin": "ast",
-      "id": "controllers_controllers_rationale_1852",
+      "id": "controllers_controllers_rationale_1829",
       "community": 7,
       "community_name": "controllers.py",
       "norm_label": "# important: fetch real documents from your document model"
@@ -1286,19 +1286,19 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "controllers_order_controller",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "order_controller.py"
     },
     {
       "label": "_notify_store_updated()",
       "file_type": "code",
       "source_file": "controllers/order_controller.py",
-      "source_location": "L24",
+      "source_location": "L23",
       "_origin": "ast",
       "id": "controllers_order_controller_notify_store_updated",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "_notify_store_updated()"
     },
     {
@@ -1308,41 +1308,41 @@
       "source_location": "",
       "_origin": "ast",
       "id": "controllers_order_controller_py_route",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "route"
     },
     {
       "label": "vendor_all_products()",
       "file_type": "code",
       "source_file": "controllers/order_controller.py",
-      "source_location": "L36",
+      "source_location": "L35",
       "_origin": "ast",
       "id": "controllers_order_controller_vendor_all_products",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "vendor_all_products()"
     },
     {
       "label": "place_order()",
       "file_type": "code",
       "source_file": "controllers/order_controller.py",
-      "source_location": "L59",
+      "source_location": "L56",
       "_origin": "ast",
       "id": "controllers_order_controller_place_order",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "place_order()"
     },
     {
       "label": "list_vendor_orders()",
       "file_type": "code",
       "source_file": "controllers/order_controller.py",
-      "source_location": "L128",
+      "source_location": "L125",
       "_origin": "ast",
       "id": "controllers_order_controller_list_vendor_orders",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "list_vendor_orders()"
     },
     {
@@ -1803,8 +1803,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "controllers_vendor_games_list_game_discovery_platforms",
-      "community": 36,
-      "community_name": "GameService",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "list_game_discovery_platforms()"
     },
     {
@@ -1814,8 +1814,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "controllers_vendor_games_search_discovery_games",
-      "community": 36,
-      "community_name": "GameService",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "search_discovery_games()"
     },
     {
@@ -1825,8 +1825,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "controllers_vendor_games_popular_discovery_games",
-      "community": 36,
-      "community_name": "GameService",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "popular_discovery_games()"
     },
     {
@@ -1847,8 +1847,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "controllers_vendor_games_test_cloudinary_connection",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "test_cloudinary_connection()"
     },
     {
@@ -1858,8 +1858,8 @@
       "source_location": "L135",
       "_origin": "ast",
       "id": "controllers_vendor_games_add_cover_image",
-      "community": 39,
-      "community_name": ".upload_game_cover_image",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "add_cover_image()"
     },
     {
@@ -1946,8 +1946,8 @@
       "source_location": "L78",
       "_origin": "ast",
       "id": "controllers_vendor_games_rationale_78",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "test cloudinary configuration and connectivity"
     },
     {
@@ -1957,8 +1957,8 @@
       "source_location": "L136",
       "_origin": "ast",
       "id": "controllers_vendor_games_rationale_136",
-      "community": 39,
-      "community_name": ".upload_game_cover_image",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "upload cover image to cloudinary"
     },
     {
@@ -1968,8 +1968,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "db_extensions",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "extensions.py"
     },
     {
@@ -1979,8 +1979,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "db_extensions_create_redis_pool",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "create_redis_pool()"
     },
     {
@@ -1990,8 +1990,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "db_extensions_check_redis_health",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "check_redis_health()"
     },
     {
@@ -2001,8 +2001,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "db_extensions_rationale_20",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "create a redis connection pool to reuse connections this prevents repeated ssl..."
     },
     {
@@ -2012,8 +2012,8 @@
       "source_location": "L88",
       "_origin": "ast",
       "id": "db_extensions_rationale_88",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "check redis connection health"
     },
     {
@@ -2023,8 +2023,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_accessbookingcode",
-      "community": 7,
-      "community_name": "controllers.py",
+      "community": 24,
+      "community_name": "Booking",
       "norm_label": "accessbookingcode.py"
     },
     {
@@ -2034,8 +2034,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_accessbookingcode_accessbookingcode",
-      "community": 7,
-      "community_name": "controllers.py",
+      "community": 24,
+      "community_name": "Booking",
       "norm_label": "accessbookingcode"
     },
     {
@@ -2133,8 +2133,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_booking",
-      "community": 7,
-      "community_name": "controllers.py",
+      "community": 24,
+      "community_name": "Booking",
       "norm_label": "booking.py"
     },
     {
@@ -2144,8 +2144,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "models_booking_booking",
-      "community": 7,
-      "community_name": "controllers.py",
+      "community": 24,
+      "community_name": "Booking",
       "norm_label": "booking"
     },
     {
@@ -2155,8 +2155,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "models_booking_booking_repr",
-      "community": 7,
-      "community_name": "controllers.py",
+      "community": 24,
+      "community_name": "Booking",
       "norm_label": ".__repr__()"
     },
     {
@@ -2166,8 +2166,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "models_booking_booking_to_dict",
-      "community": 7,
-      "community_name": "controllers.py",
+      "community": 24,
+      "community_name": "Booking",
       "norm_label": ".to_dict()"
     },
     {
@@ -2177,8 +2177,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_bookingqueue",
-      "community": 4,
-      "community_name": "super_admin_controller.py",
+      "community": 7,
+      "community_name": "controllers.py",
       "norm_label": "bookingqueue.py"
     },
     {
@@ -2188,8 +2188,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_bookingqueue_bookingqueue",
-      "community": 4,
-      "community_name": "super_admin_controller.py",
+      "community": 7,
+      "community_name": "controllers.py",
       "norm_label": "bookingqueue"
     },
     {
@@ -2221,8 +2221,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_collaborator",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "collaborator.py"
     },
     {
@@ -2232,8 +2232,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "models_collaborator_invoice",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "invoice"
     },
     {
@@ -2243,8 +2243,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "models_collaborator_collaborator",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "collaborator"
     },
     {
@@ -2254,8 +2254,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_commission",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "commission.py"
     },
     {
@@ -2265,8 +2265,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "models_commission_commission",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "commission"
     },
     {
@@ -2276,8 +2276,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_commission_ledger",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "commission_ledger.py"
     },
     {
@@ -2287,8 +2287,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "models_commission_ledger_commissionledger",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "commissionledger"
     },
     {
@@ -2298,8 +2298,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_communication",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "communication.py"
     },
     {
@@ -2309,8 +2309,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_communication_communication",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "communication"
     },
     {
@@ -2485,8 +2485,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_document",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "document.py"
     },
     {
@@ -2496,7 +2496,7 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "models_document_document",
-      "community": 40,
+      "community": 11,
       "community_name": "Document",
       "norm_label": "document"
     },
@@ -2507,7 +2507,7 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "models_document_document_str",
-      "community": 40,
+      "community": 11,
       "community_name": "Document",
       "norm_label": ".__str__()"
     },
@@ -2518,7 +2518,7 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "models_document_document_repr",
-      "community": 40,
+      "community": 11,
       "community_name": "Document",
       "norm_label": ".__repr__()"
     },
@@ -2551,8 +2551,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_game",
-      "community": 0,
-      "community_name": "vendor_games.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "game.py"
     },
     {
@@ -2727,8 +2727,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_order",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "order.py"
     },
     {
@@ -2738,8 +2738,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "models_order_order",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "order"
     },
     {
@@ -2749,8 +2749,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_orderitem",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "orderitem.py"
     },
     {
@@ -2760,8 +2760,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_orderitem_orderitem",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "orderitem"
     },
     {
@@ -2826,8 +2826,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_paymentmethod",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "paymentmethod.py"
     },
     {
@@ -2870,8 +2870,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_paymentvendormap",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "paymentvendormap.py"
     },
     {
@@ -2980,8 +2980,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_product",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "product.py"
     },
     {
@@ -2991,8 +2991,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "models_product_product",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "product"
     },
     {
@@ -3123,8 +3123,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_uploadedimage",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "uploadedimage.py"
     },
     {
@@ -3431,8 +3431,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "run",
-      "community": 37,
-      "community_name": "__init__.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "run.py"
     },
     {
@@ -3442,8 +3442,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "services_cloudinary_services",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "cloudinary_services.py"
     },
     {
@@ -3453,8 +3453,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "services_cloudinary_services_cloudinarygameimageservice",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "cloudinarygameimageservice"
     },
     {
@@ -3464,8 +3464,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "services_cloudinary_services_cloudinarygameimageservice_is_cloudinary_configured",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": ".is_cloudinary_configured()"
     },
     {
@@ -3475,8 +3475,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "services_cloudinary_services_cloudinarygameimageservice_configure_cloudinary",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": ".configure_cloudinary()"
     },
     {
@@ -3486,8 +3486,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "services_cloudinary_services_cloudinarygameimageservice_upload_game_cover_image",
-      "community": 39,
-      "community_name": ".upload_game_cover_image",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": ".upload_game_cover_image()"
     },
     {
@@ -3497,8 +3497,8 @@
       "source_location": "L197",
       "_origin": "ast",
       "id": "services_cloudinary_services_cloudinarygameimageservice_upload_game_cover_image_simple",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": ".upload_game_cover_image_simple()"
     },
     {
@@ -3508,8 +3508,8 @@
       "source_location": "L247",
       "_origin": "ast",
       "id": "services_cloudinary_services_cloudinarygameimageservice_delete_game_cover_image",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": ".delete_game_cover_image()"
     },
     {
@@ -3520,7 +3520,7 @@
       "_origin": "ast",
       "id": "services_cloudinary_services_cloudinarygameimageservice_delete_image",
       "community": 11,
-      "community_name": "upload_vendor_missing_document",
+      "community_name": "Document",
       "norm_label": ".delete_image()"
     },
     {
@@ -3531,7 +3531,7 @@
       "_origin": "ast",
       "id": "services_cloudinary_services_cloudinarygameimageservice_upload_vendor_document",
       "community": 11,
-      "community_name": "upload_vendor_missing_document",
+      "community_name": "Document",
       "norm_label": ".upload_vendor_document()"
     },
     {
@@ -3541,8 +3541,8 @@
       "source_location": "L428",
       "_origin": "ast",
       "id": "services_cloudinary_services_cloudinarygameimageservice_upload_collaborator_product_image",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": ".upload_collaborator_product_image()"
     },
     {
@@ -3552,8 +3552,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "services_cloudinary_services_rationale_19",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "service for handling game cover images images are uploaded to the 'poc' folder"
     },
     {
@@ -3563,8 +3563,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "services_cloudinary_services_rationale_26",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "checking if cloudinary credentials are available"
     },
     {
@@ -3574,8 +3574,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "services_cloudinary_services_rationale_35",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "initialize cloudinary configuration"
     },
     {
@@ -3585,8 +3585,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "services_cloudinary_services_rationale_56",
-      "community": 39,
-      "community_name": ".upload_game_cover_image",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "upload game cover image to cloudinary 'poc' folder"
     },
     {
@@ -3596,8 +3596,8 @@
       "source_location": "L198",
       "_origin": "ast",
       "id": "services_cloudinary_services_rationale_198",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "ultra-simple upload method as fallback"
     },
     {
@@ -3607,8 +3607,8 @@
       "source_location": "L248",
       "_origin": "ast",
       "id": "services_cloudinary_services_rationale_248",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "delete a game cover image from cloudinary"
     },
     {
@@ -3619,7 +3619,7 @@
       "_origin": "ast",
       "id": "services_cloudinary_services_rationale_285",
       "community": 11,
-      "community_name": "upload_vendor_missing_document",
+      "community_name": "Document",
       "norm_label": "delete an image from cloudinary with manual signature generation"
     },
     {
@@ -3630,7 +3630,7 @@
       "_origin": "ast",
       "id": "services_cloudinary_services_rationale_363",
       "community": 11,
-      "community_name": "upload_vendor_missing_document",
+      "community_name": "Document",
       "norm_label": "upload vendor documents (pdfs and other files) to cloudinary"
     },
     {
@@ -3640,8 +3640,8 @@
       "source_location": "L429",
       "_origin": "ast",
       "id": "services_cloudinary_services_rationale_429",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "upload collaborator product image to cloudinary under folder..."
     },
     {
@@ -3772,8 +3772,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "services_game_service",
-      "community": 24,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "game_service.py"
     },
     {
@@ -3783,8 +3783,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "services_game_service_gameservice",
-      "community": 36,
-      "community_name": "GameService",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "gameservice"
     },
     {
@@ -3794,8 +3794,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "services_game_service_gameservice_normalize_limit",
-      "community": 36,
-      "community_name": "GameService",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "._normalize_limit()"
     },
     {
@@ -3805,8 +3805,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "services_game_service_gameservice_normalize_offset",
-      "community": 36,
-      "community_name": "GameService",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "._normalize_offset()"
     },
     {
@@ -3816,8 +3816,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "services_game_service_gameservice_safe_int",
-      "community": 36,
-      "community_name": "GameService",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "._safe_int()"
     },
     {
@@ -3827,8 +3827,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "services_game_service_gameservice_safe_float",
-      "community": 36,
-      "community_name": "GameService",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "._safe_float()"
     },
     {
@@ -3838,8 +3838,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "services_game_service_gameservice_game_card",
-      "community": 36,
-      "community_name": "GameService",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "._game_card()"
     },
     {
@@ -3849,8 +3849,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "services_game_service_gameservice_cache_get",
-      "community": 36,
-      "community_name": "GameService",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "._cache_get()"
     },
     {
@@ -3860,8 +3860,8 @@
       "source_location": "L86",
       "_origin": "ast",
       "id": "services_game_service_gameservice_cache_set",
-      "community": 36,
-      "community_name": "GameService",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "._cache_set()"
     },
     {
@@ -3871,8 +3871,8 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "services_game_service_gameservice_list_discovery_platforms",
-      "community": 36,
-      "community_name": "GameService",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": ".list_discovery_platforms()"
     },
     {
@@ -3882,8 +3882,8 @@
       "source_location": "L147",
       "_origin": "ast",
       "id": "services_game_service_gameservice_search_discovery_games",
-      "community": 36,
-      "community_name": "GameService",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": ".search_discovery_games()"
     },
     {
@@ -3893,8 +3893,8 @@
       "source_location": "L222",
       "_origin": "ast",
       "id": "services_game_service_gameservice_get_popular_discovery_games",
-      "community": 36,
-      "community_name": "GameService",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": ".get_popular_discovery_games()"
     },
     {
@@ -3904,8 +3904,8 @@
       "source_location": "L321",
       "_origin": "ast",
       "id": "services_game_service_gameservice_record_discovery_event",
-      "community": 36,
-      "community_name": "GameService",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": ".record_discovery_event()"
     },
     {
@@ -3926,8 +3926,8 @@
       "source_location": "L460",
       "_origin": "ast",
       "id": "services_game_service_gameservice_create_game_with_cover_image",
-      "community": 39,
-      "community_name": ".upload_game_cover_image",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": ".create_game_with_cover_image()"
     },
     {
@@ -3937,8 +3937,8 @@
       "source_location": "L474",
       "_origin": "ast",
       "id": "services_game_service_rationale_474",
-      "community": 39,
-      "community_name": ".upload_game_cover_image",
+      "community": 0,
+      "community_name": "vendor_games.py",
       "norm_label": "create game with cloudinary cover image upload"
     },
     {
@@ -3948,8 +3948,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "services_order_notification",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "order_notification.py"
     },
     {
@@ -3959,8 +3959,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "services_order_notification_notificationservice",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "notificationservice"
     },
     {
@@ -3970,8 +3970,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "services_order_notification_notificationservice_send_order_notification_email",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": ".send_order_notification_email()"
     },
     {
@@ -3981,8 +3981,8 @@
       "source_location": "L167",
       "_origin": "ast",
       "id": "services_order_notification_notificationservice_send_invoice_notification_email",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": ".send_invoice_notification_email()"
     },
     {
@@ -3992,8 +3992,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "services_order_notification_rationale_18",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "send order notification email to collaborator with clean professional html."
     },
     {
@@ -4003,8 +4003,8 @@
       "source_location": "L168",
       "_origin": "ast",
       "id": "services_order_notification_rationale_168",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "send invoice notification email with table format"
     },
     {
@@ -5499,8 +5499,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "datetime",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "datetime"
     },
     {
@@ -5752,8 +5752,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "services_utils_allowed_file",
-      "community": 41,
-      "community_name": "allowed_file",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "allowed_file()"
     },
     {
@@ -5796,8 +5796,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "services_utils_format_filename",
-      "community": 41,
-      "community_name": "allowed_file",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "format_filename()"
     },
     {
@@ -5818,8 +5818,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "services_utils_rationale_18",
-      "community": 41,
-      "community_name": "allowed_file",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "check if the file has an allowed extension."
     },
     {
@@ -5829,8 +5829,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "services_utils_rationale_50",
-      "community": 41,
-      "community_name": "allowed_file",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "format the filename as..."
     },
     {
@@ -5942,83 +5942,6 @@
       "community": 31,
       "community_name": "20260604_gaming_cafe_search_indexes.sql",
       "norm_label": "20260604_gaming_cafe_search_indexes.sql"
-    },
-    {
-      "label": "test_kiosk_proxy.py",
-      "file_type": "code",
-      "source_file": "tests/test_kiosk_proxy.py",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "tests_test_kiosk_proxy",
-      "community": 38,
-      "community_name": "ProxyTests",
-      "norm_label": "test_kiosk_proxy.py"
-    },
-    {
-      "label": "ProxyTests",
-      "file_type": "code",
-      "source_file": "tests/test_kiosk_proxy.py",
-      "source_location": "L10",
-      "_origin": "ast",
-      "id": "tests_test_kiosk_proxy_proxytests",
-      "community": 38,
-      "community_name": "ProxyTests",
-      "norm_label": "proxytests"
-    },
-    {
-      "label": ".setUp()",
-      "file_type": "code",
-      "source_file": "tests/test_kiosk_proxy.py",
-      "source_location": "L11",
-      "_origin": "ast",
-      "id": "tests_test_kiosk_proxy_proxytests_setup",
-      "community": 38,
-      "community_name": "ProxyTests",
-      "norm_label": ".setup()"
-    },
-    {
-      "label": ".test_canonical_success_and_bearer_forwarded()",
-      "file_type": "code",
-      "source_file": "tests/test_kiosk_proxy.py",
-      "source_location": "L30",
-      "_origin": "ast",
-      "id": "tests_test_kiosk_proxy_proxytests_test_canonical_success_and_bearer_forwarded",
-      "community": 38,
-      "community_name": "ProxyTests",
-      "norm_label": ".test_canonical_success_and_bearer_forwarded()"
-    },
-    {
-      "label": ".test_rate_limit_status_and_retry_header_forwarded()",
-      "file_type": "code",
-      "source_file": "tests/test_kiosk_proxy.py",
-      "source_location": "L37",
-      "_origin": "ast",
-      "id": "tests_test_kiosk_proxy_proxytests_test_rate_limit_status_and_retry_header_forwarded",
-      "community": 38,
-      "community_name": "ProxyTests",
-      "norm_label": ".test_rate_limit_status_and_retry_header_forwarded()"
-    },
-    {
-      "label": ".test_non_json_upstream_returns_json_502()",
-      "file_type": "code",
-      "source_file": "tests/test_kiosk_proxy.py",
-      "source_location": "L43",
-      "_origin": "ast",
-      "id": "tests_test_kiosk_proxy_proxytests_test_non_json_upstream_returns_json_502",
-      "community": 38,
-      "community_name": "ProxyTests",
-      "norm_label": ".test_non_json_upstream_returns_json_502()"
-    },
-    {
-      "label": "Verify the public kiosk proxy preserves authentication and API envelopes.",
-      "file_type": "rationale",
-      "source_file": "tests/test_kiosk_proxy.py",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "tests_test_kiosk_proxy_rationale_1",
-      "community": 38,
-      "community_name": "ProxyTests",
-      "norm_label": "verify the public kiosk proxy preserves authentication and api envelopes."
     },
     {
       "label": "test_self_onboarding_flow.py",
@@ -6225,8 +6148,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "wsgi",
-      "community": 37,
-      "community_name": "__init__.py",
+      "community": 3,
+      "community_name": "extensions.py",
       "norm_label": "wsgi.py"
     },
     {
@@ -6585,30 +6508,6 @@
       "source": "services_utils",
       "target": "flask",
       "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "import",
-      "confidence": "EXTRACTED",
-      "source_file": "tests/test_kiosk_proxy.py",
-      "source_location": "L7",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_kiosk_proxy",
-      "target": "flask",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_kiosk_proxy.py",
-      "source_location": "L26",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_kiosk_proxy_proxytests_setup",
-      "target": "flask"
     },
     {
       "relation": "imports_from",
@@ -7091,7 +6990,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2100",
+      "source_location": "L2077",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7113,7 +7012,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2436",
+      "source_location": "L2413",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7124,7 +7023,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2394",
+      "source_location": "L2371",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7146,7 +7045,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1890",
+      "source_location": "L1867",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7157,7 +7056,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1982",
+      "source_location": "L1959",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7168,7 +7067,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1497",
+      "source_location": "L1474",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7179,7 +7078,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2358",
+      "source_location": "L2335",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7190,7 +7089,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2295",
+      "source_location": "L2272",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7201,7 +7100,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2368",
+      "source_location": "L2345",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7278,7 +7177,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1834",
+      "source_location": "L1811",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7333,7 +7232,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2340",
+      "source_location": "L2317",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7355,7 +7254,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1620",
+      "source_location": "L1597",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7366,7 +7265,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1656",
+      "source_location": "L1633",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7454,7 +7353,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1515",
+      "source_location": "L1492",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7564,7 +7463,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2039",
+      "source_location": "L2016",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7586,7 +7485,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1703",
+      "source_location": "L1680",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7597,7 +7496,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2126",
+      "source_location": "L2103",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7630,7 +7529,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1743",
+      "source_location": "L1720",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -7696,7 +7595,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2066",
+      "source_location": "L2043",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers",
@@ -8174,10 +8073,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1852",
+      "source_location": "L1829",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_1852",
+      "source": "controllers_controllers_rationale_1829",
       "target": "controllers_controllers",
       "confidence_score": 1.0
     },
@@ -8666,7 +8565,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2194",
+      "source_location": "L2171",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_update_slot",
@@ -8678,7 +8577,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2188",
+      "source_location": "L2165",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_update_slot",
@@ -8690,7 +8589,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2272",
+      "source_location": "L2249",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_update_slot",
@@ -8714,7 +8613,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2274",
+      "source_location": "L2251",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_update_slot",
@@ -8829,7 +8728,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2099",
+      "source_location": "L2076",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -8841,7 +8740,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2435",
+      "source_location": "L2412",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -8853,7 +8752,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2393",
+      "source_location": "L2370",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -8877,7 +8776,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1889",
+      "source_location": "L1866",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -8889,7 +8788,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1981",
+      "source_location": "L1958",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -8901,7 +8800,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2294",
+      "source_location": "L2271",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -8961,7 +8860,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1833",
+      "source_location": "L1810",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -9009,7 +8908,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1619",
+      "source_location": "L1596",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -9021,7 +8920,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1655",
+      "source_location": "L1632",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -9045,7 +8944,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1514",
+      "source_location": "L1491",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -9081,7 +8980,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2038",
+      "source_location": "L2015",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -9105,7 +9004,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1702",
+      "source_location": "L1679",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -9117,7 +9016,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2125",
+      "source_location": "L2102",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -9141,7 +9040,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1742",
+      "source_location": "L1719",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -9189,7 +9088,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2065",
+      "source_location": "L2042",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -9596,10 +9495,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1498",
+      "source_location": "L1475",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_1498",
+      "source": "controllers_controllers_rationale_1475",
       "target": "controllers_controllers_emit_unlock",
       "confidence_score": 1.0
     },
@@ -9607,10 +9506,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1621",
+      "source_location": "L1598",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_1621",
+      "source": "controllers_controllers_rationale_1598",
       "target": "controllers_controllers_kiosk_next_slot_check_proxy",
       "confidence_score": 1.0
     },
@@ -9618,10 +9517,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1657",
+      "source_location": "L1634",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_1657",
+      "source": "controllers_controllers_rationale_1634",
       "target": "controllers_controllers_kiosk_next_slot_confirm_proxy",
       "confidence_score": 1.0
     },
@@ -9629,10 +9528,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1744",
+      "source_location": "L1721",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_1744",
+      "source": "controllers_controllers_rationale_1721",
       "target": "controllers_controllers_upload_vendor_image",
       "confidence_score": 1.0
     },
@@ -9642,7 +9541,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/controllers.py",
-      "source_location": "L1765",
+      "source_location": "L1742",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_upload_vendor_image",
@@ -9654,7 +9553,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/controllers.py",
-      "source_location": "L1760",
+      "source_location": "L1737",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_upload_vendor_image",
@@ -9664,10 +9563,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1835",
+      "source_location": "L1812",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_1835",
+      "source": "controllers_controllers_rationale_1812",
       "target": "controllers_controllers_get_vendor_dashboard_data",
       "confidence_score": 1.0
     },
@@ -9677,7 +9576,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/controllers.py",
-      "source_location": "L1919",
+      "source_location": "L1896",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_delete_vendor_image",
@@ -9687,10 +9586,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1891",
+      "source_location": "L1868",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_1891",
+      "source": "controllers_controllers_rationale_1868",
       "target": "controllers_controllers_delete_vendor_image",
       "confidence_score": 1.0
     },
@@ -9700,7 +9599,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/controllers.py",
-      "source_location": "L2008",
+      "source_location": "L1985",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_delete_vendor_image_by_url",
@@ -9710,10 +9609,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L1983",
+      "source_location": "L1960",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_1983",
+      "source": "controllers_controllers_rationale_1960",
       "target": "controllers_controllers_delete_vendor_image_by_url",
       "confidence_score": 1.0
     },
@@ -9721,10 +9620,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2040",
+      "source_location": "L2017",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_2040",
+      "source": "controllers_controllers_rationale_2017",
       "target": "controllers_controllers_send_otp",
       "confidence_score": 1.0
     },
@@ -9734,7 +9633,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/controllers.py",
-      "source_location": "L2051",
+      "source_location": "L2028",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_send_otp",
@@ -9744,10 +9643,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2067",
+      "source_location": "L2044",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_2067",
+      "source": "controllers_controllers_rationale_2044",
       "target": "controllers_controllers_verify_otp",
       "confidence_score": 1.0
     },
@@ -9757,7 +9656,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/controllers.py",
-      "source_location": "L2085",
+      "source_location": "L2062",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_verify_otp",
@@ -9769,7 +9668,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/controllers.py",
-      "source_location": "L2111",
+      "source_location": "L2088",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_check_verification",
@@ -9779,10 +9678,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2101",
+      "source_location": "L2078",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_2101",
+      "source": "controllers_controllers_rationale_2078",
       "target": "controllers_controllers_check_verification",
       "confidence_score": 1.0
     },
@@ -9790,10 +9689,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2127",
+      "source_location": "L2104",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_2127",
+      "source": "controllers_controllers_rationale_2104",
       "target": "controllers_controllers_update_slot",
       "confidence_score": 1.0
     },
@@ -9803,7 +9702,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/controllers.py",
-      "source_location": "L2324",
+      "source_location": "L2301",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_extend_slot_window",
@@ -9813,10 +9712,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2296",
+      "source_location": "L2273",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_2296",
+      "source": "controllers_controllers_rationale_2273",
       "target": "controllers_controllers_extend_slot_window",
       "confidence_score": 1.0
     },
@@ -9825,7 +9724,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2441",
+      "source_location": "L2418",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_cron_extend_slots_for_all_active_cafes",
@@ -9837,7 +9736,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2399",
+      "source_location": "L2376",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_cron_extend_slots_for_vendor",
@@ -9848,10 +9747,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2341",
+      "source_location": "L2318",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_2341",
+      "source": "controllers_controllers_rationale_2318",
       "target": "controllers_controllers_is_valid_cron_request",
       "confidence_score": 1.0
     },
@@ -9860,7 +9759,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2476",
+      "source_location": "L2453",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_cron_extend_slots_for_all_active_cafes",
@@ -9872,7 +9771,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2415",
+      "source_location": "L2392",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_cron_extend_slots_for_vendor",
@@ -9885,7 +9784,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/controllers.py",
-      "source_location": "L2365",
+      "source_location": "L2342",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_ensure_vendor_slot_table_exists",
@@ -9896,7 +9795,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2456",
+      "source_location": "L2433",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_cron_extend_slots_for_all_active_cafes",
@@ -9907,10 +9806,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2369",
+      "source_location": "L2346",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_2369",
+      "source": "controllers_controllers_rationale_2346",
       "target": "controllers_controllers_fetch_active_vendor_ids_for_slots",
       "confidence_score": 1.0
     },
@@ -9920,7 +9819,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/controllers.py",
-      "source_location": "L2416",
+      "source_location": "L2393",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_cron_extend_slots_for_vendor",
@@ -9932,7 +9831,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/controllers.py",
-      "source_location": "L2417",
+      "source_location": "L2394",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_cron_extend_slots_for_vendor",
@@ -9942,10 +9841,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2395",
+      "source_location": "L2372",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_2395",
+      "source": "controllers_controllers_rationale_2372",
       "target": "controllers_controllers_cron_extend_slots_for_vendor",
       "confidence_score": 1.0
     },
@@ -9955,7 +9854,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/controllers.py",
-      "source_location": "L2477",
+      "source_location": "L2454",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_cron_extend_slots_for_all_active_cafes",
@@ -9967,7 +9866,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/controllers.py",
-      "source_location": "L2478",
+      "source_location": "L2455",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_controllers_cron_extend_slots_for_all_active_cafes",
@@ -9977,10 +9876,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "controllers/controllers.py",
-      "source_location": "L2437",
+      "source_location": "L2414",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "controllers_controllers_rationale_2437",
+      "source": "controllers_controllers_rationale_2414",
       "target": "controllers_controllers_cron_extend_slots_for_all_active_cafes",
       "confidence_score": 1.0
     },
@@ -9988,7 +9887,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/order_controller.py",
-      "source_location": "L128",
+      "source_location": "L125",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_order_controller",
@@ -9999,7 +9898,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/order_controller.py",
-      "source_location": "L24",
+      "source_location": "L23",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_order_controller",
@@ -10010,7 +9909,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/order_controller.py",
-      "source_location": "L59",
+      "source_location": "L56",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_order_controller",
@@ -10021,7 +9920,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "controllers/order_controller.py",
-      "source_location": "L36",
+      "source_location": "L35",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_order_controller",
@@ -10273,7 +10172,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "controllers/order_controller.py",
-      "source_location": "L121",
+      "source_location": "L118",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_order_controller_place_order",
@@ -10284,7 +10183,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/order_controller.py",
-      "source_location": "L127",
+      "source_location": "L124",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -10296,7 +10195,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/order_controller.py",
-      "source_location": "L58",
+      "source_location": "L55",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -10308,7 +10207,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "controllers/order_controller.py",
-      "source_location": "L35",
+      "source_location": "L34",
       "weight": 1.0,
       "context": "decorator",
       "_origin": "ast",
@@ -10322,7 +10221,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/order_controller.py",
-      "source_location": "L105",
+      "source_location": "L102",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_order_controller_place_order",
@@ -10334,7 +10233,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/order_controller.py",
-      "source_location": "L112",
+      "source_location": "L109",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_order_controller_place_order",
@@ -10346,7 +10245,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/order_controller.py",
-      "source_location": "L87",
+      "source_location": "L84",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_order_controller_place_order",
@@ -10358,7 +10257,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/order_controller.py",
-      "source_location": "L98",
+      "source_location": "L95",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_order_controller_place_order",
@@ -10370,7 +10269,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "controllers/order_controller.py",
-      "source_location": "L120",
+      "source_location": "L117",
       "weight": 1.0,
       "_origin": "ast",
       "source": "controllers_order_controller_place_order",
@@ -22176,72 +22075,6 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "tests/test_kiosk_proxy.py",
-      "source_location": "L10",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_kiosk_proxy",
-      "target": "tests_test_kiosk_proxy_proxytests",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "tests/test_kiosk_proxy.py",
-      "source_location": "L1",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_kiosk_proxy_rationale_1",
-      "target": "tests_test_kiosk_proxy",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "tests/test_kiosk_proxy.py",
-      "source_location": "L11",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_kiosk_proxy_proxytests",
-      "target": "tests_test_kiosk_proxy_proxytests_setup",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "tests/test_kiosk_proxy.py",
-      "source_location": "L30",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_kiosk_proxy_proxytests",
-      "target": "tests_test_kiosk_proxy_proxytests_test_canonical_success_and_bearer_forwarded",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "tests/test_kiosk_proxy.py",
-      "source_location": "L43",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_kiosk_proxy_proxytests",
-      "target": "tests_test_kiosk_proxy_proxytests_test_non_json_upstream_returns_json_502",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "method",
-      "confidence": "EXTRACTED",
-      "source_file": "tests/test_kiosk_proxy.py",
-      "source_location": "L37",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_kiosk_proxy_proxytests",
-      "target": "tests_test_kiosk_proxy_proxytests_test_rate_limit_status_and_retry_header_forwarded",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
       "source_file": "tests/test_self_onboarding_flow.py",
       "source_location": "L44",
       "weight": 1.0,
@@ -22572,5 +22405,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "932f9954c52812052d55a8e24e19b90f0bed2d13"
+  "built_at_commit": "595cf12c3302dc205dd54d87e5ba7c917e5d4ba1"
 }

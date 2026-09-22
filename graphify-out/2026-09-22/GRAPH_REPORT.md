@@ -1,16 +1,16 @@
-# Graph Report - hfg-onboard  (2026-09-22)
+# Graph Report - hfg-onboard  (2026-09-18)
 
 ## Corpus Check
-- 66 files · ~38,982 words
+- 65 files · ~38,773 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 568 nodes · 1407 edges · 42 communities (29 shown, 13 thin omitted)
-- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 75 edges (avg confidence: 0.51)
+- 561 nodes · 1399 edges · 36 communities (23 shown, 13 thin omitted)
+- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 74 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `932f9954`
+- Built from commit: `595cf12c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -18,7 +18,7 @@
 - vendor_games.py
 - services.py
 - SuperAdminService
-- collaborator_controller.py
+- extensions.py
 - super_admin_controller.py
 - route
 - onboard_vendor
@@ -26,7 +26,7 @@
 - AvailableGame
 - cron_extend_slots_for_all_active_cafes
 - OTPService
-- upload_vendor_missing_document
+- Document
 - VendorService
 - .search_gaming_cafes
 - upload_photos
@@ -39,7 +39,7 @@
 - PaymentVendorMap
 - AGENTS.md
 - _EmailText
-- Flask
+- Booking
 - .get_unverified_documents
 - .create_vendor_console_availability_table
 - .verify_document
@@ -49,12 +49,6 @@
 - .create_vendor_promo_table
 - .safe_strptime
 - .verify_documents_and_update_vendor
-- GameService
-- __init__.py
-- ProxyTests
-- .upload_game_cover_image
-- Document
-- allowed_file
 
 ## God Nodes (most connected - your core abstractions)
 1. `SuperAdminService` - 79 edges
@@ -83,27 +77,27 @@
 ## Import Cycles
 - None detected.
 
-## Communities (42 total, 13 thin omitted)
+## Communities (36 total, 13 thin omitted)
 
 ### Community 0 - "vendor_games.py"
-Cohesion: 0.15
-Nodes (15): add_supported_game(), create_game(), create_games_batch(), delete_supported_game(), get_all_games(), health_check(), list_supported_games(), list_vendors_for_game() (+7 more)
+Cohesion: 0.07
+Nodes (32): add_cover_image(), add_supported_game(), create_game(), create_games_batch(), delete_supported_game(), get_all_games(), health_check(), list_game_discovery_platforms() (+24 more)
 
 ### Community 1 - "services.py"
-Cohesion: 0.05
-Nodes (48): list_vendor_orders(), _notify_store_updated(), place_order(), route, vendor_all_products(), datetime, check_redis_health(), create_redis_pool() (+40 more)
+Cohesion: 0.07
+Nodes (31): declared_attr, AdditionalDetails, Amenity, BusinessRegistration, Console, ContactInfo, DocumentSubmitted, HardwareSpecification (+23 more)
 
 ### Community 2 - "SuperAdminService"
 Cohesion: 0.08
 Nodes (3): Any, date, SuperAdminService
 
-### Community 3 - "collaborator_controller.py"
-Cohesion: 0.36
-Nodes (10): add_product(), create_collaborator(), delete_collaborator(), delete_product(), list_collaborators(), list_products(), _notify_store_updated(), route (+2 more)
+### Community 3 - "extensions.py"
+Cohesion: 0.08
+Nodes (36): Config, create_app(), _is_insecure_secret(), _validate_production_config(), add_product(), create_collaborator(), delete_collaborator(), delete_product() (+28 more)
 
 ### Community 4 - "super_admin_controller.py"
-Cohesion: 0.13
-Nodes (37): change_subscription(), claim_early_onboard_promotion(), create_vendor_staff(), deboard_vendor_admin(), delete_subscription_model(), delete_vendor_staff(), get_daily_settlement_summary(), get_vendor() (+29 more)
+Cohesion: 0.14
+Nodes (36): change_subscription(), claim_early_onboard_promotion(), create_vendor_staff(), deboard_vendor_admin(), delete_subscription_model(), delete_vendor_staff(), get_daily_settlement_summary(), get_vendor() (+28 more)
 
 ### Community 5 - "route"
 Cohesion: 0.06
@@ -114,8 +108,8 @@ Cohesion: 0.17
 Nodes (19): _apply_branch_defaults(), _build_branch_defaults_from_vendor(), _consume_self_onboard_verification_token(), _get_branch_defaults_for_email(), get_branch_onboard_defaults(), _is_missing_payload_value(), _normalize_cafe_name(), _normalize_email() (+11 more)
 
 ### Community 7 - "controllers.py"
-Cohesion: 0.15
-Nodes (15): allowed_file(), _apply_slot_rows_for_day(), _emit_unlock(), _generate_blocks(), health_check(), normalize_day_key(), parse_time_flexible(), Emit unlock signal to internal WebSocket service (+7 more)
+Cohesion: 0.17
+Nodes (14): allowed_file(), _apply_slot_rows_for_day(), _emit_unlock(), _generate_blocks(), health_check(), normalize_day_key(), parse_time_flexible(), Emit unlock signal to internal WebSocket service (+6 more)
 
 ### Community 8 - "AvailableGame"
 Cohesion: 0.12
@@ -129,9 +123,9 @@ Nodes (14): cron_extend_slots_for_all_active_cafes(), cron_extend_slots_for_vend
 Cohesion: 0.14
 Nodes (9): OTPService, Verify the provided OTP - FAST, Check if vendor is already verified - INSTANT Just checks Redis - no database…, Send email asynchronously in background thread, Clear verification status, Clear all verification status for a vendor (for logout), Generate a random numeric OTP, Send OTP to vendor's email - OPTIMIZED FOR SPEED Returns immediately while… (+1 more)
 
-### Community 11 - "upload_vendor_missing_document"
-Cohesion: 0.15
-Nodes (12): delete_vendor_image(), delete_vendor_image_by_url(), Upload a missing (or replace existing) required onboarding document by…, Replace an existing vendor document file. Note: Replaced doc status becomes…, Deletes a vendor image from both Cloudinary and the database by image ID., Deletes a vendor image by URL from both Cloudinary and the database., Upload vendor documents to Cloudinary and return URLs, replace_vendor_document() (+4 more)
+### Community 11 - "Document"
+Cohesion: 0.12
+Nodes (15): delete_vendor_image(), delete_vendor_image_by_url(), Upload a missing (or replace existing) required onboarding document by…, Replace an existing vendor document file. Note: Replaced doc status becomes…, Deletes a vendor image from both Cloudinary and the database by image ID., Deletes a vendor image by URL from both Cloudinary and the database., Upload vendor documents to Cloudinary and return URLs, Save uploaded document metadata once; avoid duplicate inserts and loop commits. (+7 more)
 
 ### Community 12 - "VendorService"
 Cohesion: 0.27
@@ -169,30 +163,6 @@ Nodes (12): fixture, Slot, VendorDaySlotConfig, app(), MemoryRedis, payload(), O
 Cohesion: 0.29
 Nodes (3): HTMLParser, _EmailText, Generate a useful plain-text alternative, retaining links and table values.
 
-### Community 24 - "Flask"
-Cohesion: 0.17
-Nodes (10): Test Cloudinary configuration and connectivity, test_cloudinary_connection(), Flask, CloudinaryGameImageService, Service for handling game cover images Images are uploaded to the 'poc' folder, Ultra-simple upload method as fallback, Delete a game cover image from Cloudinary, Checking if Cloudinary credentials are available (+2 more)
-
-### Community 36 - "GameService"
-Cohesion: 0.28
-Nodes (4): list_game_discovery_platforms(), popular_discovery_games(), search_discovery_games(), GameService
-
-### Community 37 - "__init__.py"
-Cohesion: 0.31
-Nodes (4): Config, create_app(), _is_insecure_secret(), _validate_production_config()
-
-### Community 39 - ".upload_game_cover_image"
-Cohesion: 0.33
-Nodes (4): add_cover_image(), Upload cover image to Cloudinary, Upload game cover image to Cloudinary 'poc' folder, Create game with Cloudinary cover image upload
-
-### Community 40 - "Document"
-Cohesion: 0.50
-Nodes (3): Save uploaded document metadata once; avoid duplicate inserts and loop commits., save_vendor_documents(), Document
-
-### Community 41 - "allowed_file"
-Cohesion: 0.50
-Nodes (4): allowed_file(), format_filename(), Check if the file has an allowed extension., Format the filename as…
-
 ## Knowledge Gaps
 - **2 isolated node(s):** `Invoice`, `graphify`
   These have ≤1 connection - possible missing edges or undocumented components.
@@ -201,12 +171,12 @@ Nodes (4): allowed_file(), format_filename(), Check if the file has an allowed e
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `VendorService` connect `VendorService` to `vendor_games.py`, `services.py`, `SuperAdminService`, `super_admin_controller.py`, `controllers.py`, `AvailableGame`, `cron_extend_slots_for_all_active_cafes`, `.search_gaming_cafes`, `upload_photos`, `Image`, `.send_welcome_email`, `test_self_onboarding_flow.py`, `PaymentMethod`, `PaymentVendorMap`, `.get_unverified_documents`, `.create_vendor_console_availability_table`, `.verify_document`, `.get_all_vendors_with_status`, `.send_deboard_notification`, `.create_vendor_promo_table`, `.safe_strptime`, `.verify_documents_and_update_vendor`, `Document`?**
-  _High betweenness centrality (0.239) - this node is a cross-community bridge._
-- **Why does `SuperAdminService` connect `SuperAdminService` to `Document`, `services.py`, `super_admin_controller.py`, `VendorService`?**
-  _High betweenness centrality (0.189) - this node is a cross-community bridge._
-- **Why does `Vendor` connect `services.py` to `vendor_games.py`, `SuperAdminService`, `controllers.py`, `AvailableGame`, `OTPService`, `VendorService`, `test_self_onboarding_flow.py`?**
-  _High betweenness centrality (0.075) - this node is a cross-community bridge._
+- **Why does `VendorService` connect `VendorService` to `vendor_games.py`, `services.py`, `SuperAdminService`, `super_admin_controller.py`, `controllers.py`, `AvailableGame`, `cron_extend_slots_for_all_active_cafes`, `Document`, `.search_gaming_cafes`, `upload_photos`, `Image`, `.send_welcome_email`, `test_self_onboarding_flow.py`, `PaymentMethod`, `PaymentVendorMap`, `Booking`, `.get_unverified_documents`, `.create_vendor_console_availability_table`, `.verify_document`, `.get_all_vendors_with_status`, `.send_deboard_notification`, `.create_vendor_promo_table`, `.safe_strptime`, `.verify_documents_and_update_vendor`?**
+  _High betweenness centrality (0.243) - this node is a cross-community bridge._
+- **Why does `SuperAdminService` connect `SuperAdminService` to `services.py`, `Document`, `super_admin_controller.py`, `VendorService`?**
+  _High betweenness centrality (0.192) - this node is a cross-community bridge._
+- **Why does `Vendor` connect `services.py` to `vendor_games.py`, `SuperAdminService`, `extensions.py`, `controllers.py`, `AvailableGame`, `OTPService`, `VendorService`, `test_self_onboarding_flow.py`?**
+  _High betweenness centrality (0.077) - this node is a cross-community bridge._
 - **Are the 9 inferred relationships involving `SuperAdminService` (e.g. with `VendorService` and `ContactInfo`) actually correct?**
   _`SuperAdminService` has 9 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 30 inferred relationships involving `VendorService` (e.g. with `AdditionalDetails` and `Amenity`) actually correct?**

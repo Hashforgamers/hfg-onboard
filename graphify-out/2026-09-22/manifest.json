@@ -20,14 +20,14 @@
     "semantic_hash": "fb3038d3db2ac71ffc1a959e23c2afed"
   },
   "controllers/controllers.py": {
-    "mtime": 1790023336.1406975,
-    "ast_hash": "e122ecfd328edb17fc8febd556b1a2ed",
+    "mtime": 1789754523.1602292,
+    "ast_hash": "ce96d1785bd94753b61d9925b355e7ed",
     "semantic_hash": ""
   },
   "controllers/order_controller.py": {
-    "mtime": 1789808514.784231,
-    "ast_hash": "84cbdc23ed7facbfb3b97ee4c544c3a6",
-    "semantic_hash": ""
+    "mtime": 1773777343.1142645,
+    "ast_hash": "71d6b8ca07d084584cad34392dffcfd7",
+    "semantic_hash": "71d6b8ca07d084584cad34392dffcfd7"
   },
   "controllers/super_admin_controller.py": {
     "mtime": 1788887785.0056481,
@@ -332,11 +332,6 @@
   "tests/test_self_onboarding_flow.py": {
     "mtime": 1789702026.2525945,
     "ast_hash": "d598c3c458f616d3488f9d2dbf00b845",
-    "semantic_hash": ""
-  },
-  "tests/test_kiosk_proxy.py": {
-    "mtime": 1790049593.1238494,
-    "ast_hash": "466a6abaa8e2db98eb4c25f796e0f0d0",
     "semantic_hash": ""
   }
 }

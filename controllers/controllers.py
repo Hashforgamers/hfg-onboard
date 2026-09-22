@@ -1444,6 +1444,23 @@ def insert_to_queue():
         if not booking_id and not access_code:
             return jsonify({'error': 'booking_id or access_code is required'}), 400
 
+        # Persist failed guesses across processes and failed downstream requests.
+        with db.engine.begin() as conn:
+            attempts = conn.execute(text("""
+                INSERT INTO kiosk_rate_limits(key, window_start, attempts)
+                VALUES (:key, clock_timestamp(), 1)
+                ON CONFLICT (key) DO UPDATE SET
+                    attempts = CASE WHEN kiosk_rate_limits.window_start <= clock_timestamp() - interval '1 minute'
+                                    THEN 1 ELSE kiosk_rate_limits.attempts + 1 END,
+                    window_start = CASE WHEN kiosk_rate_limits.window_start <= clock_timestamp() - interval '1 minute'
+                                        THEN clock_timestamp() ELSE kiosk_rate_limits.window_start END
+                RETURNING attempts
+            """), {"key": "onboard-ip:" + str(request.remote_addr)}).scalar_one()
+        if attempts > 60:
+            response = jsonify({"status": "error", "code": "rate_limited"})
+            response.headers["Retry-After"] = "60"
+            return response, 429
+
         payload = {
             "console_id": console_id,
             "additional_console_ids": additional_console_ids,
@@ -1460,16 +1477,22 @@ def insert_to_queue():
         resp = requests.post(
             f"{DASHBOARD_SERVICE_URL}/api/kiosk/start-session",
             json=payload,
+            headers={"Authorization": request.headers.get("Authorization", "")},
             timeout=6,
         )
         try:
             body = resp.json()
         except Exception:
-            body = {"message": resp.text}
-        return jsonify(body), resp.status_code
+            return jsonify({"status": "error", "code": "upstream_invalid_response"}), 502
+        response = jsonify(body)
+        response.status_code = resp.status_code
+        if resp.headers.get("Retry-After"):
+            response.headers["Retry-After"] = resp.headers["Retry-After"]
+        return response
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.exception('bookingQueue proxy failed')
+        return jsonify({'status': 'error', 'code': 'upstream_unavailable'}), 502
 
 def _emit_unlock(console_id, booking_id, start_dt, end_dt):
     """Emit unlock signal to internal WebSocket service"""
