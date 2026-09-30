@@ -539,26 +539,39 @@ def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
     if not target_dates:
         return {"updated_days": 0, "inserted_rows": 0}
 
+    # Keep a booked/held slot's capacity and identity intact. Serialize schedule
+    # replacement with concurrent inventory writes on PostgreSQL.
+    if db.engine.dialect.name == 'postgresql':
+        db.session.execute(text(f'LOCK TABLE VENDOR_{vendor_id}_SLOT IN SHARE ROW EXCLUSIVE MODE'))
+    existing_rows = db.session.execute(text(f"""
+        SELECT vs.slot_id, vs.date, vs.available_slot, s.start_time, s.end_time, ag.total_slot,
+            EXISTS (
+                SELECT 1 FROM bookings b JOIN transactions t ON t.booking_id = b.id
+                WHERE b.slot_id = vs.slot_id AND date(t.booked_date) = vs.date
+                  AND lower(COALESCE(b.status, '')) NOT IN ('cancelled', 'canceled', 'rejected', 'completed')
+            ) AS has_booking
+        FROM VENDOR_{vendor_id}_SLOT vs
+        JOIN slots s ON s.id = vs.slot_id
+        JOIN available_games ag ON ag.id = s.gaming_type_id
+        WHERE vs.vendor_id = :vendor_id AND vs.date IN :target_dates
+    """).bindparams(bindparam('target_dates', expanding=True)),
+        {'vendor_id': vendor_id, 'target_dates': target_dates}).mappings().all()
+    def as_time(value):
+        return value if isinstance(value, dtime) else dtime.fromisoformat(str(value))
+    for row in existing_rows:
+        retained = is_enabled and (as_time(row['start_time']), as_time(row['end_time'])) in blocks
+        if not retained and (row['has_booking'] or int(row['available_slot'] or 0) < int(row['total_slot'] or 0)):
+            raise ValueError('These hours conflict with existing bookings or held slots. Resolve them before changing this day.')
+
     delete_dates_sql = text(f"""
         DELETE FROM VENDOR_{vendor_id}_SLOT
-        WHERE vendor_id = :vendor_id
-          AND date IN :target_dates
-    """).bindparams(bindparam("target_dates", expanding=True))
-
-    # Clear day rows first if this day is disabled.
+        WHERE vendor_id = :vendor_id AND date IN :target_dates
+    """).bindparams(bindparam('target_dates', expanding=True))
     if not is_enabled:
-        db.session.execute(
-            delete_dates_sql,
-            {"vendor_id": vendor_id, "target_dates": target_dates},
-        )
-        return {"updated_days": len(target_dates), "inserted_rows": 0}
-
+        db.session.execute(delete_dates_sql, {'vendor_id': vendor_id, 'target_dates': target_dates})
+        return {'updated_days': len(target_dates), 'inserted_rows': 0}
     if not blocks:
-        db.session.execute(
-            delete_dates_sql,
-            {"vendor_id": vendor_id, "target_dates": target_dates},
-        )
-        return {"updated_days": len(target_dates), "inserted_rows": 0}
+        raise ValueError('The operating window must contain at least one complete slot.')
 
     game_totals = {int(g.id): int(g.total_slot or 0) for g in games if int(g.total_slot or 0) > 0}
     if not game_totals:
@@ -600,12 +613,15 @@ def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
     insert_sql = text(f"""
         INSERT INTO VENDOR_{vendor_id}_SLOT (vendor_id, slot_id, date, available_slot, is_available)
         VALUES (:vendor_id, :slot_id, :date, :available_slot, :is_available)
+        ON CONFLICT (vendor_id, date, slot_id) DO NOTHING
     """)
 
-    db.session.execute(
-        delete_dates_sql,
-        {"vendor_id": vendor_id, "target_dates": target_dates},
-    )
+    retained_ids = list(slot_id_map.values())
+    db.session.execute(text(f"""
+        DELETE FROM VENDOR_{vendor_id}_SLOT
+        WHERE vendor_id = :vendor_id AND date IN :target_dates AND slot_id NOT IN :retained_ids
+    """).bindparams(bindparam('target_dates', expanding=True), bindparam('retained_ids', expanding=True)),
+        {'vendor_id': vendor_id, 'target_dates': target_dates, 'retained_ids': retained_ids})
 
     batch = []
     for d in target_dates:
@@ -625,8 +641,7 @@ def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
                 )
 
     if batch:
-        db.session.execute(insert_sql, batch)
-        inserted_rows = len(batch)
+        inserted_rows = max(db.session.execute(insert_sql, batch).rowcount, 0)
 
     return {"updated_days": len(target_dates), "inserted_rows": inserted_rows}
 
@@ -2122,6 +2137,27 @@ def check_verification(vendor_id):
             'message': 'Internal server error'
         }), 500
 
+def _authorize_hours_owner(vendor_id):
+    # Operating hours affect booking inventory. Verify the owner login token
+    # already supplied by MyAccount before accessing the vendor's schedule.
+    import jwt
+    header = request.headers.get('Authorization', '')
+    if not header.startswith('Bearer '):
+        return jsonify(message='Owner login required'), 401
+    secret = current_app.config.get('JWT_SECRET_KEY') or os.getenv('JWT_SECRET_KEY')
+    if not secret:
+        return jsonify(message='Schedule authentication is not configured'), 503
+    try:
+        claims = jwt.decode(header[7:], secret, algorithms=['HS256'],
+            options={'verify_sub': False, 'require': ['exp', 'sub']})
+        subject = claims.get('sub')
+        if not isinstance(subject, dict) or subject.get('type') != 'vendor' or int(subject.get('id')) != vendor_id:
+            return jsonify(message='Cafe owner access required'), 403
+    except (jwt.InvalidTokenError, ValueError, TypeError):
+        return jsonify(message='Invalid or expired owner login'), 401
+    return None
+
+
 @vendor_bp.route('/vendor/<int:vendor_id>/updateSlot', methods=['POST'])
 def update_slot(vendor_id):
     """
@@ -2140,23 +2176,35 @@ def update_slot(vendor_id):
       "start_date": "2026-03-31"  // optional YYYY-MM-DD, useful for EOM extension
     }
     """
+    denied = _authorize_hours_owner(vendor_id)
+    if denied is not None:
+        return denied
     try:
-        payload = request.get_json(silent=True) or {}
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify(message="A JSON object is required"), 400
+        vendor = Vendor.query.filter_by(id=vendor_id).with_for_update().first()
+        if not vendor:
+            return jsonify(message="Vendor not found"), 404
 
         # Validate required fields
         start_time_str = payload.get("start_time")
         end_time_str   = payload.get("end_time")
         slot_duration  = payload.get("slot_duration")
         day_key        = payload.get("day")
-        is_enabled     = bool(payload.get("is_enabled", True))
-        is_24_hours    = bool(payload.get("is_24_hours", False))
+        is_enabled     = payload.get("is_enabled", True)
+        is_24_hours    = payload.get("is_24_hours", False)
+        if type(is_enabled) is not bool or type(is_24_hours) is not bool:
+            return jsonify(message="is_enabled and is_24_hours must be boolean"), 400
         window_days    = payload.get("window_days", FUTURE_WINDOW_DAYS)
         start_date_raw = payload.get("start_date")
 
-        if not slot_duration or not day_key:
+        if not slot_duration or not isinstance(day_key, str) or not day_key.strip():
             return jsonify({"message": "slot_duration and day are required"}), 400
 
         try:
+            if isinstance(slot_duration, bool) or not isinstance(slot_duration, (int, str)) or str(slot_duration) != str(int(slot_duration)):
+                raise ValueError()
             slot_duration = int(slot_duration)
         except (TypeError, ValueError):
             return jsonify({"message": "slot_duration must be an integer (minutes)"}), 400
@@ -2164,6 +2212,8 @@ def update_slot(vendor_id):
             return jsonify({"message": "slot_duration must be between 15 and 240 minutes"}), 400
 
         try:
+            if isinstance(window_days, bool) or not isinstance(window_days, (int, str)) or str(window_days) != str(int(window_days)):
+                raise ValueError()
             window_days = int(window_days)
         except (TypeError, ValueError):
             return jsonify({"message": "window_days must be an integer between 1 and 365"}), 400
@@ -2176,7 +2226,7 @@ def update_slot(vendor_id):
             except ValueError:
                 return jsonify({"message": "start_date must be YYYY-MM-DD"}), 400
         else:
-            start_anchor = date.today()
+            start_anchor = dt.now(IST).date()
 
         # Parse times (12h/24h mode)
         if is_24_hours:
@@ -2198,8 +2248,10 @@ def update_slot(vendor_id):
 
         # Validate vendor has console types configured.
         game_count = db.session.query(func.count(AvailableGame.id)).filter(AvailableGame.vendor_id == vendor_id).scalar() or 0
-        if game_count <= 0:
-            return jsonify({"message": "No console types (AvailableGame) found for vendor"}), 404
+
+        blocks = _generate_blocks(start_anchor, start_time, end_time, slot_duration)
+        if is_enabled and not blocks:
+            return jsonify(message="The operating window must contain at least one complete slot"), 400
 
         # Upsert vendor_day_slot_config
         opening_str_for_config = start_time.strftime("%I:%M %p")
@@ -2258,7 +2310,7 @@ def update_slot(vendor_id):
             )
 
         # Build target dates for this weekday.
-        end_window = start_anchor + timedelta(days=window_days)
+        end_window = start_anchor + timedelta(days=window_days - 1)
         target_dates = []
         cur = start_anchor
         while cur <= end_window:
@@ -2266,17 +2318,30 @@ def update_slot(vendor_id):
                 target_dates.append(cur)
             cur += timedelta(days=1)
 
-        if not target_dates:
-            return jsonify({"message": "No matching dates found in the configured window"}), 400
-
-        blocks = _generate_blocks(start_anchor, start_time, end_time, slot_duration)
         games = AvailableGame.query.filter_by(vendor_id=vendor_id).all()
-        result = _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
+        if games:
+            # Also update already-materialized future dates outside the short generation window.
+            from sqlalchemy import inspect
+            if not inspect(db.session.connection()).has_table(f'vendor_{vendor_id}_slot'):
+                VendorService.create_vendor_slot_table(vendor_id, commit=False)
+            dates = db.session.execute(text(f'SELECT DISTINCT date FROM VENDOR_{vendor_id}_SLOT WHERE date >= :start'),
+                {'start': start_anchor}).scalars().all()
+            target_dates = sorted(set(target_dates) | {
+                value if isinstance(value, date) else date.fromisoformat(str(value))
+                for value in dates
+                if (value if isinstance(value, date) else date.fromisoformat(str(value))).weekday() == target_weekday
+            })
+            result = _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
+        else:
+            result = {'updated_days': 0, 'inserted_rows': 0}
         db.session.commit()
         return jsonify({
             "message": "Day-wise slot configuration saved and applied",
             "vendor_id": vendor_id,
             "day": day_key,
+            "operatingHours": {"day": day_key, "open": start_time.strftime('%H:%M'),
+                "close": end_time.strftime('%H:%M'), "slotDurationMinutes": slot_duration,
+                "isEnabled": is_enabled, "is24Hours": start_time == end_time},
             "is_enabled": is_enabled,
             "is_24_hours": is_24_hours,
             "window_start": start_anchor.isoformat(),
@@ -2285,10 +2350,13 @@ def update_slot(vendor_id):
             "inserted_rows": result["inserted_rows"]
         }), 200
 
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify(message=str(e)), 409
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"[update_slot] Error for vendor {vendor_id}: {e}")
-        return jsonify({"message": "Failed to update slot configuration", "error": str(e)}), 500
+        return jsonify({"message": "Failed to update slot configuration. Please try again."}), 500
 
 
 @vendor_bp.route('/vendor/<int:vendor_id>/extendSlotWindow', methods=['POST'])

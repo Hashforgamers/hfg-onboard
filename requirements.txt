@@ -16,3 +16,5 @@ cloudinary==1.36.0
 redis==5.0.1
 requests
 gunicorn
+
+PyJWT>=2.8,<3
