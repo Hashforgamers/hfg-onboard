@@ -1664,45 +1664,45 @@ class SuperAdminService:
         }
 
     @staticmethod
+    def _subscription_catalog_request(method, suffix="", payload=None):
+        headers = SuperAdminService._admin_proxy_headers()
+        if not headers.get("x-admin-key"):
+            return False, {"message": "Subscription service is not configured: set SUPER_ADMIN_API_KEY on the onboarding and dashboard services to the same value.", "status": 503}
+        url = f"{SuperAdminService._dashboard_service_url()}/api/packages/admin/catalog{suffix}"
+        try:
+            response = requests.request(method, url, json=payload, headers=headers, timeout=20, allow_redirects=False)
+        except requests.RequestException:
+            return False, {"message": "Cannot reach the subscription service. Check DASHBOARD_SERVICE_URL and service health, then retry.", "status": 503}
+        if response.status_code in (401, 403):
+            return False, {"message": "Subscription service rejected admin authentication. Configure matching SUPER_ADMIN_API_KEY values on the onboarding and dashboard services.", "status": 503}
+        if response.status_code == 404:
+            return False, {"message": "Subscription catalog endpoint was not found. Check DASHBOARD_SERVICE_URL and deploy the dashboard subscription backend.", "status": 502}
+        try:
+            body = response.json()
+        except ValueError:
+            body = None
+        if not isinstance(body, dict) or response.status_code >= 500 or 300 <= response.status_code < 400:
+            return False, {"message": "Subscription service returned an invalid response. Check dashboard service logs and database migrations.", "status": 502}
+        if response.status_code >= 400 or body.get("success") is False:
+            message = body.get("message") or body.get("error")
+            return False, {"message": message if isinstance(message, str) else "Subscription request was rejected.", "status": response.status_code if response.status_code >= 400 else 502}
+        if method != "DELETE" and not isinstance(body.get("models"), list):
+            return False, {"message": "Subscription service returned an invalid catalog.", "status": 502}
+        return True, body if method == "DELETE" else body["models"]
+
+    @staticmethod
     def list_subscription_models():
-        url = f"{SuperAdminService._dashboard_service_url()}/api/packages/admin/catalog"
-        response = requests.get(url, headers=SuperAdminService._admin_proxy_headers(), timeout=10)
-        if response.status_code >= 400:
-            try:
-                payload = response.json()
-            except Exception:
-                payload = {"error": response.text}
-            return False, payload
-        body = response.json()
-        return True, body.get("models", [])
+        return SuperAdminService._subscription_catalog_request("GET")
 
     @staticmethod
     def update_subscription_models(models: List[Dict[str, Any]]):
-        payload = {"models": models}
-        url = f"{SuperAdminService._dashboard_service_url()}/api/packages/admin/catalog"
-        response = requests.put(url, json=payload, headers=SuperAdminService._admin_proxy_headers(), timeout=12)
-        if response.status_code >= 400:
-            try:
-                out = response.json()
-            except Exception:
-                out = {"error": response.text}
-            return False, out
-        body = response.json()
-        return True, body.get("models", [])
+        return SuperAdminService._subscription_catalog_request("PUT", payload={"models": models})
 
     @staticmethod
     def delete_subscription_model(package_code: str):
-        code = (package_code or "").strip().lower()
-        url = f"{SuperAdminService._dashboard_service_url()}/api/packages/admin/catalog/{code}"
-        response = requests.delete(url, headers=SuperAdminService._admin_proxy_headers(), timeout=12)
-        if response.status_code >= 400:
-            try:
-                out = response.json()
-            except Exception:
-                out = {"error": response.text}
-            return False, out
-        body = response.json()
-        return True, body
+        from urllib.parse import quote
+        code = quote((package_code or "").strip().lower(), safe="")
+        return SuperAdminService._subscription_catalog_request("DELETE", f"/{code}")
 
     @staticmethod
     def send_early_onboard_promotion(
