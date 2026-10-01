@@ -267,7 +267,7 @@ def list_subscriptions():
 def list_subscription_models():
     ok, payload = SuperAdminService.list_subscription_models()
     if not ok:
-        return jsonify({"success": False, "message": "Failed to fetch subscription models", "details": payload}), 400
+        return jsonify({"success": False, "message": payload["message"]}), payload["status"]
     return jsonify({"success": True, "models": payload}), 200
 
 
@@ -281,7 +281,7 @@ def update_subscription_models():
 
     ok, payload = SuperAdminService.update_subscription_models(models)
     if not ok:
-        return jsonify({"success": False, "message": "Failed to update subscription models", "details": payload}), 400
+        return jsonify({"success": False, "message": payload["message"]}), payload["status"]
     return jsonify({"success": True, "models": payload}), 200
 
 
@@ -290,14 +290,7 @@ def update_subscription_models():
 def delete_subscription_model(package_code):
     ok, payload = SuperAdminService.delete_subscription_model(package_code)
     if not ok:
-        detail_message = ""
-        if isinstance(payload, dict):
-            detail_message = str(payload.get("message") or payload.get("error") or "")
-        return jsonify({
-            "success": False,
-            "message": detail_message or "Failed to delete subscription model",
-            "details": payload,
-        }), 400
+        return jsonify({"success": False, "message": payload["message"]}), payload["status"]
     return jsonify({"success": True, **payload}), 200
 
 
