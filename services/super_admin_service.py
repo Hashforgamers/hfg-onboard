@@ -1329,30 +1329,33 @@ class SuperAdminService:
         except Exception as exc:
             db.session.rollback()
             current_app.logger.error("Failed to update vendor status for %s: %s", vendor_id, exc, exc_info=True)
-            return False, f"Failed to update vendor status: {exc}"
+            return False, "Unable to update cafe status. Please retry."
 
     @staticmethod
     def verify_documents(vendor_id, document_ids, target_status="verified"):
         if target_status not in {"verified", "unverified", "rejected"}:
             return False, "status must be one of verified/unverified/rejected"
 
+        if not isinstance(document_ids, list) or not document_ids or any(type(v) is not int or v <= 0 for v in document_ids):
+            return False, "document_ids must contain positive integer IDs"
         docs = (
             Document.query.filter(Document.vendor_id == vendor_id, Document.id.in_(document_ids)).all()
         )
-        if not docs:
-            return False, "No matching vendor documents found"
+        if len(docs) != len(set(document_ids)):
+            return False, "Every document must belong to this cafe"
 
         for doc in docs:
             doc.status = target_status
 
-        pending_count = Document.query.filter(
-            Document.vendor_id == vendor_id,
-            Document.status != "verified",
-        ).count()
-
-        next_status = "active" if pending_count == 0 else "pending_verification"
-        db.session.add(VendorStatus(vendor_id=vendor_id, status=next_status, updated_at=datetime.utcnow()))
-        db.session.commit()
+        # Document review does not grant cafe access; activation is explicit.
+        latest = VendorStatus.query.filter_by(vendor_id=vendor_id).order_by(VendorStatus.updated_at.desc(), VendorStatus.id.desc()).first()
+        next_status = latest.status if latest else "pending_verification"
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception("Document review failed for cafe %s", vendor_id)
+            return False, "Unable to save document review. Please retry."
 
         try:
             vendor = Vendor.query.get(vendor_id)
