@@ -604,3 +604,37 @@ def deboard_vendor_admin(vendor_id):
         db.session.rollback()
         current_app.logger.error(f"Failed to deboard vendor {vendor_id}: {exc}", exc_info=True)
         return jsonify({"success": False, "message": "Failed to deboard vendor", "error": str(exc)}), 500
+
+
+@super_admin_bp.route('/admin/vendors/<int:vendor_id>/documents/<int:document_id>/request-reupload', methods=['POST'])
+@require_super_admin
+def request_document_reupload(vendor_id, document_id):
+    from models.document import Document
+    from db.extensions import db
+    from sqlalchemy import text
+    data = request.get_json(silent=True)
+    reason = data.get('reason') if isinstance(data, dict) else None
+    if not isinstance(reason, str) or not 5 <= len(reason.strip()) <= 2000:
+        return jsonify(success=False, message='Enter a reason between 5 and 2000 characters'), 400
+    doc = Document.query.filter_by(id=document_id, vendor_id=vendor_id).first()
+    if not doc:
+        return jsonify(success=False, message='Document not found'), 404
+    try:
+        request_id = db.session.execute(text("INSERT INTO cafe_requests(vendor_id,document_id,kind,message) VALUES (:v,:d,'document_reupload',:m) RETURNING id"),dict(v=vendor_id,d=document_id,m=reason.strip())).scalar_one()
+        doc.status = 'rejected'
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Unable to save re-upload request')
+        return jsonify(success=False, message='Unable to save request. Please retry.'), 503
+    sent, _, _ = SuperAdminService.send_document_information_request(vendor_id, message=f"Please re-upload {doc.document_type}: {reason.strip()}\nOpen Account Settings → Verified Documents to preview and replace the file.")
+    return jsonify(success=True, request_id=request_id, email_sent=sent, message='Re-upload requested.' if sent else 'Request saved; email delivery failed. The request is visible in the dashboard.'), 201
+
+
+@super_admin_bp.route('/admin/support-issues', methods=['GET'])
+@require_super_admin
+def list_support_issues():
+    from db.extensions import db
+    from sqlalchemy import text
+    rows=db.session.execute(text("SELECT r.*, v.cafe_name FROM cafe_requests r JOIN vendors v ON v.id=r.vendor_id WHERE kind='support_issue' ORDER BY created_at DESC LIMIT 200")).mappings().all()
+    return jsonify(success=True, issues=[dict(r) for r in rows])

@@ -1243,6 +1243,8 @@ def replace_vendor_document(vendor_id, document_id):
     Replace an existing vendor document file.
     Note: Replaced doc status becomes 'unverified' and must be re-verified by super admin.
     """
+    denied = _authorize_hours_owner(vendor_id)
+    if denied: return denied
     try:
         vendor = Vendor.query.get(vendor_id)
         if not vendor:
@@ -2580,3 +2582,24 @@ def cron_extend_slots_for_all_active_cafes():
         db.session.rollback()
         current_app.logger.error(f"[cron_extend_slots_for_all_active_cafes] error={e}", exc_info=True)
         return jsonify({"success": False, "message": "Failed to ensure slots", "error": str(e)}), 500
+
+
+@vendor_bp.route('/vendor/<int:vendor_id>/requests', methods=['GET', 'POST'])
+def cafe_requests(vendor_id):
+    from sqlalchemy import text
+    denied = _authorize_hours_owner(vendor_id)
+    if denied: return denied
+    if request.method == 'POST':
+        data = request.get_json(silent=True)
+        message = data.get('message') if isinstance(data, dict) else None
+        if not isinstance(message,str) or not 10 <= len(message.strip()) <= 4000:
+            return jsonify(success=False,message='Describe the issue in 10–4000 characters'),400
+        try:
+            ticket=db.session.execute(text("INSERT INTO cafe_requests(vendor_id,kind,message) VALUES (:v,'support_issue',:m) RETURNING id"),dict(v=vendor_id,m=message.strip())).scalar_one()
+            db.session.commit()
+            return jsonify(success=True,ticket_id=ticket),201
+        except Exception:
+            db.session.rollback()
+            return jsonify(success=False,message='Unable to submit issue. Please retry.'),503
+    rows=db.session.execute(text("SELECT r.*,d.document_type,d.document_url,d.status AS document_status FROM cafe_requests r LEFT JOIN documents d ON d.id=r.document_id WHERE r.vendor_id=:v ORDER BY r.created_at DESC LIMIT 100"),dict(v=vendor_id)).mappings().all()
+    return jsonify(success=True,requests=[dict(r) for r in rows])
