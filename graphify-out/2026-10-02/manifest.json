@@ -20,8 +20,8 @@
     "semantic_hash": "fb3038d3db2ac71ffc1a959e23c2afed"
   },
   "controllers/controllers.py": {
-    "mtime": 1790882136.1124063,
-    "ast_hash": "229472e0a3bcc4d3a6670180d8e82d17",
+    "mtime": 1790023336.1406975,
+    "ast_hash": "e122ecfd328edb17fc8febd556b1a2ed",
     "semantic_hash": ""
   },
   "controllers/order_controller.py": {
@@ -30,8 +30,8 @@
     "semantic_hash": ""
   },
   "controllers/super_admin_controller.py": {
-    "mtime": 1790882060.0402913,
-    "ast_hash": "c803ca6a1188da6517dbf01a44ad8ac1",
+    "mtime": 1788887785.0056481,
+    "ast_hash": "fe70d4ed9860280d46414a5174467642",
     "semantic_hash": ""
   },
   "controllers/vendor_games.py": {
@@ -275,13 +275,13 @@
     "semantic_hash": ""
   },
   "services/services.py": {
-    "mtime": 1790942673.5766745,
-    "ast_hash": "a257b54ca609607475e8b04700c11d3a",
+    "mtime": 1789754793.9461224,
+    "ast_hash": "4e0a355953b19938022e0b3d7c67fcee",
     "semantic_hash": ""
   },
   "services/super_admin_service.py": {
-    "mtime": 1790881483.3183913,
-    "ast_hash": "b669dc39179f29575f2454cb1c65f246",
+    "mtime": 1789754523.1552327,
+    "ast_hash": "ffa785e75ab13cbbf1c181380b792b3b",
     "semantic_hash": ""
   },
   "services/supported_game_service.py": {
@@ -325,8 +325,8 @@
     "semantic_hash": ""
   },
   "requirements.txt": {
-    "mtime": 1790777366.2727575,
-    "ast_hash": "e82b72129028a2cf2e57e29f543fa140",
+    "mtime": 1776000424.1182203,
+    "ast_hash": "74c9b3c6c21111156047e44bfbd3f2cc",
     "semantic_hash": ""
   },
   "tests/test_self_onboarding_flow.py": {
@@ -337,31 +337,6 @@
   "tests/test_kiosk_proxy.py": {
     "mtime": 1790049593.1238494,
     "ast_hash": "466a6abaa8e2db98eb4c25f796e0f0d0",
-    "semantic_hash": ""
-  },
-  "sql/20261001_cafe_requests.sql": {
-    "mtime": 1790882060.0360746,
-    "ast_hash": "dc2f982e6991052127ba2f6d2cda5059",
-    "semantic_hash": ""
-  },
-  "tests/test_document_review_validation.py": {
-    "mtime": 1790881503.7189496,
-    "ast_hash": "8365e4431c9819915608f23bb5cc760d",
-    "semantic_hash": ""
-  },
-  "tests/test_operating_hours.py": {
-    "mtime": 1790707236.6941044,
-    "ast_hash": "4e230cf3a301f2199ece323047468c76",
-    "semantic_hash": ""
-  },
-  "tests/test_subscription_catalog_proxy.py": {
-    "mtime": 1790859613.0828836,
-    "ast_hash": "1d3be7b74d2d302738cb40deb12d7876",
-    "semantic_hash": ""
-  },
-  "docs/operating-hours.md": {
-    "mtime": 1790707202.2736578,
-    "ast_hash": "1ec40a8402119b487239b1f5b2b0b05a",
     "semantic_hash": ""
   }
 }

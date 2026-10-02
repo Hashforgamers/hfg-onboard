@@ -1905,60 +1905,38 @@ class VendorService:
 
     @staticmethod
     def reconcile_vendor_slot_capacity_window(vendor_id, start_date, end_date):
-        """
-        Heal VENDOR_<id>_SLOT availability for a date window using:
-          available_slot = max(total_console_slots - active_bookings, 0)
-        This fixes stale capacities (e.g. lingering 4 when current console count is 11),
-        while preserving already-booked counts.
-        """
-        table_name = f"VENDOR_{vendor_id}_SLOT"
-        sql_reconcile = text(f"""
-        UPDATE {table_name} AS vs
-           SET available_slot = GREATEST(
-                   cap.max_capacity - COALESCE((
-                       SELECT COUNT(DISTINCT b.id)
-                       FROM bookings b
-                       JOIN transactions t ON t.booking_id = b.id
-                       JOIN slots s2 ON s2.id = b.slot_id
-                       JOIN available_games ag2 ON ag2.id = s2.gaming_type_id
-                       WHERE ag2.vendor_id = :vendor_id
-                         AND b.slot_id = vs.slot_id
-                         AND CAST(t.booked_date AS date) = vs.date
-                         AND lower(COALESCE(b.status, '')) IN ('confirmed', 'current')
-                   ), 0),
-                   0
-               ),
-               is_available = CASE
-                   WHEN GREATEST(
-                       cap.max_capacity - COALESCE((
-                           SELECT COUNT(DISTINCT b.id)
-                           FROM bookings b
-                           JOIN transactions t ON t.booking_id = b.id
-                           JOIN slots s2 ON s2.id = b.slot_id
-                           JOIN available_games ag2 ON ag2.id = s2.gaming_type_id
-                           WHERE ag2.vendor_id = :vendor_id
-                             AND b.slot_id = vs.slot_id
-                             AND CAST(t.booked_date AS date) = vs.date
-                             AND lower(COALESCE(b.status, '')) IN ('confirmed', 'current')
-                       ), 0),
-                       0
-                   ) > 0
-                   THEN TRUE ELSE FALSE
-               END
-          FROM (
-                SELECT s.id AS slot_id, ag.total_slot AS max_capacity
-                FROM slots s
-                JOIN available_games ag ON ag.id = s.gaming_type_id
-                WHERE ag.vendor_id = :vendor_id
-               ) AS cap
-         WHERE vs.vendor_id = :vendor_id
-           AND vs.date BETWEEN :start_date AND :end_date
-           AND vs.slot_id = cap.slot_id
-        """)
-        result = db.session.execute(
-            sql_reconcile,
-            {"vendor_id": vendor_id, "start_date": start_date, "end_date": end_date},
-        )
+        """Rebuild dated capacity from bookings and unreleased QR slot claims."""
+        table_name = f"VENDOR_{int(vendor_id)}_SLOT"
+        params = {"vendor_id":vendor_id, "start_date":start_date, "end_date":end_date}
+        # Lock before reading bookings/claims. A separate statement after waiting
+        # sees the commits that changed these counters, rather than an old snapshot.
+        db.session.execute(text(f"""SELECT slot_id FROM {table_name}
+            WHERE vendor_id=:vendor_id AND date BETWEEN :start_date AND :end_date
+            ORDER BY date,slot_id FOR UPDATE"""),params).all()
+        has_qr_claims = db.session.execute(text("SELECT to_regclass('cafe_slot_reservations')")).scalar()
+        qr_units = """COALESCE((SELECT SUM(r.units) FROM cafe_slot_reservations r
+            WHERE r.vendor_id=vs.vendor_id AND r.date=vs.date
+              AND r.slot_id=vs.slot_id AND r.released_at IS NULL),0)""" if has_qr_claims else "0"
+        booking_units = """COALESCE((SELECT SUM(
+            CASE WHEN COALESCE(b.squad_details->>'slot_units','') ~ '^[1-9][0-9]*$'
+                 THEN (b.squad_details->>'slot_units')::integer
+                 WHEN COALESCE(b.squad_details->>'console_group','')='pc'
+                      AND COALESCE(b.squad_details->>'player_count','') ~ '^[1-9][0-9]*$'
+                 THEN (b.squad_details->>'player_count')::integer ELSE 1 END)
+            FROM bookings b
+            WHERE b.slot_id=vs.slot_id
+              AND lower(COALESCE(b.status,'')) IN
+                  ('pending_verified','pending_acceptance','confirmed','checked_in','current','completed','extra')
+              AND COALESCE(NULLIF(b.squad_details->>'booked_date','')::date,
+                  (SELECT MIN(t.booked_date)::date FROM transactions t WHERE t.booking_id=b.id))=vs.date),0)"""
+        remaining = f"GREATEST(cap.max_capacity - {booking_units} - {qr_units},0)"
+        result = db.session.execute(text(f"""UPDATE {table_name} vs
+            SET available_slot={remaining}, is_available=({remaining} > 0)
+            FROM (SELECT s.id slot_id,ag.total_slot max_capacity FROM slots s
+                  JOIN available_games ag ON ag.id=s.gaming_type_id
+                  WHERE ag.vendor_id=:vendor_id) cap
+            WHERE vs.vendor_id=:vendor_id AND vs.date BETWEEN :start_date AND :end_date
+              AND vs.slot_id=cap.slot_id"""),params)
         return int(result.rowcount or 0)
 
     @staticmethod
@@ -2030,6 +2008,8 @@ class VendorService:
         """)
 
         db.session.execute(sql_create)
+        if db.session.execute(text("SELECT to_regprocedure('cafe_install_console_guards(integer)')")).scalar():
+            db.session.execute(text('SELECT cafe_install_console_guards(:vid)'), {'vid':vendor_id})
         db.session.commit() if commit else db.session.flush()
 
         current_app.logger.info(f"Table {table_name} created successfully.")
