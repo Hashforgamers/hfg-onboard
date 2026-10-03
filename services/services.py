@@ -1854,19 +1854,7 @@ class VendorService:
         start_date = datetime.utcnow().date()
         end_date = start_date + timedelta(days=seed_days)
 
-        sql_insert = text(f"""
-        INSERT INTO {table_name} (vendor_id, date, slot_id, is_available, available_slot)
-        SELECT 
-            {vendor_id}, gs.date, s.id, s.is_available, s.available_slot
-        FROM 
-            (SELECT generate_series(:start_date, :end_date, '1 day'::INTERVAL) AS date) gs
-        CROSS JOIN slots s
-        WHERE s.is_available = TRUE
-        AND s.gaming_type_id IN (SELECT id FROM available_games WHERE vendor_id = :vendor_id)
-        ORDER BY gs.date, s.id;
-        """)
-
-        db.session.execute(sql_insert, {"start_date": start_date, "end_date": end_date, "vendor_id": vendor_id})
+        VendorService.extend_vendor_slot_window(vendor_id, start_date, end_date)
         db.session.commit() if commit else db.session.flush()
 
         current_app.logger.info(
@@ -1880,6 +1868,35 @@ class VendorService:
         Inserts only missing (date, slot_id) combinations for vendor games.
         """
         table_name = f"VENDOR_{vendor_id}_SLOT"
+        # Saved weekday configuration is authoritative. Historical slot templates
+        # must never be cross-joined into a newly generated schedule.
+        configs = db.session.execute(text("""SELECT day,opening_time,closing_time,slot_duration
+            FROM vendor_day_slot_config WHERE vendor_id=:vendor"""), {'vendor':vendor_id}).mappings().all()
+        if configs:
+            from controllers.controllers import normalize_day_key, parse_time_flexible, _generate_blocks, _apply_slot_rows_for_day
+            openings = db.session.execute(text('SELECT day,is_open FROM opening_days WHERE vendor_id=:vendor'),
+                {'vendor':vendor_id}).mappings().all()
+            enabled = {normalize_day_key(row['day']): row['is_open'] for row in openings}
+            by_day = {normalize_day_key(row['day']): row for row in configs}
+            games = AvailableGame.query.filter_by(vendor_id=vendor_id).all()
+            weekdays = ['mon','tue','wed','thu','fri','sat','sun']
+            inserted = 0
+            for weekday, key in enumerate(weekdays):
+                config = by_day.get(key)
+                if not config:
+                    continue
+                days = []
+                cursor = start_date
+                while cursor <= end_date:
+                    if cursor.weekday() == weekday:
+                        days.append(cursor)
+                    cursor += timedelta(days=1)
+                blocks = _generate_blocks(start_date, parse_time_flexible(config['opening_time']),
+                    parse_time_flexible(config['closing_time']), int(config['slot_duration']))
+                result = _apply_slot_rows_for_day(vendor_id, games, days, blocks, bool(enabled.get(key, False)))
+                inserted += result['inserted_rows']
+            return inserted
+
         sql_insert = text(f"""
         INSERT INTO {table_name} (vendor_id, date, slot_id, is_available, available_slot)
         SELECT 
