@@ -155,3 +155,34 @@ def test_booking_conflict_detected_even_if_capacity_was_stale(setup):
     e.db.session.commit()
     assert save(e, is_enabled=False).status_code == 409
     assert e.db.session.execute(text('SELECT COUNT(*) FROM vendor_1_slot')).scalar() == 2
+
+
+def test_future_extension_uses_saved_weekday_grid_not_old_templates(setup, monkeypatch):
+    import sys
+    import types
+    e = setup
+    assert save(e).status_code == 200
+    source = Path(__file__).resolve().parents[1] / 'services/services.py'
+    tree = ast.parse(source.read_text())
+    cls = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'VendorService')
+    method = next(node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name == 'extend_vendor_slot_window')
+    method.decorator_list = []
+    scope = dict(e.scope)
+    exec(compile(ast.Module(body=[method], type_ignores=[]), str(source), 'exec'), scope)
+    controller = types.ModuleType('controllers.controllers')
+    for name in ('normalize_day_key','parse_time_flexible','_generate_blocks','_apply_slot_rows_for_day'):
+        setattr(controller, name, e.scope[name])
+    monkeypatch.setitem(sys.modules, 'controllers.controllers', controller)
+    with e.app.app_context():
+        # An obsolete 30-minute template remains in slots for history.
+        e.db.session.add(e.Slot(gaming_type_id=1,start_time=time(9),end_time=time(9,30),available_slot=3,is_available=True))
+        e.db.session.commit()
+        next_day = date(2026,10,12)
+        scope['extend_vendor_slot_window'](1,next_day,next_day)
+        rows = e.db.session.execute(text('SELECT s.start_time,s.end_time FROM vendor_1_slot v JOIN slots s ON s.id=v.slot_id WHERE v.date=:day'), {'day':next_day}).all()
+        assert len(rows) == 2
+        assert all(str(row.end_time).startswith(('10:00','11:00')) for row in rows)
+        # Idempotent extension preserves an already reserved unit.
+        e.db.session.execute(text('UPDATE vendor_1_slot SET available_slot=2 WHERE date=:day'), {'day':next_day})
+        scope['extend_vendor_slot_window'](1,next_day,next_day)
+        assert e.db.session.execute(text('SELECT MIN(available_slot) FROM vendor_1_slot WHERE date=:day'), {'day':next_day}).scalar() == 2
