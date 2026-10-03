@@ -10,8 +10,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_init",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": "__init__.py"
     },
     {
@@ -21,8 +21,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "app_init_is_insecure_secret",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": "_is_insecure_secret()"
     },
     {
@@ -32,8 +32,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "app_init_validate_production_config",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": "_validate_production_config()"
     },
     {
@@ -43,8 +43,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "flask",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": "flask"
     },
     {
@@ -54,8 +54,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "app_init_create_app",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": "create_app()"
     },
     {
@@ -65,8 +65,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_config",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": "config.py"
     },
     {
@@ -76,8 +76,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "app_config_is_neon_pooler",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": "_is_neon_pooler()"
     },
     {
@@ -87,8 +87,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "app_config_config",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": "config"
     },
     {
@@ -219,7 +219,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "controllers_controllers",
-      "community": 7,
+      "community": 6,
       "community_name": "controllers.py",
       "norm_label": "controllers.py"
     },
@@ -231,7 +231,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_normalize_email",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "_normalize_email()"
     },
     {
@@ -241,7 +241,7 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "controllers_controllers_is_valid_email",
-      "community": 7,
+      "community": 6,
       "community_name": "controllers.py",
       "norm_label": "_is_valid_email()"
     },
@@ -252,7 +252,7 @@
       "source_location": "L97",
       "_origin": "ast",
       "id": "controllers_controllers_normalize_phone",
-      "community": 7,
+      "community": 6,
       "community_name": "controllers.py",
       "norm_label": "_normalize_phone()"
     },
@@ -264,7 +264,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_normalize_whitespace",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "_normalize_whitespace()"
     },
     {
@@ -275,7 +275,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_normalize_cafe_name",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "_normalize_cafe_name()"
     },
     {
@@ -286,7 +286,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_is_missing_payload_value",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "_is_missing_payload_value()"
     },
     {
@@ -297,7 +297,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_build_branch_defaults_from_vendor",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "_build_branch_defaults_from_vendor()"
     },
     {
@@ -308,7 +308,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_apply_branch_defaults",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "_apply_branch_defaults()"
     },
     {
@@ -319,7 +319,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_get_branch_defaults_for_email",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "_get_branch_defaults_for_email()"
     },
     {
@@ -329,7 +329,7 @@
       "source_location": "L298",
       "_origin": "ast",
       "id": "controllers_controllers_self_onboard_duplicate_reason",
-      "community": 7,
+      "community": 6,
       "community_name": "controllers.py",
       "norm_label": "_self_onboard_duplicate_reason()"
     },
@@ -341,7 +341,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_validate_self_onboard_payload",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "_validate_self_onboard_payload()"
     },
     {
@@ -351,7 +351,7 @@
       "source_location": "L455",
       "_origin": "ast",
       "id": "controllers_controllers_self_onboard_otp_key",
-      "community": 7,
+      "community": 6,
       "community_name": "controllers.py",
       "norm_label": "_self_onboard_otp_key()"
     },
@@ -362,7 +362,7 @@
       "source_location": "L459",
       "_origin": "ast",
       "id": "controllers_controllers_self_onboard_otp_cooldown_key",
-      "community": 7,
+      "community": 6,
       "community_name": "controllers.py",
       "norm_label": "_self_onboard_otp_cooldown_key()"
     },
@@ -373,7 +373,7 @@
       "source_location": "L463",
       "_origin": "ast",
       "id": "controllers_controllers_self_onboard_verify_key",
-      "community": 7,
+      "community": 6,
       "community_name": "controllers.py",
       "norm_label": "_self_onboard_verify_key()"
     },
@@ -385,7 +385,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_self_onboard_verify_token_key",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "_self_onboard_verify_token_key()"
     },
     {
@@ -396,7 +396,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_consume_self_onboard_verification_token",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "_consume_self_onboard_verification_token()"
     },
     {
@@ -451,7 +451,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_allowed_file",
       "community": 7,
-      "community_name": "controllers.py",
+      "community_name": "allowed_file",
       "norm_label": "allowed_file()"
     },
     {
@@ -462,7 +462,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_validate_json",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "validate_json()"
     },
     {
@@ -483,8 +483,8 @@
       "source_location": "L692",
       "_origin": "ast",
       "id": "controllers_controllers_save_vendor_documents",
-      "community": 40,
-      "community_name": "Document",
+      "community": 6,
+      "community_name": "controllers.py",
       "norm_label": "save_vendor_documents()"
     },
     {
@@ -517,7 +517,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_safe_strptime",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "safe_strptime()"
     },
     {
@@ -527,7 +527,7 @@
       "source_location": "L773",
       "_origin": "ast",
       "id": "controllers_controllers_send_self_onboard_email_otp",
-      "community": 7,
+      "community": 6,
       "community_name": "controllers.py",
       "norm_label": "send_self_onboard_email_otp()"
     },
@@ -538,7 +538,7 @@
       "source_location": "L858",
       "_origin": "ast",
       "id": "controllers_controllers_verify_self_onboard_email_otp",
-      "community": 7,
+      "community": 6,
       "community_name": "controllers.py",
       "norm_label": "verify_self_onboard_email_otp()"
     },
@@ -550,7 +550,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_onboard_vendor",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "onboard_vendor()"
     },
     {
@@ -561,7 +561,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_get_branch_onboard_defaults",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "get_branch_onboard_defaults()"
     },
     {
@@ -582,8 +582,8 @@
       "source_location": "L1150",
       "_origin": "ast",
       "id": "controllers_controllers_get_unverified_documents",
-      "community": 5,
-      "community_name": "route",
+      "community": 25,
+      "community_name": "get_unverified_documents",
       "norm_label": "get_unverified_documents()"
     },
     {
@@ -615,8 +615,8 @@
       "source_location": "L1305",
       "_origin": "ast",
       "id": "controllers_controllers_verify_document",
-      "community": 5,
-      "community_name": "route",
+      "community": 27,
+      "community_name": "verify_document",
       "norm_label": "verify_document()"
     },
     {
@@ -637,8 +637,8 @@
       "source_location": "L1326",
       "_origin": "ast",
       "id": "controllers_controllers_get_vendor_dashboard",
-      "community": 5,
-      "community_name": "route",
+      "community": 28,
+      "community_name": "get_vendor_dashboard",
       "norm_label": "get_vendor_dashboard()"
     },
     {
@@ -703,7 +703,7 @@
       "source_location": "L1514",
       "_origin": "ast",
       "id": "controllers_controllers_emit_unlock",
-      "community": 7,
+      "community": 6,
       "community_name": "controllers.py",
       "norm_label": "_emit_unlock()"
     },
@@ -935,7 +935,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_rationale_650",
       "community": 7,
-      "community_name": "controllers.py",
+      "community_name": "allowed_file",
       "norm_label": "check if the file has an allowed extension."
     },
     {
@@ -946,7 +946,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_rationale_654",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "validate the json data for required fields."
     },
     {
@@ -967,8 +967,8 @@
       "source_location": "L693",
       "_origin": "ast",
       "id": "controllers_controllers_rationale_693",
-      "community": 40,
-      "community_name": "Document",
+      "community": 6,
+      "community_name": "controllers.py",
       "norm_label": "save uploaded document metadata once; avoid duplicate inserts and loop commits."
     },
     {
@@ -990,7 +990,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_rationale_753",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "safely parse date string, handling none and invalid values"
     },
     {
@@ -1001,7 +1001,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_rationale_1114",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "return reusable onboarding defaults for adding a new branch under an existing..."
     },
     {
@@ -1011,8 +1011,8 @@
       "source_location": "L1151",
       "_origin": "ast",
       "id": "controllers_controllers_rationale_1151",
-      "community": 5,
-      "community_name": "route",
+      "community": 25,
+      "community_name": "get_unverified_documents",
       "norm_label": "api endpoint to get all unverified document file paths for a given vendor."
     },
     {
@@ -1044,8 +1044,8 @@
       "source_location": "L1306",
       "_origin": "ast",
       "id": "controllers_controllers_rationale_1306",
-      "community": 5,
-      "community_name": "route",
+      "community": 27,
+      "community_name": "verify_document",
       "norm_label": "api endpoint to mark a document as verified and update vendor status if..."
     },
     {
@@ -1066,8 +1066,8 @@
       "source_location": "L1327",
       "_origin": "ast",
       "id": "controllers_controllers_rationale_1327",
-      "community": 5,
-      "community_name": "route",
+      "community": 28,
+      "community_name": "get_vendor_dashboard",
       "norm_label": "api to retrieve all vendors with their statuses and relevant information for..."
     },
     {
@@ -1121,7 +1121,7 @@
       "source_location": "L1515",
       "_origin": "ast",
       "id": "controllers_controllers_rationale_1515",
-      "community": 7,
+      "community": 6,
       "community_name": "controllers.py",
       "norm_label": "emit unlock signal to internal websocket service"
     },
@@ -1297,7 +1297,7 @@
       "source_location": "L1869",
       "_origin": "ast",
       "id": "controllers_controllers_rationale_1869",
-      "community": 7,
+      "community": 6,
       "community_name": "controllers.py",
       "norm_label": "# important: fetch real documents from your document model"
     },
@@ -2013,7 +2013,7 @@
       "_origin": "ast",
       "id": "db_extensions",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "extensions.py"
     },
     {
@@ -2024,7 +2024,7 @@
       "_origin": "ast",
       "id": "db_extensions_create_redis_pool",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "create_redis_pool()"
     },
     {
@@ -2035,7 +2035,7 @@
       "_origin": "ast",
       "id": "db_extensions_check_redis_health",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "check_redis_health()"
     },
     {
@@ -2046,7 +2046,7 @@
       "_origin": "ast",
       "id": "db_extensions_rationale_20",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "create a redis connection pool to reuse connections this prevents repeated ssl..."
     },
     {
@@ -2057,7 +2057,7 @@
       "_origin": "ast",
       "id": "db_extensions_rationale_88",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "check redis connection health"
     },
     {
@@ -2089,8 +2089,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_additionaldetails",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": "additionaldetails.py"
     },
     {
@@ -2100,8 +2100,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "models_additionaldetails_additionaldetails",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": "additionaldetails"
     },
     {
@@ -2111,8 +2111,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "models_additionaldetails_additionaldetails_repr",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": ".__repr__()"
     },
     {
@@ -2123,7 +2123,7 @@
       "_origin": "ast",
       "id": "models_amenity",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "amenity.py"
     },
     {
@@ -2134,7 +2134,7 @@
       "_origin": "ast",
       "id": "models_amenity_amenity",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "amenity"
     },
     {
@@ -2144,8 +2144,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_availablegame",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": "availablegame.py"
     },
     {
@@ -2155,8 +2155,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "models_availablegame_availablegame",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": "availablegame"
     },
     {
@@ -2166,8 +2166,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "models_availablegame_availablegame_repr",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": ".__repr__()"
     },
     {
@@ -2221,7 +2221,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_bookingqueue",
-      "community": 7,
+      "community": 6,
       "community_name": "controllers.py",
       "norm_label": "bookingqueue.py"
     },
@@ -2232,7 +2232,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_bookingqueue_bookingqueue",
-      "community": 7,
+      "community": 6,
       "community_name": "controllers.py",
       "norm_label": "bookingqueue"
     },
@@ -2244,7 +2244,7 @@
       "_origin": "ast",
       "id": "models_businessregistration",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "businessregistration.py"
     },
     {
@@ -2255,7 +2255,7 @@
       "_origin": "ast",
       "id": "models_businessregistration_businessregistration",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "businessregistration"
     },
     {
@@ -2364,8 +2364,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_console",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": "console.py"
     },
     {
@@ -2375,8 +2375,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_console_console",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": "console"
     },
     {
@@ -2386,8 +2386,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "models_console_console_repr",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": ".__repr__()"
     },
     {
@@ -2397,8 +2397,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_consolepricingoffer",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": "consolepricingoffer.py"
     },
     {
@@ -2408,8 +2408,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "models_consolepricingoffer_consolepricingoffer",
-      "community": 8,
-      "community_name": "ConsolePricingOffer",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": "consolepricingoffer"
     },
     {
@@ -2419,8 +2419,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "models_consolepricingoffer_consolepricingoffer_repr",
-      "community": 8,
-      "community_name": "ConsolePricingOffer",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": ".__repr__()"
     },
     {
@@ -2431,7 +2431,7 @@
       "_origin": "ast",
       "id": "models_consolepricingoffer_consolepricingoffer_is_currently_active",
       "community": 8,
-      "community_name": "ConsolePricingOffer",
+      "community_name": ".to_dict",
       "norm_label": ".is_currently_active()"
     },
     {
@@ -2442,7 +2442,7 @@
       "_origin": "ast",
       "id": "models_consolepricingoffer_consolepricingoffer_get_discount_percentage",
       "community": 8,
-      "community_name": "ConsolePricingOffer",
+      "community_name": ".to_dict",
       "norm_label": ".get_discount_percentage()"
     },
     {
@@ -2453,7 +2453,7 @@
       "_origin": "ast",
       "id": "models_consolepricingoffer_consolepricingoffer_to_dict",
       "community": 8,
-      "community_name": "ConsolePricingOffer",
+      "community_name": ".to_dict",
       "norm_label": ".to_dict()"
     },
     {
@@ -2463,8 +2463,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "models_consolepricingoffer_rationale_13",
-      "community": 8,
-      "community_name": "ConsolePricingOffer",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": "time-based promotional pricing for console types (availablegames) allows..."
     },
     {
@@ -2475,7 +2475,7 @@
       "_origin": "ast",
       "id": "models_consolepricingoffer_rationale_58",
       "community": 8,
-      "community_name": "ConsolePricingOffer",
+      "community_name": ".to_dict",
       "norm_label": "check if this offer is active right now using ist. returns true if current ist..."
     },
     {
@@ -2486,7 +2486,7 @@
       "_origin": "ast",
       "id": "models_consolepricingoffer_rationale_90",
       "community": 8,
-      "community_name": "ConsolePricingOffer",
+      "community_name": ".to_dict",
       "norm_label": "calculate discount percentage"
     },
     {
@@ -2497,7 +2497,7 @@
       "_origin": "ast",
       "id": "models_consolepricingoffer_rationale_97",
       "community": 8,
-      "community_name": "ConsolePricingOffer",
+      "community_name": ".to_dict",
       "norm_label": "convert to dictionary for api responses"
     },
     {
@@ -2508,7 +2508,7 @@
       "_origin": "ast",
       "id": "models_contactinfo",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "contactinfo.py"
     },
     {
@@ -2519,7 +2519,7 @@
       "_origin": "ast",
       "id": "models_contactinfo_contactinfo",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "contactinfo"
     },
     {
@@ -2529,8 +2529,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_document",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 21,
+      "community_name": "datetime",
       "norm_label": "document.py"
     },
     {
@@ -2574,7 +2574,7 @@
       "_origin": "ast",
       "id": "models_documentsubmitted",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "documentsubmitted.py"
     },
     {
@@ -2585,7 +2585,7 @@
       "_origin": "ast",
       "id": "models_documentsubmitted_documentsubmitted",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "documentsubmitted"
     },
     {
@@ -2661,7 +2661,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_hardwarespecification",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "hardwarespecification.py"
     },
@@ -2672,7 +2672,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "models_hardwarespecification_hardwarespecification",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "hardwarespecification"
     },
@@ -2683,7 +2683,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "models_hardwarespecification_hardwarespecification_repr",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
@@ -2694,7 +2694,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_maintenancestatus",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "maintenancestatus.py"
     },
@@ -2705,7 +2705,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "models_maintenancestatus_maintenancestatus",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "maintenancestatus"
     },
@@ -2716,7 +2716,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "models_maintenancestatus_maintenancestatus_repr",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
@@ -2728,7 +2728,7 @@
       "_origin": "ast",
       "id": "models_openingday",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "openingday.py"
     },
     {
@@ -2739,7 +2739,7 @@
       "_origin": "ast",
       "id": "models_openingday_openingday",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "openingday"
     },
     {
@@ -2750,7 +2750,7 @@
       "_origin": "ast",
       "id": "models_openingday_openingday_str",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": ".__str__()"
     },
     {
@@ -2761,7 +2761,7 @@
       "_origin": "ast",
       "id": "models_openingday_openingday_repr",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": ".__repr__()"
     },
     {
@@ -2815,8 +2815,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_passwordmanager",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 34,
+      "community_name": "PasswordManager",
       "norm_label": "passwordmanager.py"
     },
     {
@@ -2826,8 +2826,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_passwordmanager_passwordmanager",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 34,
+      "community_name": "PasswordManager",
       "norm_label": "passwordmanager"
     },
     {
@@ -2837,8 +2837,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "declared_attr",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 34,
+      "community_name": "PasswordManager",
       "norm_label": "declared_attr"
     },
     {
@@ -2848,8 +2848,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "models_passwordmanager_passwordmanager_vendor",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 34,
+      "community_name": "PasswordManager",
       "norm_label": ".vendor()"
     },
     {
@@ -2859,8 +2859,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "models_passwordmanager_passwordmanager_repr",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 34,
+      "community_name": "PasswordManager",
       "norm_label": ".__repr__()"
     },
     {
@@ -2870,8 +2870,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_paymentmethod",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 35,
+      "community_name": "PaymentMethod",
       "norm_label": "paymentmethod.py"
     },
     {
@@ -2881,8 +2881,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_paymentmethod_paymentmethod",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 35,
+      "community_name": "PaymentMethod",
       "norm_label": "paymentmethod"
     },
     {
@@ -2892,8 +2892,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "models_paymentmethod_paymentmethod_repr",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 35,
+      "community_name": "PaymentMethod",
       "norm_label": ".__repr__()"
     },
     {
@@ -2903,8 +2903,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "models_paymentmethod_paymentmethod_to_dict",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 35,
+      "community_name": "PaymentMethod",
       "norm_label": ".to_dict()"
     },
     {
@@ -2914,7 +2914,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_paymentvendormap",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "paymentvendormap.py"
     },
@@ -2925,7 +2925,7 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "models_paymentvendormap_paymentvendormap",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "paymentvendormap"
     },
@@ -2936,7 +2936,7 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "models_paymentvendormap_paymentvendormap_repr",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
@@ -2947,7 +2947,7 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "models_paymentvendormap_paymentvendormap_to_dict",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": ".to_dict()"
     },
@@ -2958,8 +2958,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_physicaladdress",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 21,
+      "community_name": "datetime",
       "norm_label": "physicaladdress.py"
     },
     {
@@ -2969,8 +2969,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "models_physicaladdress_physicaladdress",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 21,
+      "community_name": "datetime",
       "norm_label": "physicaladdress"
     },
     {
@@ -2980,8 +2980,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "models_physicaladdress_physicaladdress_str",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 21,
+      "community_name": "datetime",
       "norm_label": ".__str__()"
     },
     {
@@ -2991,8 +2991,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_priceandcost",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": "priceandcost.py"
     },
     {
@@ -3002,8 +3002,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "models_priceandcost_priceandcost",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": "priceandcost"
     },
     {
@@ -3013,8 +3013,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "models_priceandcost_priceandcost_repr",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": ".__repr__()"
     },
     {
@@ -3113,7 +3113,7 @@
       "_origin": "ast",
       "id": "models_timing",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "timing.py"
     },
     {
@@ -3124,7 +3124,7 @@
       "_origin": "ast",
       "id": "models_timing_timing",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "timing"
     },
     {
@@ -3134,8 +3134,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_transaction",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 21,
+      "community_name": "datetime",
       "norm_label": "transaction.py"
     },
     {
@@ -3145,8 +3145,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_transaction_transaction",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 21,
+      "community_name": "datetime",
       "norm_label": "transaction"
     },
     {
@@ -3156,8 +3156,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "models_transaction_transaction_repr",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 21,
+      "community_name": "datetime",
       "norm_label": ".__repr__()"
     },
     {
@@ -3167,8 +3167,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_uploadedimage",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 12,
+      "community_name": "VendorService",
       "norm_label": "uploadedimage.py"
     },
     {
@@ -3178,8 +3178,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_uploadedimage_image",
-      "community": 17,
-      "community_name": "Image",
+      "community": 12,
+      "community_name": "VendorService",
       "norm_label": "image"
     },
     {
@@ -3190,7 +3190,7 @@
       "_origin": "ast",
       "id": "models_vendor",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "vendor.py"
     },
     {
@@ -3201,7 +3201,7 @@
       "_origin": "ast",
       "id": "models_vendor_vendor",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "vendor"
     },
     {
@@ -3212,7 +3212,7 @@
       "_origin": "ast",
       "id": "models_vendor_vendor_str",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": ".__str__()"
     },
     {
@@ -3223,7 +3223,7 @@
       "_origin": "ast",
       "id": "models_vendor_vendor_repr",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": ".__repr__()"
     },
     {
@@ -3234,7 +3234,7 @@
       "_origin": "ast",
       "id": "models_vendoraccount",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "vendoraccount.py"
     },
     {
@@ -3245,7 +3245,7 @@
       "_origin": "ast",
       "id": "models_vendoraccount_vendoraccount",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "vendoraccount"
     },
     {
@@ -3255,7 +3255,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_vendorcredentials",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "vendorcredentials.py"
     },
@@ -3266,7 +3266,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_vendorcredentials_vendorcredential",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "vendorcredential"
     },
@@ -3277,7 +3277,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_vendordayslotconfig",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "vendordayslotconfig.py"
     },
@@ -3288,7 +3288,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_vendordayslotconfig_vendordayslotconfig",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "vendordayslotconfig"
     },
@@ -3299,7 +3299,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "models_vendordayslotconfig_vendordayslotconfig_repr",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
@@ -3310,8 +3310,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_vendorgame",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": "vendorgame.py"
     },
     {
@@ -3321,8 +3321,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "models_vendorgame_vendorgame",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": "vendorgame"
     },
     {
@@ -3332,8 +3332,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "models_vendorgame_vendorgame_price_per_hour",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": ".price_per_hour()"
     },
     {
@@ -3343,8 +3343,8 @@
       "source_location": "L69",
       "_origin": "ast",
       "id": "models_vendorgame_vendorgame_effective_price_info",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": ".effective_price_info()"
     },
     {
@@ -3354,8 +3354,8 @@
       "source_location": "L123",
       "_origin": "ast",
       "id": "models_vendorgame_vendorgame_to_dict",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": ".to_dict()"
     },
     {
@@ -3365,8 +3365,8 @@
       "source_location": "L141",
       "_origin": "ast",
       "id": "models_vendorgame_vendorgame_repr",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": ".__repr__()"
     },
     {
@@ -3376,8 +3376,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "models_vendorgame_rationale_25",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": "dynamically compute price from parent availablegame. - if an active..."
     },
     {
@@ -3387,8 +3387,8 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "models_vendorgame_rationale_70",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": "returns full pricing context: base price, offer price, offer details. useful..."
     },
     {
@@ -3398,8 +3398,8 @@
       "source_location": "L124",
       "_origin": "ast",
       "id": "models_vendorgame_rationale_124",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 17,
+      "community_name": "AvailableGame",
       "norm_label": "serialize vendorgame \u2014 price is always dynamically computed"
     },
     {
@@ -3409,7 +3409,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_vendorpin",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "vendorpin.py"
     },
@@ -3420,7 +3420,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "models_vendorpin_vendorpin",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "vendorpin"
     },
@@ -3431,7 +3431,7 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "models_vendorpin_vendorpin_repr",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
@@ -3442,8 +3442,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_vendorstatus",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 21,
+      "community_name": "datetime",
       "norm_label": "vendorstatus.py"
     },
     {
@@ -3453,8 +3453,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "models_vendorstatus_vendorstatus",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 21,
+      "community_name": "datetime",
       "norm_label": "vendorstatus"
     },
     {
@@ -3464,8 +3464,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "models_vendorstatus_vendorstatus_repr",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 21,
+      "community_name": "datetime",
       "norm_label": ".__repr__()"
     },
     {
@@ -3475,8 +3475,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "run",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": "run.py"
     },
     {
@@ -3695,8 +3695,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "services_email_template",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 21,
+      "community_name": "datetime",
       "norm_label": "email_template.py"
     },
     {
@@ -3706,8 +3706,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "services_email_template_extract_body",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 21,
+      "community_name": "datetime",
       "norm_label": "_extract_body()"
     },
     {
@@ -3717,8 +3717,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "services_email_template_build_hfg_email_html",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 2,
+      "community_name": "SuperAdminService",
       "norm_label": "build_hfg_email_html()"
     },
     {
@@ -3794,8 +3794,8 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "services_email_template_email_text",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 21,
+      "community_name": "datetime",
       "norm_label": "email_text()"
     },
     {
@@ -4059,7 +4059,7 @@
       "_origin": "ast",
       "id": "services_otp_service",
       "community": 1,
-      "community_name": "services.py",
+      "community_name": "extensions.py",
       "norm_label": "otp_service.py"
     },
     {
@@ -4245,7 +4245,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "services_services",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "services.py"
     },
@@ -4278,8 +4278,8 @@
       "source_location": "L79",
       "_origin": "ast",
       "id": "services_services_vendorservice_safe_strptime",
-      "community": 34,
-      "community_name": ".safe_strptime",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": ".safe_strptime()"
     },
     {
@@ -4289,8 +4289,8 @@
       "source_location": "L98",
       "_origin": "ast",
       "id": "services_services_vendorservice_onboard_vendor",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": ".onboard_vendor()"
     },
     {
@@ -4355,8 +4355,8 @@
       "source_location": "L709",
       "_origin": "ast",
       "id": "services_services_vendorservice_handle_documents",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 40,
+      "community_name": "Document",
       "norm_label": ".handle_documents()"
     },
     {
@@ -4366,8 +4366,8 @@
       "source_location": "L728",
       "_origin": "ast",
       "id": "services_services_vendorservice_generate_credentials_and_notify",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 34,
+      "community_name": "PasswordManager",
       "norm_label": ".generate_credentials_and_notify()"
     },
     {
@@ -4388,8 +4388,8 @@
       "source_location": "L831",
       "_origin": "ast",
       "id": "services_services_vendorservice_upload_to_drive",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 40,
+      "community_name": "Document",
       "norm_label": ".upload_to_drive()"
     },
     {
@@ -4400,7 +4400,7 @@
       "_origin": "ast",
       "id": "services_services_vendorservice_get_unverified_documents",
       "community": 25,
-      "community_name": ".get_unverified_documents",
+      "community_name": "get_unverified_documents",
       "norm_label": ".get_unverified_documents()"
     },
     {
@@ -4411,7 +4411,7 @@
       "_origin": "ast",
       "id": "services_services_vendorservice_verify_document",
       "community": 27,
-      "community_name": ".verify_document",
+      "community_name": "verify_document",
       "norm_label": ".verify_document()"
     },
     {
@@ -4421,8 +4421,8 @@
       "source_location": "L921",
       "_origin": "ast",
       "id": "services_services_vendorservice_verify_documents_and_update_vendor",
-      "community": 36,
-      "community_name": ".verify_documents_and_update_vendor",
+      "community": 12,
+      "community_name": "VendorService",
       "norm_label": ".verify_documents_and_update_vendor()"
     },
     {
@@ -4433,7 +4433,7 @@
       "_origin": "ast",
       "id": "services_services_vendorservice_get_all_vendors_with_status",
       "community": 28,
-      "community_name": ".get_all_vendors_with_status",
+      "community_name": "get_vendor_dashboard",
       "norm_label": ".get_all_vendors_with_status()"
     },
     {
@@ -4487,8 +4487,8 @@
       "source_location": "L1748",
       "_origin": "ast",
       "id": "services_services_vendorservice_save_image_to_db",
-      "community": 17,
-      "community_name": "Image",
+      "community": 12,
+      "community_name": "VendorService",
       "norm_label": ".save_image_to_db()"
     },
     {
@@ -4498,8 +4498,8 @@
       "source_location": "L1780",
       "_origin": "ast",
       "id": "services_services_vendorservice_upload_photo_to_drive",
-      "community": 17,
-      "community_name": "Image",
+      "community": 12,
+      "community_name": "VendorService",
       "norm_label": ".upload_photo_to_drive()"
     },
     {
@@ -4509,8 +4509,8 @@
       "source_location": "L1817",
       "_origin": "ast",
       "id": "services_services_vendorservice_upload_photos_to_drive",
-      "community": 14,
-      "community_name": "upload_photos",
+      "community": 12,
+      "community_name": "VendorService",
       "norm_label": ".upload_photos_to_drive()"
     },
     {
@@ -4554,7 +4554,7 @@
       "_origin": "ast",
       "id": "services_services_vendorservice_create_vendor_console_availability_table",
       "community": 20,
-      "community_name": ".create_vendor_console_availability_table",
+      "community_name": ".onboard_vendor",
       "norm_label": ".create_vendor_console_availability_table()"
     },
     {
@@ -4564,8 +4564,8 @@
       "source_location": "L1999",
       "_origin": "ast",
       "id": "services_services_vendorservice_create_vendor_dashboard_table",
-      "community": 21,
-      "community_name": ".create_vendor_dashboard_table",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": ".create_vendor_dashboard_table()"
     },
     {
@@ -4575,8 +4575,8 @@
       "source_location": "L2035",
       "_origin": "ast",
       "id": "services_services_vendorservice_create_vendor_promo_table",
-      "community": 35,
-      "community_name": ".create_vendor_promo_table",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": ".create_vendor_promo_table()"
     },
     {
@@ -4597,8 +4597,8 @@
       "source_location": "L2126",
       "_origin": "ast",
       "id": "services_services_vendorservice_send_welcome_email",
-      "community": 16,
-      "community_name": ".send_welcome_email",
+      "community": 19,
+      "community_name": "test_self_onboarding_flow.py",
       "norm_label": ".send_welcome_email()"
     },
     {
@@ -4608,8 +4608,8 @@
       "source_location": "L2153",
       "_origin": "ast",
       "id": "services_services_vendorservice_build_welcome_email_text",
-      "community": 16,
-      "community_name": ".send_welcome_email",
+      "community": 19,
+      "community_name": "test_self_onboarding_flow.py",
       "norm_label": ".build_welcome_email_text()"
     },
     {
@@ -4619,8 +4619,8 @@
       "source_location": "L2190",
       "_origin": "ast",
       "id": "services_services_vendorservice_build_welcome_email_html",
-      "community": 16,
-      "community_name": ".send_welcome_email",
+      "community": 19,
+      "community_name": "test_self_onboarding_flow.py",
       "norm_label": ".build_welcome_email_html()"
     },
     {
@@ -4652,8 +4652,8 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "services_services_rationale_80",
-      "community": 34,
-      "community_name": ".safe_strptime",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": "safely parse date string, handling none and invalid values"
     },
     {
@@ -4663,8 +4663,8 @@
       "source_location": "L729",
       "_origin": "ast",
       "id": "services_services_rationale_729",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 34,
+      "community_name": "PasswordManager",
       "norm_label": "generate account credentials and notify vendor with login details."
     },
     {
@@ -4685,8 +4685,8 @@
       "source_location": "L832",
       "_origin": "ast",
       "id": "services_services_rationale_832",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 40,
+      "community_name": "Document",
       "norm_label": "upload a file to google drive and return the file link."
     },
     {
@@ -4697,7 +4697,7 @@
       "_origin": "ast",
       "id": "services_services_rationale_852",
       "community": 25,
-      "community_name": ".get_unverified_documents",
+      "community_name": "get_unverified_documents",
       "norm_label": "fetch all unverified documents for the specified vendor."
     },
     {
@@ -4708,7 +4708,7 @@
       "_origin": "ast",
       "id": "services_services_rationale_882",
       "community": 27,
-      "community_name": ".verify_document",
+      "community_name": "verify_document",
       "norm_label": "mark a document as verified and set the vendor's status to active if all..."
     },
     {
@@ -4718,8 +4718,8 @@
       "source_location": "L922",
       "_origin": "ast",
       "id": "services_services_rationale_922",
-      "community": 36,
-      "community_name": ".verify_documents_and_update_vendor",
+      "community": 12,
+      "community_name": "VendorService",
       "norm_label": "update specified documents' status to 'verified' and set the vendor's status to..."
     },
     {
@@ -4730,7 +4730,7 @@
       "_origin": "ast",
       "id": "services_services_rationale_966",
       "community": 28,
-      "community_name": ".get_all_vendors_with_status",
+      "community_name": "get_vendor_dashboard",
       "norm_label": "retrieve all vendors with their statuses, timing info, and relevant information..."
     },
     {
@@ -4762,8 +4762,8 @@
       "source_location": "L1749",
       "_origin": "ast",
       "id": "services_services_rationale_1749",
-      "community": 17,
-      "community_name": "Image",
+      "community": 12,
+      "community_name": "VendorService",
       "norm_label": "save image metadata to the database. args: vendor_id (int): id of the vendor..."
     },
     {
@@ -4784,8 +4784,8 @@
       "source_location": "L1781",
       "_origin": "ast",
       "id": "services_services_rationale_1781",
-      "community": 17,
-      "community_name": "Image",
+      "community": 12,
+      "community_name": "VendorService",
       "norm_label": "upload a single photo to google drive and return the file link."
     },
     {
@@ -4795,8 +4795,8 @@
       "source_location": "L1818",
       "_origin": "ast",
       "id": "services_services_rationale_1818",
-      "community": 14,
-      "community_name": "upload_photos",
+      "community": 12,
+      "community_name": "VendorService",
       "norm_label": "upload multiple photos to google drive and return their file links."
     },
     {
@@ -4840,7 +4840,7 @@
       "_origin": "ast",
       "id": "services_services_rationale_1961",
       "community": 20,
-      "community_name": ".create_vendor_console_availability_table",
+      "community_name": ".onboard_vendor",
       "norm_label": "creates a table for tracking console availability for a vendor."
     },
     {
@@ -4850,8 +4850,8 @@
       "source_location": "L2000",
       "_origin": "ast",
       "id": "services_services_rationale_2000",
-      "community": 21,
-      "community_name": ".create_vendor_dashboard_table",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": "creates a table for tracking vendor dashboard details."
     },
     {
@@ -4861,8 +4861,8 @@
       "source_location": "L2036",
       "_origin": "ast",
       "id": "services_services_rationale_2036",
-      "community": 35,
-      "community_name": ".create_vendor_promo_table",
+      "community": 20,
+      "community_name": ".onboard_vendor",
       "norm_label": "creates a vendor-specific promo detail table."
     },
     {
@@ -4883,8 +4883,8 @@
       "source_location": "L2127",
       "_origin": "ast",
       "id": "services_services_rationale_2127",
-      "community": 16,
-      "community_name": ".send_welcome_email",
+      "community": 19,
+      "community_name": "test_self_onboarding_flow.py",
       "norm_label": "send standardized onboarding email with vendor credentials."
     },
     {
@@ -4894,8 +4894,8 @@
       "source_location": "L2191",
       "_origin": "ast",
       "id": "services_services_rationale_2191",
-      "community": 16,
-      "community_name": ".send_welcome_email",
+      "community": 19,
+      "community_name": "test_self_onboarding_flow.py",
       "norm_label": "build welcome email content fragment (wrapped by shared hfg template)."
     },
     {
@@ -4927,8 +4927,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "services_super_admin_service",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 21,
+      "community_name": "datetime",
       "norm_label": "super_admin_service.py"
     },
     {
@@ -5323,8 +5323,8 @@
       "source_location": "L1006",
       "_origin": "ast",
       "id": "services_super_admin_service_superadminservice_get_team_access",
-      "community": 4,
-      "community_name": "super_admin_controller.py",
+      "community": 2,
+      "community_name": "SuperAdminService",
       "norm_label": ".get_team_access()"
     },
     {
@@ -5378,8 +5378,8 @@
       "source_location": "L1235",
       "_origin": "ast",
       "id": "services_super_admin_service_superadminservice_get_vendor_detail",
-      "community": 4,
-      "community_name": "super_admin_controller.py",
+      "community": 2,
+      "community_name": "SuperAdminService",
       "norm_label": ".get_vendor_detail()"
     },
     {
@@ -5389,8 +5389,8 @@
       "source_location": "L1309",
       "_origin": "ast",
       "id": "services_super_admin_service_superadminservice_update_vendor_status",
-      "community": 2,
-      "community_name": "SuperAdminService",
+      "community": 4,
+      "community_name": "super_admin_controller.py",
       "norm_label": ".update_vendor_status()"
     },
     {
@@ -5554,8 +5554,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "datetime",
-      "community": 1,
-      "community_name": "services.py",
+      "community": 21,
+      "community_name": "datetime",
       "norm_label": "datetime"
     },
     {
@@ -5653,8 +5653,8 @@
       "source_location": "L2419",
       "_origin": "ast",
       "id": "services_super_admin_service_superadminservice_send_document_information_request",
-      "community": 4,
-      "community_name": "super_admin_controller.py",
+      "community": 2,
+      "community_name": "SuperAdminService",
       "norm_label": ".send_document_information_request()"
     },
     {
@@ -5796,7 +5796,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "services_utils",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "utils.py"
     },
@@ -5818,7 +5818,7 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "services_utils_generate_credentials",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "generate_credentials()"
     },
@@ -5829,7 +5829,7 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "services_utils_generate_unique_vendor_pin",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "generate_unique_vendor_pin()"
     },
@@ -5840,7 +5840,7 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "services_utils_send_email",
-      "community": 1,
+      "community": 16,
       "community_name": "services.py",
       "norm_label": "send_email()"
     },
@@ -5863,7 +5863,7 @@
       "_origin": "ast",
       "id": "services_utils_process_files",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "process_files()"
     },
     {
@@ -5896,7 +5896,7 @@
       "_origin": "ast",
       "id": "services_utils_rationale_80",
       "community": 6,
-      "community_name": "onboard_vendor",
+      "community_name": "controllers.py",
       "norm_label": "process uploaded files and ensure they meet requirements."
     },
     {
@@ -6043,6 +6043,39 @@
       "norm_label": "documents"
     },
     {
+      "label": "test_dashboard_cors.py",
+      "file_type": "code",
+      "source_file": "tests/test_dashboard_cors.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "tests_test_dashboard_cors",
+      "community": 37,
+      "community_name": "Flask",
+      "norm_label": "test_dashboard_cors.py"
+    },
+    {
+      "label": "test_operating_hours_preflight_accepts_dashboard_headers()",
+      "file_type": "code",
+      "source_file": "tests/test_dashboard_cors.py",
+      "source_location": "L8",
+      "_origin": "ast",
+      "id": "tests_test_dashboard_cors_test_operating_hours_preflight_accepts_dashboard_headers",
+      "community": 37,
+      "community_name": "Flask",
+      "norm_label": "test_operating_hours_preflight_accepts_dashboard_headers()"
+    },
+    {
+      "label": "Use the app's actual CORS configuration to test dashboard preflight.",
+      "file_type": "rationale",
+      "source_file": "tests/test_dashboard_cors.py",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "tests_test_dashboard_cors_rationale_1",
+      "community": 37,
+      "community_name": "Flask",
+      "norm_label": "use the app's actual cors configuration to test dashboard preflight."
+    },
+    {
       "label": "test_document_review_validation.py",
       "file_type": "code",
       "source_file": "tests/test_document_review_validation.py",
@@ -6104,8 +6137,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_kiosk_proxy",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": "test_kiosk_proxy.py"
     },
     {
@@ -6115,8 +6148,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "tests_test_kiosk_proxy_proxytests",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": "proxytests"
     },
     {
@@ -6126,8 +6159,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "tests_test_kiosk_proxy_proxytests_setup",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": ".setup()"
     },
     {
@@ -6137,8 +6170,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "tests_test_kiosk_proxy_proxytests_test_canonical_success_and_bearer_forwarded",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": ".test_canonical_success_and_bearer_forwarded()"
     },
     {
@@ -6148,8 +6181,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "tests_test_kiosk_proxy_proxytests_test_rate_limit_status_and_retry_header_forwarded",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": ".test_rate_limit_status_and_retry_header_forwarded()"
     },
     {
@@ -6159,8 +6192,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "tests_test_kiosk_proxy_proxytests_test_non_json_upstream_returns_json_502",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": ".test_non_json_upstream_returns_json_502()"
     },
     {
@@ -6170,8 +6203,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_kiosk_proxy_rationale_1",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": "verify the public kiosk proxy preserves authentication and api envelopes."
     },
     {
@@ -6182,7 +6215,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours",
       "community": 37,
-      "community_name": "test_operating_hours.py",
+      "community_name": "Flask",
       "norm_label": "test_operating_hours.py"
     },
     {
@@ -6193,7 +6226,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_py_fixture",
       "community": 37,
-      "community_name": "test_operating_hours.py",
+      "community_name": "Flask",
       "norm_label": "fixture"
     },
     {
@@ -6204,7 +6237,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_setup",
       "community": 37,
-      "community_name": "test_operating_hours.py",
+      "community_name": "Flask",
       "norm_label": "setup()"
     },
     {
@@ -6215,7 +6248,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_save",
       "community": 37,
-      "community_name": "test_operating_hours.py",
+      "community_name": "Flask",
       "norm_label": "save()"
     },
     {
@@ -6226,7 +6259,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_test_save_reload_closed_reopen_and_far_future",
       "community": 37,
-      "community_name": "test_operating_hours.py",
+      "community_name": "Flask",
       "norm_label": "test_save_reload_closed_reopen_and_far_future()"
     },
     {
@@ -6237,7 +6270,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_test_capacity_is_preserved_and_conflicts_roll_back",
       "community": 37,
-      "community_name": "test_operating_hours.py",
+      "community_name": "Flask",
       "norm_label": "test_capacity_is_preserved_and_conflicts_roll_back()"
     },
     {
@@ -6248,7 +6281,7 @@
       "_origin": "ast",
       "id": "parametrize",
       "community": 37,
-      "community_name": "test_operating_hours.py",
+      "community_name": "Flask",
       "norm_label": "parametrize"
     },
     {
@@ -6259,7 +6292,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_test_overnight_and_full_day",
       "community": 37,
-      "community_name": "test_operating_hours.py",
+      "community_name": "Flask",
       "norm_label": "test_overnight_and_full_day()"
     },
     {
@@ -6270,7 +6303,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_test_invalid_input_does_not_write",
       "community": 37,
-      "community_name": "test_operating_hours.py",
+      "community_name": "Flask",
       "norm_label": "test_invalid_input_does_not_write()"
     },
     {
@@ -6281,7 +6314,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_test_owner_scope_and_json_validation",
       "community": 37,
-      "community_name": "test_operating_hours.py",
+      "community_name": "Flask",
       "norm_label": "test_owner_scope_and_json_validation()"
     },
     {
@@ -6292,7 +6325,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_test_cafe_without_games_can_save_configuration",
       "community": 37,
-      "community_name": "test_operating_hours.py",
+      "community_name": "Flask",
       "norm_label": "test_cafe_without_games_can_save_configuration()"
     },
     {
@@ -6303,7 +6336,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_test_booking_conflict_detected_even_if_capacity_was_stale",
       "community": 37,
-      "community_name": "test_operating_hours.py",
+      "community_name": "Flask",
       "norm_label": "test_booking_conflict_detected_even_if_capacity_was_stale()"
     },
     {
@@ -6314,7 +6347,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_test_future_extension_uses_saved_weekday_grid_not_old_templates",
       "community": 37,
-      "community_name": "test_operating_hours.py",
+      "community_name": "Flask",
       "norm_label": "test_future_extension_uses_saved_weekday_grid_not_old_templates()"
     },
     {
@@ -6325,7 +6358,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_rationale_1",
       "community": 37,
-      "community_name": "test_operating_hours.py",
+      "community_name": "Flask",
       "norm_label": "exercise the actual schedule handler/helpers with an isolated sql database."
     },
     {
@@ -6511,8 +6544,8 @@
       "source_location": "L165",
       "_origin": "ast",
       "id": "tests_test_self_onboarding_flow_test_welcome_html_escapes_owner_data",
-      "community": 16,
-      "community_name": ".send_welcome_email",
+      "community": 19,
+      "community_name": "test_self_onboarding_flow.py",
       "norm_label": "test_welcome_html_escapes_owner_data()"
     },
     {
@@ -6632,8 +6665,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "wsgi",
-      "community": 3,
-      "community_name": "order_controller.py",
+      "community": 37,
+      "community_name": "Flask",
       "norm_label": "wsgi.py"
     },
     {
@@ -7014,6 +7047,30 @@
       "source": "services_utils",
       "target": "flask",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_dashboard_cors.py",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_dashboard_cors",
+      "target": "flask",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/test_dashboard_cors.py",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_dashboard_cors_test_operating_hours_preflight_accepts_dashboard_headers",
+      "target": "flask"
     },
     {
       "relation": "imports_from",
@@ -22981,6 +23038,28 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "tests/test_dashboard_cors.py",
+      "source_location": "L8",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_dashboard_cors",
+      "target": "tests_test_dashboard_cors_test_operating_hours_preflight_accepts_dashboard_headers",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_dashboard_cors.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_dashboard_cors_rationale_1",
+      "target": "tests_test_dashboard_cors",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "tests/test_document_review_validation.py",
       "source_location": "L7",
       "weight": 1.0,
@@ -23809,5 +23888,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "0ae56e1676421362bf85467c6cff22ff5d37a058"
+  "built_at_commit": "c4a5a1c6287db683d47609bcc2b16dc9bb6ee3d2"
 }
