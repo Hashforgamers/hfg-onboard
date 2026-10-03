@@ -10,8 +10,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_init",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": "__init__.py"
     },
     {
@@ -21,8 +21,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "app_init_is_insecure_secret",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": "_is_insecure_secret()"
     },
     {
@@ -32,8 +32,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "app_init_validate_production_config",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": "_validate_production_config()"
     },
     {
@@ -43,8 +43,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "flask",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": "flask"
     },
     {
@@ -54,8 +54,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "app_init_create_app",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": "create_app()"
     },
     {
@@ -65,8 +65,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_config",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": "config.py"
     },
     {
@@ -76,8 +76,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "app_config_is_neon_pooler",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": "_is_neon_pooler()"
     },
     {
@@ -87,8 +87,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "app_config_config",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": "config"
     },
     {
@@ -231,7 +231,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_normalize_email",
       "community": 6,
-      "community_name": "_normalize_email",
+      "community_name": "onboard_vendor",
       "norm_label": "_normalize_email()"
     },
     {
@@ -241,8 +241,8 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "controllers_controllers_is_valid_email",
-      "community": 6,
-      "community_name": "_normalize_email",
+      "community": 7,
+      "community_name": "controllers.py",
       "norm_label": "_is_valid_email()"
     },
     {
@@ -252,8 +252,8 @@
       "source_location": "L97",
       "_origin": "ast",
       "id": "controllers_controllers_normalize_phone",
-      "community": 6,
-      "community_name": "_normalize_email",
+      "community": 7,
+      "community_name": "controllers.py",
       "norm_label": "_normalize_phone()"
     },
     {
@@ -264,7 +264,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_normalize_whitespace",
       "community": 6,
-      "community_name": "_normalize_email",
+      "community_name": "onboard_vendor",
       "norm_label": "_normalize_whitespace()"
     },
     {
@@ -275,7 +275,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_normalize_cafe_name",
       "community": 6,
-      "community_name": "_normalize_email",
+      "community_name": "onboard_vendor",
       "norm_label": "_normalize_cafe_name()"
     },
     {
@@ -286,7 +286,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_is_missing_payload_value",
       "community": 6,
-      "community_name": "_normalize_email",
+      "community_name": "onboard_vendor",
       "norm_label": "_is_missing_payload_value()"
     },
     {
@@ -297,7 +297,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_build_branch_defaults_from_vendor",
       "community": 6,
-      "community_name": "_normalize_email",
+      "community_name": "onboard_vendor",
       "norm_label": "_build_branch_defaults_from_vendor()"
     },
     {
@@ -308,7 +308,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_apply_branch_defaults",
       "community": 6,
-      "community_name": "_normalize_email",
+      "community_name": "onboard_vendor",
       "norm_label": "_apply_branch_defaults()"
     },
     {
@@ -319,7 +319,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_get_branch_defaults_for_email",
       "community": 6,
-      "community_name": "_normalize_email",
+      "community_name": "onboard_vendor",
       "norm_label": "_get_branch_defaults_for_email()"
     },
     {
@@ -329,8 +329,8 @@
       "source_location": "L298",
       "_origin": "ast",
       "id": "controllers_controllers_self_onboard_duplicate_reason",
-      "community": 6,
-      "community_name": "_normalize_email",
+      "community": 7,
+      "community_name": "controllers.py",
       "norm_label": "_self_onboard_duplicate_reason()"
     },
     {
@@ -341,7 +341,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_validate_self_onboard_payload",
       "community": 6,
-      "community_name": "_normalize_email",
+      "community_name": "onboard_vendor",
       "norm_label": "_validate_self_onboard_payload()"
     },
     {
@@ -351,8 +351,8 @@
       "source_location": "L455",
       "_origin": "ast",
       "id": "controllers_controllers_self_onboard_otp_key",
-      "community": 6,
-      "community_name": "_normalize_email",
+      "community": 7,
+      "community_name": "controllers.py",
       "norm_label": "_self_onboard_otp_key()"
     },
     {
@@ -362,8 +362,8 @@
       "source_location": "L459",
       "_origin": "ast",
       "id": "controllers_controllers_self_onboard_otp_cooldown_key",
-      "community": 6,
-      "community_name": "_normalize_email",
+      "community": 7,
+      "community_name": "controllers.py",
       "norm_label": "_self_onboard_otp_cooldown_key()"
     },
     {
@@ -373,8 +373,8 @@
       "source_location": "L463",
       "_origin": "ast",
       "id": "controllers_controllers_self_onboard_verify_key",
-      "community": 6,
-      "community_name": "_normalize_email",
+      "community": 7,
+      "community_name": "controllers.py",
       "norm_label": "_self_onboard_verify_key()"
     },
     {
@@ -384,7 +384,7 @@
       "source_location": "L467",
       "_origin": "ast",
       "id": "controllers_controllers_self_onboard_verify_token_key",
-      "community": 17,
+      "community": 6,
       "community_name": "onboard_vendor",
       "norm_label": "_self_onboard_verify_token_key()"
     },
@@ -395,7 +395,7 @@
       "source_location": "L471",
       "_origin": "ast",
       "id": "controllers_controllers_consume_self_onboard_verification_token",
-      "community": 17,
+      "community": 6,
       "community_name": "onboard_vendor",
       "norm_label": "_consume_self_onboard_verification_token()"
     },
@@ -406,8 +406,8 @@
       "source_location": "L488",
       "_origin": "ast",
       "id": "controllers_controllers_normalize_day_key",
-      "community": 7,
-      "community_name": "controllers.py",
+      "community": 9,
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "normalize_day_key()"
     },
     {
@@ -417,8 +417,8 @@
       "source_location": "L501",
       "_origin": "ast",
       "id": "controllers_controllers_parse_time_flexible",
-      "community": 7,
-      "community_name": "controllers.py",
+      "community": 9,
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "parse_time_flexible()"
     },
     {
@@ -428,8 +428,8 @@
       "source_location": "L513",
       "_origin": "ast",
       "id": "controllers_controllers_generate_blocks",
-      "community": 7,
-      "community_name": "controllers.py",
+      "community": 9,
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "_generate_blocks()"
     },
     {
@@ -461,7 +461,7 @@
       "source_location": "L653",
       "_origin": "ast",
       "id": "controllers_controllers_validate_json",
-      "community": 17,
+      "community": 6,
       "community_name": "onboard_vendor",
       "norm_label": "validate_json()"
     },
@@ -483,8 +483,8 @@
       "source_location": "L692",
       "_origin": "ast",
       "id": "controllers_controllers_save_vendor_documents",
-      "community": 17,
-      "community_name": "onboard_vendor",
+      "community": 40,
+      "community_name": "Document",
       "norm_label": "save_vendor_documents()"
     },
     {
@@ -516,7 +516,7 @@
       "source_location": "L752",
       "_origin": "ast",
       "id": "controllers_controllers_safe_strptime",
-      "community": 17,
+      "community": 6,
       "community_name": "onboard_vendor",
       "norm_label": "safe_strptime()"
     },
@@ -527,8 +527,8 @@
       "source_location": "L773",
       "_origin": "ast",
       "id": "controllers_controllers_send_self_onboard_email_otp",
-      "community": 6,
-      "community_name": "_normalize_email",
+      "community": 7,
+      "community_name": "controllers.py",
       "norm_label": "send_self_onboard_email_otp()"
     },
     {
@@ -538,8 +538,8 @@
       "source_location": "L858",
       "_origin": "ast",
       "id": "controllers_controllers_verify_self_onboard_email_otp",
-      "community": 6,
-      "community_name": "_normalize_email",
+      "community": 7,
+      "community_name": "controllers.py",
       "norm_label": "verify_self_onboard_email_otp()"
     },
     {
@@ -549,7 +549,7 @@
       "source_location": "L894",
       "_origin": "ast",
       "id": "controllers_controllers_onboard_vendor",
-      "community": 17,
+      "community": 6,
       "community_name": "onboard_vendor",
       "norm_label": "onboard_vendor()"
     },
@@ -561,7 +561,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_get_branch_onboard_defaults",
       "community": 6,
-      "community_name": "_normalize_email",
+      "community_name": "onboard_vendor",
       "norm_label": "get_branch_onboard_defaults()"
     },
     {
@@ -582,8 +582,8 @@
       "source_location": "L1150",
       "_origin": "ast",
       "id": "controllers_controllers_get_unverified_documents",
-      "community": 25,
-      "community_name": "get_unverified_documents",
+      "community": 5,
+      "community_name": "route",
       "norm_label": "get_unverified_documents()"
     },
     {
@@ -615,8 +615,8 @@
       "source_location": "L1305",
       "_origin": "ast",
       "id": "controllers_controllers_verify_document",
-      "community": 27,
-      "community_name": "verify_document",
+      "community": 5,
+      "community_name": "route",
       "norm_label": "verify_document()"
     },
     {
@@ -637,8 +637,8 @@
       "source_location": "L1326",
       "_origin": "ast",
       "id": "controllers_controllers_get_vendor_dashboard",
-      "community": 28,
-      "community_name": "get_vendor_dashboard",
+      "community": 5,
+      "community_name": "route",
       "norm_label": "get_vendor_dashboard()"
     },
     {
@@ -835,8 +835,8 @@
       "source_location": "L2142",
       "_origin": "ast",
       "id": "controllers_controllers_authorize_hours_owner",
-      "community": 7,
-      "community_name": "controllers.py",
+      "community": 11,
+      "community_name": "replace_vendor_document",
       "norm_label": "_authorize_hours_owner()"
     },
     {
@@ -846,8 +846,8 @@
       "source_location": "L2164",
       "_origin": "ast",
       "id": "controllers_controllers_update_slot",
-      "community": 7,
-      "community_name": "controllers.py",
+      "community": 9,
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "update_slot()"
     },
     {
@@ -858,7 +858,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_extend_slot_window",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "extend_slot_window()"
     },
     {
@@ -869,7 +869,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_is_valid_cron_request",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "_is_valid_cron_request()"
     },
     {
@@ -880,7 +880,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_ensure_vendor_slot_table_exists",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "_ensure_vendor_slot_table_exists()"
     },
     {
@@ -891,7 +891,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_fetch_active_vendor_ids_for_slots",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "_fetch_active_vendor_ids_for_slots()"
     },
     {
@@ -902,7 +902,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_cron_extend_slots_for_vendor",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "cron_extend_slots_for_vendor()"
     },
     {
@@ -913,7 +913,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_cron_extend_slots_for_all_active_cafes",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "cron_extend_slots_for_all_active_cafes()"
     },
     {
@@ -923,8 +923,8 @@
       "source_location": "L2588",
       "_origin": "ast",
       "id": "controllers_controllers_cafe_requests",
-      "community": 7,
-      "community_name": "controllers.py",
+      "community": 11,
+      "community_name": "replace_vendor_document",
       "norm_label": "cafe_requests()"
     },
     {
@@ -945,7 +945,7 @@
       "source_location": "L654",
       "_origin": "ast",
       "id": "controllers_controllers_rationale_654",
-      "community": 17,
+      "community": 6,
       "community_name": "onboard_vendor",
       "norm_label": "validate the json data for required fields."
     },
@@ -967,8 +967,8 @@
       "source_location": "L693",
       "_origin": "ast",
       "id": "controllers_controllers_rationale_693",
-      "community": 17,
-      "community_name": "onboard_vendor",
+      "community": 40,
+      "community_name": "Document",
       "norm_label": "save uploaded document metadata once; avoid duplicate inserts and loop commits."
     },
     {
@@ -989,7 +989,7 @@
       "source_location": "L753",
       "_origin": "ast",
       "id": "controllers_controllers_rationale_753",
-      "community": 17,
+      "community": 6,
       "community_name": "onboard_vendor",
       "norm_label": "safely parse date string, handling none and invalid values"
     },
@@ -1001,7 +1001,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_rationale_1114",
       "community": 6,
-      "community_name": "_normalize_email",
+      "community_name": "onboard_vendor",
       "norm_label": "return reusable onboarding defaults for adding a new branch under an existing..."
     },
     {
@@ -1011,8 +1011,8 @@
       "source_location": "L1151",
       "_origin": "ast",
       "id": "controllers_controllers_rationale_1151",
-      "community": 25,
-      "community_name": "get_unverified_documents",
+      "community": 5,
+      "community_name": "route",
       "norm_label": "api endpoint to get all unverified document file paths for a given vendor."
     },
     {
@@ -1044,8 +1044,8 @@
       "source_location": "L1306",
       "_origin": "ast",
       "id": "controllers_controllers_rationale_1306",
-      "community": 27,
-      "community_name": "verify_document",
+      "community": 5,
+      "community_name": "route",
       "norm_label": "api endpoint to mark a document as verified and update vendor status if..."
     },
     {
@@ -1066,8 +1066,8 @@
       "source_location": "L1327",
       "_origin": "ast",
       "id": "controllers_controllers_rationale_1327",
-      "community": 28,
-      "community_name": "get_vendor_dashboard",
+      "community": 5,
+      "community_name": "route",
       "norm_label": "api to retrieve all vendors with their statuses and relevant information for..."
     },
     {
@@ -1231,8 +1231,8 @@
       "source_location": "L2165",
       "_origin": "ast",
       "id": "controllers_controllers_rationale_2165",
-      "community": 7,
-      "community_name": "controllers.py",
+      "community": 9,
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "update slot windows for all availablegame (console types) for all future dates..."
     },
     {
@@ -1243,7 +1243,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_rationale_2366",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "extend slot inventory horizon without regenerating existing dates. payload: {..."
     },
     {
@@ -1254,7 +1254,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_rationale_2411",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "optional shared-secret gate for cron endpoints. if cron_job_api_key is unset,..."
     },
     {
@@ -1265,7 +1265,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_rationale_2439",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "active vendors: - latest status is 'active' - at least one available_game exists"
     },
     {
@@ -1276,7 +1276,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_rationale_2465",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "cron endpoint: ensure next n days slots exist for one vendor (default 20)...."
     },
     {
@@ -1287,7 +1287,7 @@
       "_origin": "ast",
       "id": "controllers_controllers_rationale_2507",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "cron endpoint: ensure next n days slots exist for all active cafes (default..."
     },
     {
@@ -2013,7 +2013,7 @@
       "_origin": "ast",
       "id": "db_extensions",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "extensions.py"
     },
     {
@@ -2024,7 +2024,7 @@
       "_origin": "ast",
       "id": "db_extensions_create_redis_pool",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "create_redis_pool()"
     },
     {
@@ -2034,8 +2034,8 @@
       "source_location": "L87",
       "_origin": "ast",
       "id": "db_extensions_check_redis_health",
-      "community": 38,
-      "community_name": "check_redis_health",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "check_redis_health()"
     },
     {
@@ -2046,7 +2046,7 @@
       "_origin": "ast",
       "id": "db_extensions_rationale_20",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "create a redis connection pool to reuse connections this prevents repeated ssl..."
     },
     {
@@ -2056,8 +2056,8 @@
       "source_location": "L88",
       "_origin": "ast",
       "id": "db_extensions_rationale_88",
-      "community": 38,
-      "community_name": "check_redis_health",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "check redis connection health"
     },
     {
@@ -2089,7 +2089,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_additionaldetails",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "additionaldetails.py"
     },
@@ -2100,7 +2100,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "models_additionaldetails_additionaldetails",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "additionaldetails"
     },
@@ -2111,7 +2111,7 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "models_additionaldetails_additionaldetails_repr",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
@@ -2123,7 +2123,7 @@
       "_origin": "ast",
       "id": "models_amenity",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "amenity.py"
     },
     {
@@ -2134,7 +2134,7 @@
       "_origin": "ast",
       "id": "models_amenity_amenity",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "amenity"
     },
     {
@@ -2144,8 +2144,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_availablegame",
-      "community": 36,
-      "community_name": "AvailableGame",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "availablegame.py"
     },
     {
@@ -2155,8 +2155,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "models_availablegame_availablegame",
-      "community": 36,
-      "community_name": "AvailableGame",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "availablegame"
     },
     {
@@ -2166,8 +2166,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "models_availablegame_availablegame_repr",
-      "community": 36,
-      "community_name": "AvailableGame",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
     {
@@ -2221,8 +2221,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_bookingqueue",
-      "community": 4,
-      "community_name": "super_admin_controller.py",
+      "community": 7,
+      "community_name": "controllers.py",
       "norm_label": "bookingqueue.py"
     },
     {
@@ -2232,8 +2232,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_bookingqueue_bookingqueue",
-      "community": 4,
-      "community_name": "super_admin_controller.py",
+      "community": 7,
+      "community_name": "controllers.py",
       "norm_label": "bookingqueue"
     },
     {
@@ -2244,7 +2244,7 @@
       "_origin": "ast",
       "id": "models_businessregistration",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "businessregistration.py"
     },
     {
@@ -2255,7 +2255,7 @@
       "_origin": "ast",
       "id": "models_businessregistration_businessregistration",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "businessregistration"
     },
     {
@@ -2364,8 +2364,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_console",
-      "community": 34,
-      "community_name": ".onboard_vendor",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "console.py"
     },
     {
@@ -2375,8 +2375,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_console_console",
-      "community": 34,
-      "community_name": ".onboard_vendor",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "console"
     },
     {
@@ -2386,8 +2386,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "models_console_console_repr",
-      "community": 34,
-      "community_name": ".onboard_vendor",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
     {
@@ -2397,8 +2397,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_consolepricingoffer",
-      "community": 8,
-      "community_name": "VendorGame",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "consolepricingoffer.py"
     },
     {
@@ -2409,7 +2409,7 @@
       "_origin": "ast",
       "id": "models_consolepricingoffer_consolepricingoffer",
       "community": 8,
-      "community_name": "VendorGame",
+      "community_name": "ConsolePricingOffer",
       "norm_label": "consolepricingoffer"
     },
     {
@@ -2420,7 +2420,7 @@
       "_origin": "ast",
       "id": "models_consolepricingoffer_consolepricingoffer_repr",
       "community": 8,
-      "community_name": "VendorGame",
+      "community_name": "ConsolePricingOffer",
       "norm_label": ".__repr__()"
     },
     {
@@ -2431,7 +2431,7 @@
       "_origin": "ast",
       "id": "models_consolepricingoffer_consolepricingoffer_is_currently_active",
       "community": 8,
-      "community_name": "VendorGame",
+      "community_name": "ConsolePricingOffer",
       "norm_label": ".is_currently_active()"
     },
     {
@@ -2442,7 +2442,7 @@
       "_origin": "ast",
       "id": "models_consolepricingoffer_consolepricingoffer_get_discount_percentage",
       "community": 8,
-      "community_name": "VendorGame",
+      "community_name": "ConsolePricingOffer",
       "norm_label": ".get_discount_percentage()"
     },
     {
@@ -2453,7 +2453,7 @@
       "_origin": "ast",
       "id": "models_consolepricingoffer_consolepricingoffer_to_dict",
       "community": 8,
-      "community_name": "VendorGame",
+      "community_name": "ConsolePricingOffer",
       "norm_label": ".to_dict()"
     },
     {
@@ -2464,7 +2464,7 @@
       "_origin": "ast",
       "id": "models_consolepricingoffer_rationale_13",
       "community": 8,
-      "community_name": "VendorGame",
+      "community_name": "ConsolePricingOffer",
       "norm_label": "time-based promotional pricing for console types (availablegames) allows..."
     },
     {
@@ -2475,7 +2475,7 @@
       "_origin": "ast",
       "id": "models_consolepricingoffer_rationale_58",
       "community": 8,
-      "community_name": "VendorGame",
+      "community_name": "ConsolePricingOffer",
       "norm_label": "check if this offer is active right now using ist. returns true if current ist..."
     },
     {
@@ -2486,7 +2486,7 @@
       "_origin": "ast",
       "id": "models_consolepricingoffer_rationale_90",
       "community": 8,
-      "community_name": "VendorGame",
+      "community_name": "ConsolePricingOffer",
       "norm_label": "calculate discount percentage"
     },
     {
@@ -2497,7 +2497,7 @@
       "_origin": "ast",
       "id": "models_consolepricingoffer_rationale_97",
       "community": 8,
-      "community_name": "VendorGame",
+      "community_name": "ConsolePricingOffer",
       "norm_label": "convert to dictionary for api responses"
     },
     {
@@ -2508,7 +2508,7 @@
       "_origin": "ast",
       "id": "models_contactinfo",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "contactinfo.py"
     },
     {
@@ -2519,7 +2519,7 @@
       "_origin": "ast",
       "id": "models_contactinfo_contactinfo",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "contactinfo"
     },
     {
@@ -2530,7 +2530,7 @@
       "_origin": "ast",
       "id": "models_document",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "document.py"
     },
     {
@@ -2574,7 +2574,7 @@
       "_origin": "ast",
       "id": "models_documentsubmitted",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "documentsubmitted.py"
     },
     {
@@ -2585,7 +2585,7 @@
       "_origin": "ast",
       "id": "models_documentsubmitted_documentsubmitted",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "documentsubmitted"
     },
     {
@@ -2661,7 +2661,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_hardwarespecification",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "hardwarespecification.py"
     },
@@ -2672,7 +2672,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "models_hardwarespecification_hardwarespecification",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "hardwarespecification"
     },
@@ -2683,7 +2683,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "models_hardwarespecification_hardwarespecification_repr",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
@@ -2694,7 +2694,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_maintenancestatus",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "maintenancestatus.py"
     },
@@ -2705,7 +2705,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "models_maintenancestatus_maintenancestatus",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "maintenancestatus"
     },
@@ -2716,7 +2716,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "models_maintenancestatus_maintenancestatus_repr",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
@@ -2727,8 +2727,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_openingday",
-      "community": 35,
-      "community_name": "OpeningDay",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "openingday.py"
     },
     {
@@ -2738,8 +2738,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "models_openingday_openingday",
-      "community": 35,
-      "community_name": "OpeningDay",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "openingday"
     },
     {
@@ -2749,8 +2749,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "models_openingday_openingday_str",
-      "community": 35,
-      "community_name": "OpeningDay",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": ".__str__()"
     },
     {
@@ -2760,8 +2760,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "models_openingday_openingday_repr",
-      "community": 35,
-      "community_name": "OpeningDay",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
     {
@@ -2816,7 +2816,7 @@
       "_origin": "ast",
       "id": "models_passwordmanager",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "passwordmanager.py"
     },
     {
@@ -2827,7 +2827,7 @@
       "_origin": "ast",
       "id": "models_passwordmanager_passwordmanager",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "passwordmanager"
     },
     {
@@ -2838,7 +2838,7 @@
       "_origin": "ast",
       "id": "declared_attr",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "declared_attr"
     },
     {
@@ -2849,7 +2849,7 @@
       "_origin": "ast",
       "id": "models_passwordmanager_passwordmanager_vendor",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": ".vendor()"
     },
     {
@@ -2860,7 +2860,7 @@
       "_origin": "ast",
       "id": "models_passwordmanager_passwordmanager_repr",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
     {
@@ -2870,8 +2870,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_paymentmethod",
-      "community": 20,
-      "community_name": "PaymentMethod",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "paymentmethod.py"
     },
     {
@@ -2881,8 +2881,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_paymentmethod_paymentmethod",
-      "community": 20,
-      "community_name": "PaymentMethod",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "paymentmethod"
     },
     {
@@ -2892,8 +2892,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "models_paymentmethod_paymentmethod_repr",
-      "community": 20,
-      "community_name": "PaymentMethod",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
     {
@@ -2903,8 +2903,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "models_paymentmethod_paymentmethod_to_dict",
-      "community": 20,
-      "community_name": "PaymentMethod",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": ".to_dict()"
     },
     {
@@ -2914,8 +2914,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_paymentvendormap",
-      "community": 21,
-      "community_name": "PaymentVendorMap",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "paymentvendormap.py"
     },
     {
@@ -2925,8 +2925,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "models_paymentvendormap_paymentvendormap",
-      "community": 21,
-      "community_name": "PaymentVendorMap",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "paymentvendormap"
     },
     {
@@ -2936,8 +2936,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "models_paymentvendormap_paymentvendormap_repr",
-      "community": 21,
-      "community_name": "PaymentVendorMap",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
     {
@@ -2947,8 +2947,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "models_paymentvendormap_paymentvendormap_to_dict",
-      "community": 21,
-      "community_name": "PaymentVendorMap",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": ".to_dict()"
     },
     {
@@ -2959,7 +2959,7 @@
       "_origin": "ast",
       "id": "models_physicaladdress",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "physicaladdress.py"
     },
     {
@@ -2970,7 +2970,7 @@
       "_origin": "ast",
       "id": "models_physicaladdress_physicaladdress",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "physicaladdress"
     },
     {
@@ -2981,7 +2981,7 @@
       "_origin": "ast",
       "id": "models_physicaladdress_physicaladdress_str",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": ".__str__()"
     },
     {
@@ -2991,7 +2991,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_priceandcost",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "priceandcost.py"
     },
@@ -3002,7 +3002,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "models_priceandcost_priceandcost",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "priceandcost"
     },
@@ -3013,7 +3013,7 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "models_priceandcost_priceandcost_repr",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
@@ -3112,8 +3112,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_timing",
-      "community": 34,
-      "community_name": ".onboard_vendor",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "timing.py"
     },
     {
@@ -3123,8 +3123,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "models_timing_timing",
-      "community": 34,
-      "community_name": ".onboard_vendor",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "timing"
     },
     {
@@ -3135,7 +3135,7 @@
       "_origin": "ast",
       "id": "models_transaction",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "transaction.py"
     },
     {
@@ -3146,7 +3146,7 @@
       "_origin": "ast",
       "id": "models_transaction_transaction",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "transaction"
     },
     {
@@ -3157,7 +3157,7 @@
       "_origin": "ast",
       "id": "models_transaction_transaction_repr",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
     {
@@ -3167,8 +3167,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_uploadedimage",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "uploadedimage.py"
     },
     {
@@ -3178,8 +3178,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_uploadedimage_image",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 17,
+      "community_name": "Image",
       "norm_label": "image"
     },
     {
@@ -3190,7 +3190,7 @@
       "_origin": "ast",
       "id": "models_vendor",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "vendor.py"
     },
     {
@@ -3201,7 +3201,7 @@
       "_origin": "ast",
       "id": "models_vendor_vendor",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "vendor"
     },
     {
@@ -3212,7 +3212,7 @@
       "_origin": "ast",
       "id": "models_vendor_vendor_str",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": ".__str__()"
     },
     {
@@ -3223,7 +3223,7 @@
       "_origin": "ast",
       "id": "models_vendor_vendor_repr",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
     {
@@ -3234,7 +3234,7 @@
       "_origin": "ast",
       "id": "models_vendoraccount",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "vendoraccount.py"
     },
     {
@@ -3245,7 +3245,7 @@
       "_origin": "ast",
       "id": "models_vendoraccount_vendoraccount",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "vendoraccount"
     },
     {
@@ -3255,7 +3255,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_vendorcredentials",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "vendorcredentials.py"
     },
@@ -3266,7 +3266,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_vendorcredentials_vendorcredential",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "vendorcredential"
     },
@@ -3277,8 +3277,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_vendordayslotconfig",
-      "community": 34,
-      "community_name": ".onboard_vendor",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "vendordayslotconfig.py"
     },
     {
@@ -3288,8 +3288,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "models_vendordayslotconfig_vendordayslotconfig",
-      "community": 34,
-      "community_name": ".onboard_vendor",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "vendordayslotconfig"
     },
     {
@@ -3299,8 +3299,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "models_vendordayslotconfig_vendordayslotconfig_repr",
-      "community": 34,
-      "community_name": ".onboard_vendor",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
     {
@@ -3310,8 +3310,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_vendorgame",
-      "community": 8,
-      "community_name": "VendorGame",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "vendorgame.py"
     },
     {
@@ -3321,8 +3321,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "models_vendorgame_vendorgame",
-      "community": 8,
-      "community_name": "VendorGame",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "vendorgame"
     },
     {
@@ -3332,8 +3332,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "models_vendorgame_vendorgame_price_per_hour",
-      "community": 8,
-      "community_name": "VendorGame",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": ".price_per_hour()"
     },
     {
@@ -3343,8 +3343,8 @@
       "source_location": "L69",
       "_origin": "ast",
       "id": "models_vendorgame_vendorgame_effective_price_info",
-      "community": 8,
-      "community_name": "VendorGame",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": ".effective_price_info()"
     },
     {
@@ -3354,8 +3354,8 @@
       "source_location": "L123",
       "_origin": "ast",
       "id": "models_vendorgame_vendorgame_to_dict",
-      "community": 8,
-      "community_name": "VendorGame",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": ".to_dict()"
     },
     {
@@ -3365,8 +3365,8 @@
       "source_location": "L141",
       "_origin": "ast",
       "id": "models_vendorgame_vendorgame_repr",
-      "community": 8,
-      "community_name": "VendorGame",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
     {
@@ -3376,8 +3376,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "models_vendorgame_rationale_25",
-      "community": 8,
-      "community_name": "VendorGame",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "dynamically compute price from parent availablegame. - if an active..."
     },
     {
@@ -3387,8 +3387,8 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "models_vendorgame_rationale_70",
-      "community": 8,
-      "community_name": "VendorGame",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "returns full pricing context: base price, offer price, offer details. useful..."
     },
     {
@@ -3398,8 +3398,8 @@
       "source_location": "L124",
       "_origin": "ast",
       "id": "models_vendorgame_rationale_124",
-      "community": 8,
-      "community_name": "VendorGame",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "serialize vendorgame \u2014 price is always dynamically computed"
     },
     {
@@ -3409,7 +3409,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "models_vendorpin",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "vendorpin.py"
     },
@@ -3420,7 +3420,7 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "models_vendorpin_vendorpin",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "vendorpin"
     },
@@ -3431,7 +3431,7 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "models_vendorpin_vendorpin_repr",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
@@ -3443,7 +3443,7 @@
       "_origin": "ast",
       "id": "models_vendorstatus",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "vendorstatus.py"
     },
     {
@@ -3454,7 +3454,7 @@
       "_origin": "ast",
       "id": "models_vendorstatus_vendorstatus",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "vendorstatus"
     },
     {
@@ -3465,7 +3465,7 @@
       "_origin": "ast",
       "id": "models_vendorstatus_vendorstatus_repr",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": ".__repr__()"
     },
     {
@@ -3475,8 +3475,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "run",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": "run.py"
     },
     {
@@ -3695,8 +3695,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "services_email_template",
-      "community": 32,
-      "community_name": "build_hfg_email_html",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "email_template.py"
     },
     {
@@ -3706,8 +3706,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "services_email_template_extract_body",
-      "community": 32,
-      "community_name": "build_hfg_email_html",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "_extract_body()"
     },
     {
@@ -3717,8 +3717,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "services_email_template_build_hfg_email_html",
-      "community": 32,
-      "community_name": "build_hfg_email_html",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "build_hfg_email_html()"
     },
     {
@@ -3794,8 +3794,8 @@
       "source_location": "L118",
       "_origin": "ast",
       "id": "services_email_template_email_text",
-      "community": 32,
-      "community_name": "build_hfg_email_html",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "email_text()"
     },
     {
@@ -4059,7 +4059,7 @@
       "_origin": "ast",
       "id": "services_otp_service",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "otp_service.py"
     },
     {
@@ -4245,7 +4245,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "services_services",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "services.py"
     },
@@ -4279,7 +4279,7 @@
       "_origin": "ast",
       "id": "services_services_vendorservice_safe_strptime",
       "community": 34,
-      "community_name": ".onboard_vendor",
+      "community_name": ".safe_strptime",
       "norm_label": ".safe_strptime()"
     },
     {
@@ -4289,8 +4289,8 @@
       "source_location": "L98",
       "_origin": "ast",
       "id": "services_services_vendorservice_onboard_vendor",
-      "community": 34,
-      "community_name": ".onboard_vendor",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": ".onboard_vendor()"
     },
     {
@@ -4355,8 +4355,8 @@
       "source_location": "L709",
       "_origin": "ast",
       "id": "services_services_vendorservice_handle_documents",
-      "community": 40,
-      "community_name": "Document",
+      "community": 12,
+      "community_name": "VendorService",
       "norm_label": ".handle_documents()"
     },
     {
@@ -4366,8 +4366,8 @@
       "source_location": "L728",
       "_origin": "ast",
       "id": "services_services_vendorservice_generate_credentials_and_notify",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": ".generate_credentials_and_notify()"
     },
     {
@@ -4388,8 +4388,8 @@
       "source_location": "L831",
       "_origin": "ast",
       "id": "services_services_vendorservice_upload_to_drive",
-      "community": 40,
-      "community_name": "Document",
+      "community": 12,
+      "community_name": "VendorService",
       "norm_label": ".upload_to_drive()"
     },
     {
@@ -4400,7 +4400,7 @@
       "_origin": "ast",
       "id": "services_services_vendorservice_get_unverified_documents",
       "community": 25,
-      "community_name": "get_unverified_documents",
+      "community_name": ".get_unverified_documents",
       "norm_label": ".get_unverified_documents()"
     },
     {
@@ -4411,7 +4411,7 @@
       "_origin": "ast",
       "id": "services_services_vendorservice_verify_document",
       "community": 27,
-      "community_name": "verify_document",
+      "community_name": ".verify_document",
       "norm_label": ".verify_document()"
     },
     {
@@ -4421,8 +4421,8 @@
       "source_location": "L921",
       "_origin": "ast",
       "id": "services_services_vendorservice_verify_documents_and_update_vendor",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 36,
+      "community_name": ".verify_documents_and_update_vendor",
       "norm_label": ".verify_documents_and_update_vendor()"
     },
     {
@@ -4433,7 +4433,7 @@
       "_origin": "ast",
       "id": "services_services_vendorservice_get_all_vendors_with_status",
       "community": 28,
-      "community_name": "get_vendor_dashboard",
+      "community_name": ".get_all_vendors_with_status",
       "norm_label": ".get_all_vendors_with_status()"
     },
     {
@@ -4487,8 +4487,8 @@
       "source_location": "L1748",
       "_origin": "ast",
       "id": "services_services_vendorservice_save_image_to_db",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 17,
+      "community_name": "Image",
       "norm_label": ".save_image_to_db()"
     },
     {
@@ -4498,8 +4498,8 @@
       "source_location": "L1780",
       "_origin": "ast",
       "id": "services_services_vendorservice_upload_photo_to_drive",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 17,
+      "community_name": "Image",
       "norm_label": ".upload_photo_to_drive()"
     },
     {
@@ -4509,8 +4509,8 @@
       "source_location": "L1817",
       "_origin": "ast",
       "id": "services_services_vendorservice_upload_photos_to_drive",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 14,
+      "community_name": "upload_photos",
       "norm_label": ".upload_photos_to_drive()"
     },
     {
@@ -4521,69 +4521,69 @@
       "_origin": "ast",
       "id": "services_services_vendorservice_create_vendor_slot_table",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": ".create_vendor_slot_table()"
     },
     {
       "label": ".extend_vendor_slot_window()",
       "file_type": "code",
       "source_file": "services/services.py",
-      "source_location": "L1877",
+      "source_location": "L1865",
       "_origin": "ast",
       "id": "services_services_vendorservice_extend_vendor_slot_window",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": ".extend_vendor_slot_window()"
     },
     {
       "label": ".reconcile_vendor_slot_capacity_window()",
       "file_type": "code",
       "source_file": "services/services.py",
-      "source_location": "L1907",
+      "source_location": "L1924",
       "_origin": "ast",
       "id": "services_services_vendorservice_reconcile_vendor_slot_capacity_window",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": ".reconcile_vendor_slot_capacity_window()"
     },
     {
       "label": ".create_vendor_console_availability_table()",
       "file_type": "code",
       "source_file": "services/services.py",
-      "source_location": "L1943",
+      "source_location": "L1960",
       "_origin": "ast",
       "id": "services_services_vendorservice_create_vendor_console_availability_table",
-      "community": 34,
-      "community_name": ".onboard_vendor",
+      "community": 20,
+      "community_name": ".create_vendor_console_availability_table",
       "norm_label": ".create_vendor_console_availability_table()"
     },
     {
       "label": ".create_vendor_dashboard_table()",
       "file_type": "code",
       "source_file": "services/services.py",
-      "source_location": "L1982",
+      "source_location": "L1999",
       "_origin": "ast",
       "id": "services_services_vendorservice_create_vendor_dashboard_table",
-      "community": 34,
-      "community_name": ".onboard_vendor",
+      "community": 21,
+      "community_name": ".create_vendor_dashboard_table",
       "norm_label": ".create_vendor_dashboard_table()"
     },
     {
       "label": ".create_vendor_promo_table()",
       "file_type": "code",
       "source_file": "services/services.py",
-      "source_location": "L2018",
+      "source_location": "L2035",
       "_origin": "ast",
       "id": "services_services_vendorservice_create_vendor_promo_table",
-      "community": 34,
-      "community_name": ".onboard_vendor",
+      "community": 35,
+      "community_name": ".create_vendor_promo_table",
       "norm_label": ".create_vendor_promo_table()"
     },
     {
       "label": ".get_payment_methods_for_vendors()",
       "file_type": "code",
       "source_file": "services/services.py",
-      "source_location": "L2043",
+      "source_location": "L2060",
       "_origin": "ast",
       "id": "services_services_vendorservice_get_payment_methods_for_vendors",
       "community": 13,
@@ -4594,55 +4594,55 @@
       "label": ".send_welcome_email()",
       "file_type": "code",
       "source_file": "services/services.py",
-      "source_location": "L2109",
+      "source_location": "L2126",
       "_origin": "ast",
       "id": "services_services_vendorservice_send_welcome_email",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 16,
+      "community_name": ".send_welcome_email",
       "norm_label": ".send_welcome_email()"
     },
     {
       "label": ".build_welcome_email_text()",
       "file_type": "code",
       "source_file": "services/services.py",
-      "source_location": "L2136",
+      "source_location": "L2153",
       "_origin": "ast",
       "id": "services_services_vendorservice_build_welcome_email_text",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 16,
+      "community_name": ".send_welcome_email",
       "norm_label": ".build_welcome_email_text()"
     },
     {
       "label": ".build_welcome_email_html()",
       "file_type": "code",
       "source_file": "services/services.py",
-      "source_location": "L2173",
+      "source_location": "L2190",
       "_origin": "ast",
       "id": "services_services_vendorservice_build_welcome_email_html",
-      "community": 19,
-      "community_name": "test_self_onboarding_flow.py",
+      "community": 16,
+      "community_name": ".send_welcome_email",
       "norm_label": ".build_welcome_email_html()"
     },
     {
       "label": ".send_deboard_notification()",
       "file_type": "code",
       "source_file": "services/services.py",
-      "source_location": "L2214",
+      "source_location": "L2231",
       "_origin": "ast",
       "id": "services_services_vendorservice_send_deboard_notification",
       "community": 32,
-      "community_name": "build_hfg_email_html",
+      "community_name": ".send_deboard_notification",
       "norm_label": ".send_deboard_notification()"
     },
     {
       "label": "._build_deboard_email_html()",
       "file_type": "code",
       "source_file": "services/services.py",
-      "source_location": "L2263",
+      "source_location": "L2280",
       "_origin": "ast",
       "id": "services_services_vendorservice_build_deboard_email_html",
       "community": 32,
-      "community_name": "build_hfg_email_html",
+      "community_name": ".send_deboard_notification",
       "norm_label": "._build_deboard_email_html()"
     },
     {
@@ -4653,7 +4653,7 @@
       "_origin": "ast",
       "id": "services_services_rationale_80",
       "community": 34,
-      "community_name": ".onboard_vendor",
+      "community_name": ".safe_strptime",
       "norm_label": "safely parse date string, handling none and invalid values"
     },
     {
@@ -4663,8 +4663,8 @@
       "source_location": "L729",
       "_origin": "ast",
       "id": "services_services_rationale_729",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 1,
+      "community_name": "services.py",
       "norm_label": "generate account credentials and notify vendor with login details."
     },
     {
@@ -4685,8 +4685,8 @@
       "source_location": "L832",
       "_origin": "ast",
       "id": "services_services_rationale_832",
-      "community": 40,
-      "community_name": "Document",
+      "community": 12,
+      "community_name": "VendorService",
       "norm_label": "upload a file to google drive and return the file link."
     },
     {
@@ -4697,7 +4697,7 @@
       "_origin": "ast",
       "id": "services_services_rationale_852",
       "community": 25,
-      "community_name": "get_unverified_documents",
+      "community_name": ".get_unverified_documents",
       "norm_label": "fetch all unverified documents for the specified vendor."
     },
     {
@@ -4708,7 +4708,7 @@
       "_origin": "ast",
       "id": "services_services_rationale_882",
       "community": 27,
-      "community_name": "verify_document",
+      "community_name": ".verify_document",
       "norm_label": "mark a document as verified and set the vendor's status to active if all..."
     },
     {
@@ -4718,8 +4718,8 @@
       "source_location": "L922",
       "_origin": "ast",
       "id": "services_services_rationale_922",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 36,
+      "community_name": ".verify_documents_and_update_vendor",
       "norm_label": "update specified documents' status to 'verified' and set the vendor's status to..."
     },
     {
@@ -4730,7 +4730,7 @@
       "_origin": "ast",
       "id": "services_services_rationale_966",
       "community": 28,
-      "community_name": "get_vendor_dashboard",
+      "community_name": ".get_all_vendors_with_status",
       "norm_label": "retrieve all vendors with their statuses, timing info, and relevant information..."
     },
     {
@@ -4762,8 +4762,8 @@
       "source_location": "L1749",
       "_origin": "ast",
       "id": "services_services_rationale_1749",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 17,
+      "community_name": "Image",
       "norm_label": "save image metadata to the database. args: vendor_id (int): id of the vendor..."
     },
     {
@@ -4784,8 +4784,8 @@
       "source_location": "L1781",
       "_origin": "ast",
       "id": "services_services_rationale_1781",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 17,
+      "community_name": "Image",
       "norm_label": "upload a single photo to google drive and return the file link."
     },
     {
@@ -4795,8 +4795,8 @@
       "source_location": "L1818",
       "_origin": "ast",
       "id": "services_services_rationale_1818",
-      "community": 12,
-      "community_name": "VendorService",
+      "community": 14,
+      "community_name": "upload_photos",
       "norm_label": "upload multiple photos to google drive and return their file links."
     },
     {
@@ -4807,71 +4807,71 @@
       "_origin": "ast",
       "id": "services_services_rationale_1829",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "creates a table for tracking daily slot availability for a vendor."
     },
     {
       "label": "Extend VENDOR_<id>_SLOT date coverage without deleting existing rows. Inserts\u2026",
       "file_type": "rationale",
       "source_file": "services/services.py",
-      "source_location": "L1878",
+      "source_location": "L1866",
       "_origin": "ast",
-      "id": "services_services_rationale_1878",
+      "id": "services_services_rationale_1866",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "extend vendor_<id>_slot date coverage without deleting existing rows. inserts..."
     },
     {
       "label": "Rebuild dated capacity from bookings and unreleased QR slot claims.",
       "file_type": "rationale",
       "source_file": "services/services.py",
-      "source_location": "L1908",
+      "source_location": "L1925",
       "_origin": "ast",
-      "id": "services_services_rationale_1908",
+      "id": "services_services_rationale_1925",
       "community": 9,
-      "community_name": "cron_extend_slots_for_all_active_cafes",
+      "community_name": ".extend_vendor_slot_window",
       "norm_label": "rebuild dated capacity from bookings and unreleased qr slot claims."
     },
     {
       "label": "Creates a table for tracking console availability for a vendor.",
       "file_type": "rationale",
       "source_file": "services/services.py",
-      "source_location": "L1944",
+      "source_location": "L1961",
       "_origin": "ast",
-      "id": "services_services_rationale_1944",
-      "community": 34,
-      "community_name": ".onboard_vendor",
+      "id": "services_services_rationale_1961",
+      "community": 20,
+      "community_name": ".create_vendor_console_availability_table",
       "norm_label": "creates a table for tracking console availability for a vendor."
     },
     {
       "label": "Creates a table for tracking vendor dashboard details.",
       "file_type": "rationale",
       "source_file": "services/services.py",
-      "source_location": "L1983",
+      "source_location": "L2000",
       "_origin": "ast",
-      "id": "services_services_rationale_1983",
-      "community": 34,
-      "community_name": ".onboard_vendor",
+      "id": "services_services_rationale_2000",
+      "community": 21,
+      "community_name": ".create_vendor_dashboard_table",
       "norm_label": "creates a table for tracking vendor dashboard details."
     },
     {
       "label": "Creates a vendor-specific promo detail table.",
       "file_type": "rationale",
       "source_file": "services/services.py",
-      "source_location": "L2019",
+      "source_location": "L2036",
       "_origin": "ast",
-      "id": "services_services_rationale_2019",
-      "community": 34,
-      "community_name": ".onboard_vendor",
+      "id": "services_services_rationale_2036",
+      "community": 35,
+      "community_name": ".create_vendor_promo_table",
       "norm_label": "creates a vendor-specific promo detail table."
     },
     {
       "label": "OPTIMIZED: Fetch payment methods for ALL vendors in a single query. Previously\u2026",
       "file_type": "rationale",
       "source_file": "services/services.py",
-      "source_location": "L2044",
+      "source_location": "L2061",
       "_origin": "ast",
-      "id": "services_services_rationale_2044",
+      "id": "services_services_rationale_2061",
       "community": 13,
       "community_name": ".search_gaming_cafes",
       "norm_label": "optimized: fetch payment methods for all vendors in a single query. previously..."
@@ -4880,44 +4880,44 @@
       "label": "Send standardized onboarding email with vendor credentials.",
       "file_type": "rationale",
       "source_file": "services/services.py",
-      "source_location": "L2110",
+      "source_location": "L2127",
       "_origin": "ast",
-      "id": "services_services_rationale_2110",
-      "community": 12,
-      "community_name": "VendorService",
+      "id": "services_services_rationale_2127",
+      "community": 16,
+      "community_name": ".send_welcome_email",
       "norm_label": "send standardized onboarding email with vendor credentials."
     },
     {
       "label": "Build welcome email content fragment (wrapped by shared HFG template).",
       "file_type": "rationale",
       "source_file": "services/services.py",
-      "source_location": "L2174",
+      "source_location": "L2191",
       "_origin": "ast",
-      "id": "services_services_rationale_2174",
-      "community": 19,
-      "community_name": "test_self_onboarding_flow.py",
+      "id": "services_services_rationale_2191",
+      "community": 16,
+      "community_name": ".send_welcome_email",
       "norm_label": "build welcome email content fragment (wrapped by shared hfg template)."
     },
     {
       "label": "Fetch vendor info and send a deboard warning email.",
       "file_type": "rationale",
       "source_file": "services/services.py",
-      "source_location": "L2215",
+      "source_location": "L2232",
       "_origin": "ast",
-      "id": "services_services_rationale_2215",
+      "id": "services_services_rationale_2232",
       "community": 32,
-      "community_name": "build_hfg_email_html",
+      "community_name": ".send_deboard_notification",
       "norm_label": "fetch vendor info and send a deboard warning email."
     },
     {
       "label": "Build deboard warning content fragment (wrapped by shared HFG template).",
       "file_type": "rationale",
       "source_file": "services/services.py",
-      "source_location": "L2264",
+      "source_location": "L2281",
       "_origin": "ast",
-      "id": "services_services_rationale_2264",
+      "id": "services_services_rationale_2281",
       "community": 32,
-      "community_name": "build_hfg_email_html",
+      "community_name": ".send_deboard_notification",
       "norm_label": "build deboard warning content fragment (wrapped by shared hfg template)."
     },
     {
@@ -4928,7 +4928,7 @@
       "_origin": "ast",
       "id": "services_super_admin_service",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "super_admin_service.py"
     },
     {
@@ -5323,8 +5323,8 @@
       "source_location": "L1006",
       "_origin": "ast",
       "id": "services_super_admin_service_superadminservice_get_team_access",
-      "community": 2,
-      "community_name": "SuperAdminService",
+      "community": 4,
+      "community_name": "super_admin_controller.py",
       "norm_label": ".get_team_access()"
     },
     {
@@ -5378,8 +5378,8 @@
       "source_location": "L1235",
       "_origin": "ast",
       "id": "services_super_admin_service_superadminservice_get_vendor_detail",
-      "community": 2,
-      "community_name": "SuperAdminService",
+      "community": 4,
+      "community_name": "super_admin_controller.py",
       "norm_label": ".get_vendor_detail()"
     },
     {
@@ -5555,7 +5555,7 @@
       "_origin": "ast",
       "id": "datetime",
       "community": 1,
-      "community_name": "extensions.py",
+      "community_name": "services.py",
       "norm_label": "datetime"
     },
     {
@@ -5796,7 +5796,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "services_utils",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "utils.py"
     },
@@ -5818,7 +5818,7 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "services_utils_generate_credentials",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "generate_credentials()"
     },
@@ -5829,7 +5829,7 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "services_utils_generate_unique_vendor_pin",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "generate_unique_vendor_pin()"
     },
@@ -5840,7 +5840,7 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "services_utils_send_email",
-      "community": 16,
+      "community": 1,
       "community_name": "services.py",
       "norm_label": "send_email()"
     },
@@ -5862,7 +5862,7 @@
       "source_location": "L79",
       "_origin": "ast",
       "id": "services_utils_process_files",
-      "community": 17,
+      "community": 6,
       "community_name": "onboard_vendor",
       "norm_label": "process_files()"
     },
@@ -5895,7 +5895,7 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "services_utils_rationale_80",
-      "community": 17,
+      "community": 6,
       "community_name": "onboard_vendor",
       "norm_label": "process uploaded files and ensure they meet requirements."
     },
@@ -6104,8 +6104,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_kiosk_proxy",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": "test_kiosk_proxy.py"
     },
     {
@@ -6115,8 +6115,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "tests_test_kiosk_proxy_proxytests",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": "proxytests"
     },
     {
@@ -6126,8 +6126,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "tests_test_kiosk_proxy_proxytests_setup",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": ".setup()"
     },
     {
@@ -6137,8 +6137,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "tests_test_kiosk_proxy_proxytests_test_canonical_success_and_bearer_forwarded",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": ".test_canonical_success_and_bearer_forwarded()"
     },
     {
@@ -6148,8 +6148,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "tests_test_kiosk_proxy_proxytests_test_rate_limit_status_and_retry_header_forwarded",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": ".test_rate_limit_status_and_retry_header_forwarded()"
     },
     {
@@ -6159,8 +6159,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "tests_test_kiosk_proxy_proxytests_test_non_json_upstream_returns_json_502",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": ".test_non_json_upstream_returns_json_502()"
     },
     {
@@ -6170,8 +6170,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_kiosk_proxy_rationale_1",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": "verify the public kiosk proxy preserves authentication and api envelopes."
     },
     {
@@ -6182,7 +6182,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours",
       "community": 37,
-      "community_name": "Flask",
+      "community_name": "test_operating_hours.py",
       "norm_label": "test_operating_hours.py"
     },
     {
@@ -6193,7 +6193,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_py_fixture",
       "community": 37,
-      "community_name": "Flask",
+      "community_name": "test_operating_hours.py",
       "norm_label": "fixture"
     },
     {
@@ -6204,7 +6204,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_setup",
       "community": 37,
-      "community_name": "Flask",
+      "community_name": "test_operating_hours.py",
       "norm_label": "setup()"
     },
     {
@@ -6215,7 +6215,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_save",
       "community": 37,
-      "community_name": "Flask",
+      "community_name": "test_operating_hours.py",
       "norm_label": "save()"
     },
     {
@@ -6226,7 +6226,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_test_save_reload_closed_reopen_and_far_future",
       "community": 37,
-      "community_name": "Flask",
+      "community_name": "test_operating_hours.py",
       "norm_label": "test_save_reload_closed_reopen_and_far_future()"
     },
     {
@@ -6237,7 +6237,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_test_capacity_is_preserved_and_conflicts_roll_back",
       "community": 37,
-      "community_name": "Flask",
+      "community_name": "test_operating_hours.py",
       "norm_label": "test_capacity_is_preserved_and_conflicts_roll_back()"
     },
     {
@@ -6248,7 +6248,7 @@
       "_origin": "ast",
       "id": "parametrize",
       "community": 37,
-      "community_name": "Flask",
+      "community_name": "test_operating_hours.py",
       "norm_label": "parametrize"
     },
     {
@@ -6259,7 +6259,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_test_overnight_and_full_day",
       "community": 37,
-      "community_name": "Flask",
+      "community_name": "test_operating_hours.py",
       "norm_label": "test_overnight_and_full_day()"
     },
     {
@@ -6270,7 +6270,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_test_invalid_input_does_not_write",
       "community": 37,
-      "community_name": "Flask",
+      "community_name": "test_operating_hours.py",
       "norm_label": "test_invalid_input_does_not_write()"
     },
     {
@@ -6281,7 +6281,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_test_owner_scope_and_json_validation",
       "community": 37,
-      "community_name": "Flask",
+      "community_name": "test_operating_hours.py",
       "norm_label": "test_owner_scope_and_json_validation()"
     },
     {
@@ -6292,7 +6292,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_test_cafe_without_games_can_save_configuration",
       "community": 37,
-      "community_name": "Flask",
+      "community_name": "test_operating_hours.py",
       "norm_label": "test_cafe_without_games_can_save_configuration()"
     },
     {
@@ -6303,8 +6303,19 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_test_booking_conflict_detected_even_if_capacity_was_stale",
       "community": 37,
-      "community_name": "Flask",
+      "community_name": "test_operating_hours.py",
       "norm_label": "test_booking_conflict_detected_even_if_capacity_was_stale()"
+    },
+    {
+      "label": "test_future_extension_uses_saved_weekday_grid_not_old_templates()",
+      "file_type": "code",
+      "source_file": "tests/test_operating_hours.py",
+      "source_location": "L160",
+      "_origin": "ast",
+      "id": "tests_test_operating_hours_test_future_extension_uses_saved_weekday_grid_not_old_templates",
+      "community": 37,
+      "community_name": "test_operating_hours.py",
+      "norm_label": "test_future_extension_uses_saved_weekday_grid_not_old_templates()"
     },
     {
       "label": "Exercise the actual schedule handler/helpers with an isolated SQL database.",
@@ -6314,7 +6325,7 @@
       "_origin": "ast",
       "id": "tests_test_operating_hours_rationale_1",
       "community": 37,
-      "community_name": "Flask",
+      "community_name": "test_operating_hours.py",
       "norm_label": "exercise the actual schedule handler/helpers with an isolated sql database."
     },
     {
@@ -6500,8 +6511,8 @@
       "source_location": "L165",
       "_origin": "ast",
       "id": "tests_test_self_onboarding_flow_test_welcome_html_escapes_owner_data",
-      "community": 19,
-      "community_name": "test_self_onboarding_flow.py",
+      "community": 16,
+      "community_name": ".send_welcome_email",
       "norm_label": "test_welcome_html_escapes_owner_data()"
     },
     {
@@ -6621,8 +6632,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "wsgi",
-      "community": 37,
-      "community_name": "Flask",
+      "community": 3,
+      "community_name": "order_controller.py",
       "norm_label": "wsgi.py"
     },
     {
@@ -9138,6 +9149,30 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "services/services.py",
+      "source_location": "L1876",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "services_services",
+      "target": "controllers_controllers_normalize_day_key",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "services/services.py",
+      "source_location": "L1879",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "services_services_vendorservice_extend_vendor_slot_window",
+      "target": "controllers_controllers_normalize_day_key"
+    },
+    {
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
@@ -9150,6 +9185,30 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "services/services.py",
+      "source_location": "L1876",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "services_services",
+      "target": "controllers_controllers_parse_time_flexible",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "services/services.py",
+      "source_location": "L1894",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "services_services_vendorservice_extend_vendor_slot_window",
+      "target": "controllers_controllers_parse_time_flexible"
+    },
+    {
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
@@ -9160,6 +9219,30 @@
       "source": "controllers_controllers_update_slot",
       "target": "controllers_controllers_generate_blocks",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "services/services.py",
+      "source_location": "L1876",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "services_services",
+      "target": "controllers_controllers_generate_blocks",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "services/services.py",
+      "source_location": "L1894",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "services_services_vendorservice_extend_vendor_slot_window",
+      "target": "controllers_controllers_generate_blocks"
     },
     {
       "relation": "calls",
@@ -9184,6 +9267,30 @@
       "source": "controllers_controllers_update_slot",
       "target": "controllers_controllers_apply_slot_rows_for_day",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "services/services.py",
+      "source_location": "L1876",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "services_services",
+      "target": "controllers_controllers_apply_slot_rows_for_day",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "services/services.py",
+      "source_location": "L1896",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "services_services_vendorservice_extend_vendor_slot_window",
+      "target": "controllers_controllers_apply_slot_rows_for_day"
     },
     {
       "relation": "rationale_for",
@@ -18433,7 +18540,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "services/services.py",
-      "source_location": "L2246",
+      "source_location": "L2263",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice_send_deboard_notification",
@@ -18445,7 +18552,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "services/services.py",
-      "source_location": "L2120",
+      "source_location": "L2137",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice_send_welcome_email",
@@ -19408,7 +19515,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L2263",
+      "source_location": "L2280",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice",
@@ -19419,7 +19526,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L2173",
+      "source_location": "L2190",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice",
@@ -19430,7 +19537,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L2136",
+      "source_location": "L2153",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice",
@@ -19441,7 +19548,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L1943",
+      "source_location": "L1960",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice",
@@ -19452,7 +19559,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L1982",
+      "source_location": "L1999",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice",
@@ -19463,7 +19570,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L2018",
+      "source_location": "L2035",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice",
@@ -19562,7 +19669,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L1877",
+      "source_location": "L1865",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice",
@@ -19617,7 +19724,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L2043",
+      "source_location": "L2060",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice",
@@ -19672,7 +19779,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L1907",
+      "source_location": "L1924",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice",
@@ -19716,7 +19823,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L2214",
+      "source_location": "L2231",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice",
@@ -19727,7 +19834,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L2109",
+      "source_location": "L2126",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice",
@@ -19829,7 +19936,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "services/services.py",
-      "source_location": "L2078",
+      "source_location": "L2095",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice_get_payment_methods_for_vendors",
@@ -20241,13 +20348,25 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "services/services.py",
+      "source_location": "L1857",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "services_services_vendorservice_create_vendor_slot_table",
+      "target": "services_services_vendorservice_extend_vendor_slot_window"
+    },
+    {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L1878",
+      "source_location": "L1866",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "services_services_rationale_1878",
+      "source": "services_services_rationale_1866",
       "target": "services_services_vendorservice_extend_vendor_slot_window",
       "confidence_score": 1.0
     },
@@ -20255,10 +20374,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L1908",
+      "source_location": "L1925",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "services_services_rationale_1908",
+      "source": "services_services_rationale_1925",
       "target": "services_services_vendorservice_reconcile_vendor_slot_capacity_window",
       "confidence_score": 1.0
     },
@@ -20266,10 +20385,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L1944",
+      "source_location": "L1961",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "services_services_rationale_1944",
+      "source": "services_services_rationale_1961",
       "target": "services_services_vendorservice_create_vendor_console_availability_table",
       "confidence_score": 1.0
     },
@@ -20277,10 +20396,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L1983",
+      "source_location": "L2000",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "services_services_rationale_1983",
+      "source": "services_services_rationale_2000",
       "target": "services_services_vendorservice_create_vendor_dashboard_table",
       "confidence_score": 1.0
     },
@@ -20288,10 +20407,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L2019",
+      "source_location": "L2036",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "services_services_rationale_2019",
+      "source": "services_services_rationale_2036",
       "target": "services_services_vendorservice_create_vendor_promo_table",
       "confidence_score": 1.0
     },
@@ -20299,10 +20418,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L2044",
+      "source_location": "L2061",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "services_services_rationale_2044",
+      "source": "services_services_rationale_2061",
       "target": "services_services_vendorservice_get_payment_methods_for_vendors",
       "confidence_score": 1.0
     },
@@ -20310,10 +20429,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L2110",
+      "source_location": "L2127",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "services_services_rationale_2110",
+      "source": "services_services_rationale_2127",
       "target": "services_services_vendorservice_send_welcome_email",
       "confidence_score": 1.0
     },
@@ -20323,7 +20442,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "services/services.py",
-      "source_location": "L2112",
+      "source_location": "L2129",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice_send_welcome_email",
@@ -20335,7 +20454,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "services/services.py",
-      "source_location": "L2113",
+      "source_location": "L2130",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice_send_welcome_email",
@@ -20345,10 +20464,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L2174",
+      "source_location": "L2191",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "services_services_rationale_2174",
+      "source": "services_services_rationale_2191",
       "target": "services_services_vendorservice_build_welcome_email_html",
       "confidence_score": 1.0
     },
@@ -20368,10 +20487,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L2215",
+      "source_location": "L2232",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "services_services_rationale_2215",
+      "source": "services_services_rationale_2232",
       "target": "services_services_vendorservice_send_deboard_notification",
       "confidence_score": 1.0
     },
@@ -20381,7 +20500,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "services/services.py",
-      "source_location": "L2239",
+      "source_location": "L2256",
       "weight": 1.0,
       "_origin": "ast",
       "source": "services_services_vendorservice_send_deboard_notification",
@@ -20391,10 +20510,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "services/services.py",
-      "source_location": "L2264",
+      "source_location": "L2281",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "services_services_rationale_2264",
+      "source": "services_services_rationale_2281",
       "target": "services_services_vendorservice_build_deboard_email_html",
       "confidence_score": 1.0
     },
@@ -21856,6 +21975,18 @@
     {
       "relation": "calls",
       "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/test_operating_hours.py",
+      "source_location": "L180",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_operating_hours_test_future_extension_uses_saved_weekday_grid_not_old_templates",
+      "target": "date"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "services/super_admin_service.py",
@@ -23016,6 +23147,17 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_operating_hours.py",
+      "source_location": "L160",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_operating_hours",
+      "target": "tests_test_operating_hours_test_future_extension_uses_saved_weekday_grid_not_old_templates",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_operating_hours.py",
       "source_location": "L127",
       "weight": 1.0,
       "_origin": "ast",
@@ -23112,6 +23254,18 @@
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_operating_hours_test_capacity_is_preserved_and_conflicts_roll_back",
+      "target": "tests_test_operating_hours_save",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_operating_hours.py",
+      "source_location": "L164",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_operating_hours_test_future_extension_uses_saved_weekday_grid_not_old_templates",
       "target": "tests_test_operating_hours_save",
       "confidence_score": 1.0
     },
@@ -23655,5 +23809,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "517c83f9abbd60c715fb14401769c2fd058a41c7"
+  "built_at_commit": "0ae56e1676421362bf85467c6cff22ff5d37a058"
 }

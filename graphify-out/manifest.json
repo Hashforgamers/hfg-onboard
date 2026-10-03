@@ -5,8 +5,8 @@
     "semantic_hash": "9f01f5b6e48febfdf16ee3da357af06c"
   },
   "app/__init__.py": {
-    "mtime": 1785608555.774072,
-    "ast_hash": "f3cf5a8a19f4a3076f6e79917d32985f",
+    "mtime": 1791026246.9635935,
+    "ast_hash": "67fc0f319d410c4880ba5d8bf811eeef",
     "semantic_hash": ""
   },
   "app/config.py": {
@@ -362,6 +362,11 @@
   "docs/operating-hours.md": {
     "mtime": 1790707202.2736578,
     "ast_hash": "1ec40a8402119b487239b1f5b2b0b05a",
+    "semantic_hash": ""
+  },
+  "tests/test_dashboard_cors.py": {
+    "mtime": 1791026246.9691868,
+    "ast_hash": "478762f8d16621b90c4e9f35b76e6044",
     "semantic_hash": ""
   }
 }
