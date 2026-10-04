@@ -543,13 +543,20 @@ def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
     # replacement with concurrent inventory writes on PostgreSQL.
     if db.engine.dialect.name == 'postgresql':
         db.session.execute(text(f'LOCK TABLE VENDOR_{vendor_id}_SLOT IN SHARE ROW EXCLUSIVE MODE'))
+    qr_guard = ''
+    if db.engine.dialect.name == 'postgresql' and db.session.execute(
+        text("SELECT to_regclass('cafe_slot_reservations')")
+    ).scalar():
+        qr_guard = """OR EXISTS(SELECT 1 FROM cafe_slot_reservations r
+            WHERE r.vendor_id=vs.vendor_id AND r.slot_id=vs.slot_id
+              AND r.date=vs.date AND r.released_at IS NULL)"""
     existing_rows = db.session.execute(text(f"""
         SELECT vs.slot_id, vs.date, vs.available_slot, s.start_time, s.end_time, ag.total_slot,
             EXISTS (
                 SELECT 1 FROM bookings b JOIN transactions t ON t.booking_id = b.id
                 WHERE b.slot_id = vs.slot_id AND date(t.booked_date) = vs.date
                   AND lower(COALESCE(b.status, '')) NOT IN ('cancelled', 'canceled', 'rejected', 'completed')
-            ) AS has_booking
+            ) {qr_guard} AS has_booking
         FROM VENDOR_{vendor_id}_SLOT vs
         JOIN slots s ON s.id = vs.slot_id
         JOIN available_games ag ON ag.id = s.gaming_type_id
@@ -617,6 +624,11 @@ def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
     """)
 
     retained_ids = list(slot_id_map.values())
+    for row in existing_rows:
+        if row['slot_id'] not in retained_ids and (
+            row['has_booking'] or int(row['available_slot'] or 0) < int(row['total_slot'] or 0)
+        ):
+            raise ValueError('Duplicate slot templates include a booked or held slot; resolve the conflicting reservation before changing this day.')
     db.session.execute(text(f"""
         DELETE FROM VENDOR_{vendor_id}_SLOT
         WHERE vendor_id = :vendor_id AND date IN :target_dates AND slot_id NOT IN :retained_ids
@@ -2505,7 +2517,7 @@ def cron_extend_slots_for_vendor(vendor_id):
 @vendor_bp.route('/cron/slots/active-cafes/next-20-days', methods=['POST'])
 def cron_extend_slots_for_all_active_cafes():
     """
-    Cron endpoint: ensure next N days slots exist for all active cafes (default 20).
+    Cron endpoint: ensure a rolling N-day grid including today (default 20).
     Safe to call every EOD; duplicate slot rows are not created.
     """
     if not _is_valid_cron_request():
@@ -2520,7 +2532,7 @@ def cron_extend_slots_for_all_active_cafes():
     if window_days < 1 or window_days > 365:
         return jsonify({"success": False, "message": "window_days must be between 1 and 365"}), 400
 
-    start_date = dt.now(IST).date() + timedelta(days=1)
+    start_date = dt.now(IST).date()
     end_date = start_date + timedelta(days=window_days - 1)
 
     vendor_ids = _fetch_active_vendor_ids_for_slots()

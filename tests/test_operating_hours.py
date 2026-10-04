@@ -182,6 +182,11 @@ def test_future_extension_uses_saved_weekday_grid_not_old_templates(setup, monke
         rows = e.db.session.execute(text('SELECT s.start_time,s.end_time FROM vendor_1_slot v JOIN slots s ON s.id=v.slot_id WHERE v.date=:day'), {'day':next_day}).all()
         assert len(rows) == 2
         assert all(str(row.end_time).startswith(('10:00','11:00')) for row in rows)
+        duplicate=e.Slot(gaming_type_id=1,start_time=time(9),end_time=time(10),available_slot=3,is_available=True)
+        e.db.session.add(duplicate);e.db.session.flush()
+        e.db.session.execute(text('INSERT INTO vendor_1_slot VALUES(1,:id,:day,3,TRUE)'), {'id':duplicate.id,'day':next_day})
+        scope['extend_vendor_slot_window'](1,next_day,next_day)
+        assert e.db.session.execute(text('SELECT count(*) FROM vendor_1_slot WHERE date=:day'), {'day':next_day}).scalar() == 2
         # Idempotent extension preserves an already reserved unit.
         e.db.session.execute(text('UPDATE vendor_1_slot SET available_slot=2 WHERE date=:day'), {'day':next_day})
         scope['extend_vendor_slot_window'](1,next_day,next_day)
@@ -200,3 +205,52 @@ def test_save_updates_legacy_weekday_names_without_conflicting_config(setup):
         rows=e.db.session.execute(text('SELECT opening_time,closing_time,slot_duration FROM vendor_day_slot_config WHERE vendor_id=1')).all()
         assert len(rows)==2
         assert all(row.slot_duration==60 and row.opening_time=='09:00 AM' and row.closing_time=='11:00 AM' for row in rows)
+
+
+def test_schedule_change_preserves_qr_hold_even_with_stale_counter(setup):
+    e=setup
+    if e.db.engine.dialect.name != 'postgresql':
+        pytest.skip('Production QR table detection uses PostgreSQL')
+    assert save(e).status_code == 200
+    slot_id=e.db.session.execute(text('SELECT min(slot_id) FROM vendor_1_slot')).scalar()
+    e.db.session.execute(text('CREATE TABLE cafe_slot_reservations(vendor_id INT,slot_id INT,date DATE,released_at TIMESTAMP)'))
+    e.db.session.execute(text("INSERT INTO cafe_slot_reservations VALUES (1,:slot,'2026-10-05',NULL)"), {'slot':slot_id})
+    e.db.session.commit()
+    response=save(e,is_enabled=False)
+    assert response.status_code == 409
+    assert e.db.session.execute(text('SELECT count(*) FROM vendor_1_slot')).scalar() == 2
+
+
+def test_duplicate_template_cannot_delete_booked_slot_identity(setup):
+    e=setup
+    assert save(e).status_code == 200
+    original=e.db.session.execute(text('SELECT min(slot_id) FROM vendor_1_slot')).scalar()
+    duplicate=e.Slot(gaming_type_id=1,start_time=time(9),end_time=time(10),available_slot=3,is_available=True)
+    e.db.session.add(duplicate);e.db.session.flush()
+    e.db.session.execute(text("INSERT INTO vendor_1_slot VALUES(1,:id,'2026-10-05',3,TRUE)"),{'id':duplicate.id})
+    for booking,slot in ((1,original),(2,duplicate.id)):
+        e.db.session.execute(text("INSERT INTO bookings VALUES(:id,:slot,'paid')"),{'id':booking,'slot':slot})
+        e.db.session.execute(text("INSERT INTO transactions VALUES(:id,'2026-10-05')"),{'id':booking})
+    e.db.session.commit()
+    response=save(e)
+    assert response.status_code == 409
+    assert 'Duplicate slot templates' in response.json['message']
+    assert e.db.session.execute(text('SELECT count(*) FROM vendor_1_slot')).scalar() == 3
+
+
+def test_legacy_cron_refuses_overlapping_templates_without_config(setup):
+    e=setup
+    if e.db.engine.dialect.name != 'postgresql':
+        pytest.skip('Legacy generator uses PostgreSQL intervals')
+    source=Path(__file__).resolve().parents[1]/'services/services.py'
+    cls=next(n for n in ast.parse(source.read_text()).body if isinstance(n,ast.ClassDef) and n.name=='VendorService')
+    method=next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='extend_vendor_slot_window')
+    method.decorator_list=[]
+    scope=dict(e.scope)
+    exec(compile(ast.Module(body=[method],type_ignores=[]),str(source),'exec'),scope)
+    e.db.session.add_all([e.Slot(gaming_type_id=1,start_time=time(9),end_time=time(10),available_slot=3,is_available=True),
+                         e.Slot(gaming_type_id=1,start_time=time(9,30),end_time=time(10),available_slot=3,is_available=True)])
+    e.db.session.commit()
+    with pytest.raises(ValueError,match='Historical slot templates overlap'):
+        scope['extend_vendor_slot_window'](1,date(2026,10,5),date(2026,10,12))
+    assert e.db.session.execute(text('SELECT count(*) FROM vendor_1_slot')).scalar()==0

@@ -1887,11 +1887,13 @@ class VendorService:
                 WHERE v.vendor_id=:vendor AND v.date BETWEEN :first AND :last'''),
                 {'vendor':vendor_id,'first':start_date,'last':end_date}).all()
             existing = {}
+            row_counts = {}
             for row in inventory:
                 day = row.date if isinstance(row.date,date) else date.fromisoformat(str(row.date))
                 start = row.start_time if isinstance(row.start_time,time) else time.fromisoformat(str(row.start_time))
                 end = row.end_time if isinstance(row.end_time,time) else time.fromisoformat(str(row.end_time))
                 existing.setdefault(day,set()).add((row.gaming_type_id,start,end))
+                row_counts[day] = row_counts.get(day,0)+1
             weekdays = ['mon','tue','wed','thu','fri','sat','sun']
             inserted = 0
             for weekday, key in enumerate(weekdays):
@@ -1908,12 +1910,24 @@ class VendorService:
                     parse_time_flexible(config['closing_time']), int(config['slot_duration']))
                 expected = {(int(game.id),left,right) for game in games if int(game.total_slot or 0)>0
                             for left,right in blocks} if enabled.get(key,False) else set()
-                days = [day for day in days if existing.get(day,set()) != expected]
+                days = [day for day in days if existing.get(day,set()) != expected or row_counts.get(day,0) != len(expected)]
                 if not days:
                     continue
                 result = _apply_slot_rows_for_day(vendor_id, games, days, blocks, bool(enabled.get(key, False)))
                 inserted += result['inserted_rows']
             return inserted
+
+        # Refuse ambiguous historical templates when no saved grid exists.
+        ambiguous = db.session.execute(text("""WITH windows AS (
+            SELECT s.id,s.gaming_type_id,DATE '2000-01-01'+s.start_time AS start_time,
+                DATE '2000-01-01'+s.end_time + CASE WHEN s.end_time<=s.start_time THEN interval '1 day' ELSE interval '0 day' END AS finish
+            FROM slots s JOIN available_games ag ON ag.id=s.gaming_type_id
+            WHERE ag.vendor_id=:vendor AND s.is_available=TRUE
+        ) SELECT EXISTS(SELECT 1 FROM windows a JOIN windows b
+            ON a.gaming_type_id=b.gaming_type_id AND a.id<b.id
+            AND a.start_time<b.finish AND b.start_time<a.finish)"""), {'vendor':vendor_id}).scalar()
+        if ambiguous:
+            raise ValueError('Historical slot templates overlap. Save Operating Hours before generating slots.')
 
         sql_insert = text(f"""
         INSERT INTO {table_name} (vendor_id, date, slot_id, is_available, available_slot)
