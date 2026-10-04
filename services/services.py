@@ -1879,6 +1879,19 @@ class VendorService:
             enabled = {normalize_day_key(row['day']): row['is_open'] for row in openings}
             by_day = {normalize_day_key(row['day']): row for row in configs}
             games = AvailableGame.query.filter_by(vendor_id=vendor_id).all()
+            # Skip dates whose grid is already complete; daily maintenance must
+            # not re-lock and rebuild every slot in the rolling window.
+            from datetime import date, time
+            inventory = db.session.execute(text(f'''SELECT v.date,s.gaming_type_id,s.start_time,s.end_time
+                FROM {table_name} v JOIN slots s ON s.id=v.slot_id
+                WHERE v.vendor_id=:vendor AND v.date BETWEEN :first AND :last'''),
+                {'vendor':vendor_id,'first':start_date,'last':end_date}).all()
+            existing = {}
+            for row in inventory:
+                day = row.date if isinstance(row.date,date) else date.fromisoformat(str(row.date))
+                start = row.start_time if isinstance(row.start_time,time) else time.fromisoformat(str(row.start_time))
+                end = row.end_time if isinstance(row.end_time,time) else time.fromisoformat(str(row.end_time))
+                existing.setdefault(day,set()).add((row.gaming_type_id,start,end))
             weekdays = ['mon','tue','wed','thu','fri','sat','sun']
             inserted = 0
             for weekday, key in enumerate(weekdays):
@@ -1893,6 +1906,11 @@ class VendorService:
                     cursor += timedelta(days=1)
                 blocks = _generate_blocks(start_date, parse_time_flexible(config['opening_time']),
                     parse_time_flexible(config['closing_time']), int(config['slot_duration']))
+                expected = {(int(game.id),left,right) for game in games if int(game.total_slot or 0)>0
+                            for left,right in blocks} if enabled.get(key,False) else set()
+                days = [day for day in days if existing.get(day,set()) != expected]
+                if not days:
+                    continue
                 result = _apply_slot_rows_for_day(vendor_id, games, days, blocks, bool(enabled.get(key, False)))
                 inserted += result['inserted_rows']
             return inserted

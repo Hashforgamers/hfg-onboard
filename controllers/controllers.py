@@ -561,7 +561,7 @@ def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
     for row in existing_rows:
         retained = is_enabled and (as_time(row['start_time']), as_time(row['end_time'])) in blocks
         if not retained and (row['has_booking'] or int(row['available_slot'] or 0) < int(row['total_slot'] or 0)):
-            raise ValueError('These hours conflict with existing bookings or held slots. Resolve them before changing this day.')
+            raise ValueError(f"These hours conflict with existing bookings or held slots on {row['date']} ({row['start_time']}–{row['end_time']}, slot #{row['slot_id']}). Resolve them before changing this day.")
 
     delete_dates_sql = text(f"""
         DELETE FROM VENDOR_{vendor_id}_SLOT
@@ -2267,7 +2267,7 @@ def update_slot(vendor_id):
                        closing_time = :closing_time,
                        slot_duration = :slot_duration
                  WHERE vendor_id = :vendor_id
-                   AND day = :day
+                   AND lower(substr(trim(day),1,3)) = :day
             """),
             {
                 "vendor_id": vendor_id,
@@ -2520,7 +2520,7 @@ def cron_extend_slots_for_all_active_cafes():
     if window_days < 1 or window_days > 365:
         return jsonify({"success": False, "message": "window_days must be between 1 and 365"}), 400
 
-    start_date = date.today() + timedelta(days=1)
+    start_date = dt.now(IST).date() + timedelta(days=1)
     end_date = start_date + timedelta(days=window_days - 1)
 
     vendor_ids = _fetch_active_vendor_ids_for_slots()
@@ -2536,6 +2536,9 @@ def cron_extend_slots_for_all_active_cafes():
             "results": [],
         }), 200
 
+    if type(payload.get("reconcile_capacity", False)) is not bool:
+        return jsonify(success=False, message="reconcile_capacity must be boolean"), 400
+    reconcile = payload.get("reconcile_capacity", False)
     results = []
     inserted_rows_total = 0
     healed_rows_total = 0
@@ -2545,7 +2548,10 @@ def cron_extend_slots_for_all_active_cafes():
             try:
                 _ensure_vendor_slot_table_exists(v_id)
                 inserted_rows = VendorService.extend_vendor_slot_window(v_id, start_date, end_date)
-                healed_rows = VendorService.reconcile_vendor_slot_capacity_window(v_id, start_date, end_date)
+                healed_rows = VendorService.reconcile_vendor_slot_capacity_window(v_id, start_date, end_date) if reconcile else 0
+                # Release each cafe's locks immediately and preserve its progress
+                # if another cafe fails later in this job.
+                db.session.commit()
                 inserted_rows_total += int(inserted_rows)
                 healed_rows_total += int(healed_rows)
                 results.append({
@@ -2568,7 +2574,7 @@ def cron_extend_slots_for_all_active_cafes():
 
         db.session.commit()
         return jsonify({
-            "success": True,
+            "success": all(result["success"] for result in results),
             "message": "Slot window ensured for active cafes",
             "window_days": window_days,
             "start_date": start_date.isoformat(),
