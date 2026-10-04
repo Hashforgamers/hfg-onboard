@@ -16,6 +16,8 @@ class Config:
 
     # Flask Secret Key
     SECRET_KEY = os.getenv('SECRET_KEY', 'your_secret_key')
+    # Must match hfg-login-service's signing key; never substitute Flask's key.
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
 
     # Database Configuration
     SQLALCHEMY_DATABASE_URI = os.getenv(
