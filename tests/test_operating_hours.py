@@ -186,3 +186,17 @@ def test_future_extension_uses_saved_weekday_grid_not_old_templates(setup, monke
         e.db.session.execute(text('UPDATE vendor_1_slot SET available_slot=2 WHERE date=:day'), {'day':next_day})
         scope['extend_vendor_slot_window'](1,next_day,next_day)
         assert e.db.session.execute(text('SELECT MIN(available_slot) FROM vendor_1_slot WHERE date=:day'), {'day':next_day}).scalar() == 2
+
+
+def test_save_updates_legacy_weekday_names_without_conflicting_config(setup):
+    e=setup
+    with e.app.app_context():
+        e.db.session.execute(text("INSERT INTO vendor_day_slot_config VALUES (1,'Monday','10:00 AM','06:00 PM',30)"))
+        e.db.session.execute(text("INSERT INTO vendor_day_slot_config VALUES (1,'mon','09:00 AM','05:00 PM',30)"))
+        e.db.session.commit()
+    response=save(e,slot_duration=60)
+    assert response.status_code==200,response.json
+    with e.app.app_context():
+        rows=e.db.session.execute(text('SELECT opening_time,closing_time,slot_duration FROM vendor_day_slot_config WHERE vendor_id=1')).all()
+        assert len(rows)==2
+        assert all(row.slot_duration==60 and row.opening_time=='09:00 AM' and row.closing_time=='11:00 AM' for row in rows)
