@@ -732,9 +732,21 @@ def manage_notification_context():
 def preview_notification_context():
     import requests
     try:
-        base=os.getenv('USER_ONBOARD_BACKEND_URL','https://hfg-user-onboard.onrender.com').rstrip('/')
+        base=os.getenv('USER_ONBOARD_BACKEND_URL','https://hfg-user-onboard.onrender.com').strip().rstrip('/')
+        if base.endswith('/api'): base=base[:-4]
         result=requests.post(base+'/api/admin/notification-context/preview',
             headers={'X-Admin-Key':os.getenv('SUPER_ADMIN_API_KEY','')},json=request.get_json(silent=True) or {},timeout=40)
-        return jsonify(result.json()),result.status_code
-    except Exception:
-        return jsonify(success=False,message='AI preview unavailable. Check the user service admin key and connection.'),503
+        if result.status_code in (404,405):
+            return jsonify(success=False,message='AI preview endpoint is not available on the user service. Deploy the updated hfg-user-onboard service and verify USER_ONBOARD_BACKEND_URL.'),503
+        if result.status_code in (401,403):
+            return jsonify(success=False,message='User service rejected preview access. Configure the same SUPER_ADMIN_API_KEY on hfg-onboard and hfg-user-onboard.'),503
+        try:
+            payload=result.json()
+        except ValueError:
+            return jsonify(success=False,message='User service returned an invalid preview response. Check its deployment and logs.'),502
+        return jsonify(payload),result.status_code
+    except requests.Timeout:
+        return jsonify(success=False,message='AI preview timed out. Try again; no notifications were sent.'),504
+    except requests.RequestException:
+        current_app.logger.exception('Notification preview upstream request failed')
+        return jsonify(success=False,message='Could not connect to the user service for AI preview.'),503
