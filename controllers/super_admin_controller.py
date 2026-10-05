@@ -638,3 +638,100 @@ def list_support_issues():
     from sqlalchemy import text
     rows=db.session.execute(text("SELECT r.*, v.cafe_name FROM cafe_requests r JOIN vendors v ON v.id=r.vendor_id WHERE kind='support_issue' ORDER BY created_at DESC LIMIT 200")).mappings().all()
     return jsonify(success=True, issues=[dict(r) for r in rows])
+
+
+@super_admin_bp.route('/admin/kiosk-releases', methods=['GET', 'POST'])
+@require_super_admin
+def kiosk_releases_admin():
+    from sqlalchemy import text
+    from services.kiosk_releases import validate_release, list_releases
+    try:
+        if request.method == 'POST':
+            values = validate_release(request.get_json(silent=True) or {})
+            result=db.session.execute(text('INSERT INTO kiosk_releases(version,source_url,download_url,notes) VALUES(:version,:source_url,:download_url,:notes) ON CONFLICT(version) DO UPDATE SET source_url=excluded.source_url,download_url=excluded.download_url,notes=excluded.notes WHERE kiosk_releases.active=FALSE'), values)
+            if not result.rowcount:
+                db.session.rollback()
+                return jsonify(success=False,message='Active releases cannot be edited. Save a new version.'),409
+            db.session.commit()
+        return jsonify(success=True, data=list_releases())
+    except ValueError as error:
+        db.session.rollback()
+        return jsonify(success=False,message=str(error)),400
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Kiosk release storage failed')
+        return jsonify(success=False,message='Unable to save or load releases. Check the release migration and version uniqueness.'),503
+
+
+@super_admin_bp.route('/admin/kiosk-releases/<int:release_id>/activate', methods=['POST'])
+@require_super_admin
+def activate_kiosk_release(release_id):
+    from sqlalchemy import text
+    try:
+        db.session.execute(text('LOCK TABLE kiosk_releases IN SHARE ROW EXCLUSIVE MODE'))
+        release=db.session.execute(text('SELECT download_url FROM kiosk_releases WHERE id=:id'),{'id':release_id}).scalar()
+        if not release:
+            db.session.rollback()
+            return jsonify(success=False,message='Add a GitHub Release download link before activating this version.'),400
+        import requests
+        with requests.head(release, allow_redirects=True, timeout=10) as asset:
+            if asset.status_code != 200 or 'text/html' in asset.headers.get('Content-Type','').lower():
+                db.session.rollback()
+                return jsonify(success=False,message='The installer is not publicly downloadable. Publish the Release asset before activating.'),400
+        db.session.execute(text('UPDATE kiosk_releases SET active=FALSE WHERE active=TRUE'))
+        db.session.execute(text('UPDATE kiosk_releases SET active=TRUE WHERE id=:id'),{'id':release_id})
+        db.session.commit()
+        return jsonify(success=True)
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Kiosk release activation failed')
+        return jsonify(success=False,message='Could not activate release.'),503
+
+
+@super_admin_bp.route('/kiosk/releases/latest', methods=['GET'])
+def latest_kiosk_release():
+    from sqlalchemy import text
+    try:
+        row=db.session.execute(text('SELECT version,download_url,notes FROM kiosk_releases WHERE active=TRUE')).mappings().first()
+        response=jsonify(success=bool(row),data=dict(row) if row else None)
+        response.headers['Cache-Control']='no-store'
+        return response,200 if row else 404
+    except Exception:
+        db.session.rollback()
+        return jsonify(success=False,message='Kiosk releases are unavailable.'),503
+
+
+@super_admin_bp.route('/admin/notification-context', methods=['GET','PUT'])
+@require_super_admin
+def manage_notification_context():
+    from sqlalchemy import text
+    from services.notification_context import load_notification_context,validate_notification_context
+    try:
+        if request.method=='PUT':
+            values=validate_notification_context(request.get_json(silent=True))
+            db.session.execute(text('''INSERT INTO notification_campaign_settings(id,context,enabled,fallback_title,fallback_message)
+                VALUES(1,:context,:enabled,:fallback_title,:fallback_message)
+                ON CONFLICT(id) DO UPDATE SET context=excluded.context,enabled=excluded.enabled,
+                fallback_title=excluded.fallback_title,fallback_message=excluded.fallback_message,updated_at=now()'''),values)
+            db.session.commit()
+        return jsonify(success=True,data=load_notification_context())
+    except ValueError as error:
+        db.session.rollback()
+        return jsonify(success=False,message=str(error)),400
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Notification context storage failed')
+        return jsonify(success=False,message='Unable to load or save notification context. Check the campaign settings migration.'),503
+
+
+@super_admin_bp.route('/admin/notification-context/preview',methods=['POST'])
+@require_super_admin
+def preview_notification_context():
+    import requests
+    try:
+        base=os.getenv('USER_ONBOARD_BACKEND_URL','https://hfg-user-onboard.onrender.com').rstrip('/')
+        result=requests.post(base+'/api/admin/notification-context/preview',
+            headers={'X-Admin-Key':os.getenv('SUPER_ADMIN_API_KEY','')},json=request.get_json(silent=True) or {},timeout=40)
+        return jsonify(result.json()),result.status_code
+    except Exception:
+        return jsonify(success=False,message='AI preview unavailable. Check the user service admin key and connection.'),503
