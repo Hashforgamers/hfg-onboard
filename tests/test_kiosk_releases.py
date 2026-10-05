@@ -1,13 +1,13 @@
 import ast
 import re
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit,parse_qs,urlencode
 import pytest
 
 source=Path(__file__).resolve().parents[1]/'services/kiosk_releases.py'
 tree=ast.parse(source.read_text())
 node=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='validate_release')
-scope={'re':re,'urlsplit':urlsplit}
+scope={'re':re,'urlsplit':urlsplit,'parse_qs':parse_qs,'urlencode':urlencode}
 exec(compile(ast.Module(body=[node],type_ignores=[]),str(source),'exec'),scope)
 validate=scope['validate_release']
 BUILD='https://github.com/zeyan-ansari/hashdashpc/actions/runs/37220882347/artifacts/11309578734'
@@ -65,3 +65,24 @@ def test_activation_preserves_current_version_when_download_is_private(monkeypat
             assert 'ROLLBACK' in calls
             assert not any(sql.startswith('UPDATE') for sql in calls)
     assert calls[0].startswith('LOCK TABLE')
+
+
+@pytest.mark.parametrize('link',[
+ 'https://drive.google.com/file/d/abc_123-Z/view?usp=sharing',
+ 'https://drive.google.com/open?id=abc_123-Z',
+ 'https://drive.google.com/uc?export=download&id=abc_123-Z',
+])
+def test_drive_installer_without_github_source(link):
+    result=validate({'version':'1.2.1','download_url':link})
+    assert result['source_url']==''
+    assert result['download_url']=='https://drive.google.com/file/d/abc_123-Z/view'
+
+
+def test_drive_resource_key_is_preserved():
+    result=validate({'version':'1.2.1','download_url':'https://drive.google.com/file/d/abc123/view?usp=sharing&resourcekey=0-KEY'})
+    assert result['download_url'].endswith('?resourcekey=0-KEY')
+
+
+@pytest.mark.parametrize('link',['https://drive.google.com/drive/folders/abc','https://drive.google.com.evil.test/file/d/abc/view','https://drive.google.com/file/d/abc/view?token=secret'])
+def test_rejects_invalid_drive_links(link):
+    with pytest.raises(ValueError):validate({'version':'1.2.1','download_url':link})

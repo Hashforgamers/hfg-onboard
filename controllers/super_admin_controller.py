@@ -672,12 +672,15 @@ def activate_kiosk_release(release_id):
         release=db.session.execute(text('SELECT download_url FROM kiosk_releases WHERE id=:id'),{'id':release_id}).scalar()
         if not release:
             db.session.rollback()
-            return jsonify(success=False,message='Add a GitHub Release download link before activating this version.'),400
+            return jsonify(success=False,message='Add an installer download link before activating this version.'),400
         import requests
+        from urllib.parse import urlsplit
+        is_drive=urlsplit(release).netloc=='drive.google.com'
         with requests.head(release, allow_redirects=True, timeout=10) as asset:
-            if asset.status_code != 200 or 'text/html' in asset.headers.get('Content-Type','').lower():
+            needs_signin=urlsplit(getattr(asset,'url',release)).netloc=='accounts.google.com'
+            if asset.status_code != 200 or needs_signin or (not is_drive and 'text/html' in asset.headers.get('Content-Type','').lower()):
                 db.session.rollback()
-                return jsonify(success=False,message='The installer is not publicly downloadable. Publish the Release asset before activating.'),400
+                return jsonify(success=False,message='Installer link is unavailable or requires sign-in. For Drive, set General access to Anyone with the link (Viewer).'),400
         db.session.execute(text('UPDATE kiosk_releases SET active=FALSE WHERE active=TRUE'))
         db.session.execute(text('UPDATE kiosk_releases SET active=TRUE WHERE id=:id'),{'id':release_id})
         db.session.commit()
