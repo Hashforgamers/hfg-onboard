@@ -1,7 +1,8 @@
 import html
 # app/controllers.py
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, g
+import uuid
 import os
 import re
 import random
@@ -407,8 +408,8 @@ def _validate_self_onboard_payload(data):
             return "Console quantity and price must be valid numbers."
         game["total_slot"] = total_slot
         game["rate_per_slot"] = rate
-        if total_slot < 0 or total_slot > 500:
-            return "Console quantity must be between 0 and 500."
+        if total_slot < 0 or total_slot > 200:
+            return "Console quantity must be between 0 and 200."
         if rate < 0 or rate > 100000:
             return "Rate per slot is out of allowed range."
         if total_slot > 0:
@@ -668,11 +669,21 @@ def validate_json(data, required_fields):
     return missing_fields
 
 
-def upload_documents_to_cloudinary(files, vendor_id, cafe_name):
+def cleanup_onboarding_documents(document_urls):
+    """Remove only assets created by this failed onboarding attempt."""
+    import cloudinary.uploader
+    for info in document_urls.values():
+        try:
+            cloudinary.uploader.destroy(info["public_id"], resource_type=info.get("resource_type", "image"))
+        except Exception:
+            current_app.logger.warning("onboarding_cleanup_failed request_id=%s", getattr(g, "request_id", ""))
+
+
+def upload_documents_to_cloudinary(files, vendor_id, cafe_name, document_urls=None):
     """
     Upload vendor documents to Cloudinary and return URLs
     """
-    document_urls = {}
+    document_urls = document_urls if document_urls is not None else {}
     
     for doc_type, file in files.items():
         try:
@@ -689,7 +700,8 @@ def upload_documents_to_cloudinary(files, vendor_id, cafe_name):
             if upload_result['success']:
                 document_urls[doc_type] = {
                     'url': upload_result['url'],
-                    'public_id': upload_result['public_id']
+                    'public_id': upload_result['public_id'],
+                    'resource_type': upload_result.get('resource_type', 'image')
                 }
                 current_app.logger.info(f"Successfully uploaded {doc_type}: {upload_result['url']}")
             else:
@@ -962,7 +974,6 @@ def onboard_vendor():
     # Transform timing data from day-wise to single opening/closing times
     if 'timing' in data:
         data["day_schedule"] = dict(data["timing"])
-        current_app.logger.debug(f"Raw timing data: {data['timing']}")
         
         # Find the first open day to get opening and closing times
         opening_time = None
@@ -1011,8 +1022,6 @@ def onboard_vendor():
         
         # Add opening_day data in the expected format
         data['opening_day'] = opening_days
-        current_app.logger.debug(f"Transformed timing data: {data['timing']}")
-        current_app.logger.debug(f"Opening days data: {data['opening_day']}")
 
     # Transform available_games data from list to dict
     if 'available_games' in data and isinstance(data['available_games'], list):
@@ -1024,7 +1033,6 @@ def onboard_vendor():
                     'single_slot_price': game.get('rate_per_slot', 0)
                 }
         data['available_games'] = games_dict
-        current_app.logger.debug(f"Transformed games data: {data['available_games']}")
 
     # Transform physicalAddress data
     if 'physicalAddress' in data:
@@ -1040,14 +1048,12 @@ def onboard_vendor():
             'longitude': address_data.get('longitude')
         }
         data['physicalAddress'] = transformed_address
-        current_app.logger.debug(f"Transformed address data: {data['physicalAddress']}")
 
     # Transform business_registration_details
     if 'business_registration_details' in data:
         reg_data = data['business_registration_details']
         if 'registration_date' not in reg_data:
             reg_data['registration_date'] = dt.now().strftime('%Y-%m-%d')
-        current_app.logger.debug(f"Business registration data: {reg_data}")
 
     # Validate required fields
     current_app.logger.debug("Validating required fields")
@@ -1074,6 +1080,9 @@ def onboard_vendor():
         return jsonify({'message': error_message}), 400
     
     token_consumed = False
+    document_urls = {}
+    g.request_id = getattr(g, "request_id", None) or str(uuid.uuid4())
+    stage = "verification"
     try:
         # Validate files and payload before consuming the one-time proof.
         if verification_token:
@@ -1082,17 +1091,25 @@ def onboard_vendor():
                 return jsonify({'message': verify_error}), 400
             token_consumed = True
 
+        stage = "inventory_and_slots"
+        current_app.logger.info("onboarding_stage request_id=%s stage=%s", g.request_id, stage)
         vendor = VendorService.onboard_vendor(data, files, commit=False)
-        document_urls = upload_documents_to_cloudinary(files, vendor.id, vendor.cafe_name)
+        stage = "document_upload"
+        current_app.logger.info("onboarding_stage request_id=%s stage=%s", g.request_id, stage)
+        upload_documents_to_cloudinary(files, vendor.id, vendor.cafe_name, document_urls)
         save_vendor_documents(vendor.id, document_urls, data['document_submitted'], commit=False)
         activated = onboarding_source == "self_onboard"
+        stage = "credentials"
+        current_app.logger.info("onboarding_stage request_id=%s stage=%s", g.request_id, stage)
         delivery = VendorService.generate_credentials_and_notify(
             vendor, activate=activated, commit=False, notify=False,
         )
         # Account, inventory, documents, credentials and activation succeed together.
         vendor_id = vendor.id
+        stage = "commit"
+        current_app.logger.info("onboarding_stage request_id=%s stage=%s", g.request_id, stage)
         db.session.commit()
-    except Exception:
+    except Exception as exc:
         db.session.rollback()
         if token_consumed:
             try:
@@ -1100,8 +1117,11 @@ def onboard_vendor():
                                  ex=SELF_ONBOARD_VERIFY_EXPIRY_SECONDS, nx=True)
             except Exception:
                 current_app.logger.exception("Unable to restore onboarding verification; owner must verify again")
-        current_app.logger.exception("Onboarding failed")
-        return jsonify({'message': 'Onboarding could not be completed. Please retry.'}), 500
+        cleanup_onboarding_documents(document_urls)
+        current_app.logger.error("onboarding_failed request_id=%s stage=%s exception_type=%s", g.request_id, stage, type(exc).__name__)
+        message = ("Document upload could not be completed. Please retry." if stage == "document_upload"
+                   else "Onboarding could not be completed. Please retry.")
+        return jsonify(success=False, message=message, request_id=g.request_id), (502 if stage == "document_upload" else 500)
 
     email_sent = VendorService.send_welcome_email(vendor, **delivery)
     message = ('Your cafe is active. Check your email for your login credentials and cafe PIN. '

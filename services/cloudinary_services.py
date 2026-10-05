@@ -137,6 +137,7 @@ class CloudinaryGameImageService:
                     'success': True,
                     'url': upload_result['secure_url'],
                     'public_id': upload_result['public_id'],
+                    'resource_type': upload_result.get('resource_type', 'image'),
                     'error': None
                 }
             else:
@@ -383,7 +384,8 @@ class CloudinaryGameImageService:
             # Create organized folder structure and filename
             safe_cafe_name = secure_filename(cafe_name.replace(' ', '_').lower()) if cafe_name else 'unknown_cafe'
             folder_path = f"VENDOR_DOCUMENTS/{safe_cafe_name}_ID_{vendor_id}"
-            public_id = f"{document_type}_{int(datetime.utcnow().timestamp())}"
+            import uuid
+            public_id = f"{document_type}_{uuid.uuid4().hex}"
 
             current_app.logger.info(f"Uploading document to Cloudinary: {folder_path}/{public_id}")
             
@@ -403,6 +405,7 @@ class CloudinaryGameImageService:
                     'success': True,
                     'url': upload_result['secure_url'],
                     'public_id': upload_result['public_id'],
+                    'resource_type': upload_result.get('resource_type', 'image'),
                     'error': None
                 }
             else:
@@ -478,6 +481,7 @@ class CloudinaryGameImageService:
                     'success': True,
                     'url': upload_result['secure_url'],
                     'public_id': upload_result['public_id'],
+                    'resource_type': upload_result.get('resource_type', 'image'),
                     'error': None
                 }
             else:

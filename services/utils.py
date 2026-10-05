@@ -84,10 +84,21 @@ def process_files(request, data, document_types):
         if doc_type in request.files:
             file = request.files[doc_type]
             if file and file.filename and allowed_file(file.filename):
+                file.stream.seek(0, 2)
+                size = file.stream.tell()
+                file.stream.seek(0)
+                if size == 0:
+                    return None, f'Empty document for {doc_type}.'
+                if size > 8 * 1024 * 1024:
+                    return None, f'File too large for {doc_type}. Max 8 MB.'
+                if data.get('onboarding_source') == 'self_onboard' and file.filename.rsplit('.', 1)[-1].lower() == 'gif':
+                    return None, f'Invalid file type for {doc_type}. Use PDF, JPG, PNG, DOC or DOCX.'
                 filename = secure_filename(file.filename)
                 files[doc_type] = file
             elif file and file.filename:
                 return None, f'Invalid file type for {doc_type}. Allowed types: {", ".join(ALLOWED_EXTENSIONS)}'
+            else:
+                return None, f'Missing file for {doc_type}'
         else:
             
              # Check if the document is marked as submitted but no file is provided
