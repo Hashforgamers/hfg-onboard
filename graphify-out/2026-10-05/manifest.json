@@ -30,8 +30,8 @@
     "semantic_hash": ""
   },
   "controllers/super_admin_controller.py": {
-    "mtime": 1791189640.912682,
-    "ast_hash": "4f017d13b76e52aee3ddfbe255ebf5b5",
+    "mtime": 1791190323.9068944,
+    "ast_hash": "59ddbd0e6e67b0528849f35c7fc83b56",
     "semantic_hash": ""
   },
   "controllers/vendor_games.py": {
@@ -397,6 +397,21 @@
   "docs/kiosk-releases.md": {
     "mtime": 1791189712.26017,
     "ast_hash": "4d114ba339812dd9d98af9d085b288a4",
+    "semantic_hash": ""
+  },
+  "services/notification_context.py": {
+    "mtime": 1791190323.903502,
+    "ast_hash": "c42662a2c8d008098b8a7034cab4085a",
+    "semantic_hash": ""
+  },
+  "sql/20261005_notification_context.sql": {
+    "mtime": 1791190323.9002383,
+    "ast_hash": "625ef1423d60b8719c9634e5e112051b",
+    "semantic_hash": ""
+  },
+  "tests/test_notification_context.py": {
+    "mtime": 1791190461.8035226,
+    "ast_hash": "f8ef93ba1e035b03ebd26131f4b1913a",
     "semantic_hash": ""
   }
 }
