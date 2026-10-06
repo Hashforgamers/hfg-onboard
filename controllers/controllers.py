@@ -687,7 +687,7 @@ def upload_documents_to_cloudinary(files, vendor_id, cafe_name, document_urls=No
     
     for doc_type, file in files.items():
         try:
-            current_app.logger.info(f"Uploading {doc_type} to Cloudinary for vendor {vendor_id}")
+            current_app.logger.info("onboarding_upload request_id=%s document_type=%s", getattr(g, "request_id", ""), doc_type)
             
             # Use Cloudinary service for document upload
             upload_result = CloudinaryGameImageService.upload_vendor_document(
@@ -703,12 +703,12 @@ def upload_documents_to_cloudinary(files, vendor_id, cafe_name, document_urls=No
                     'public_id': upload_result['public_id'],
                     'resource_type': upload_result.get('resource_type', 'image')
                 }
-                current_app.logger.info(f"Successfully uploaded {doc_type}: {upload_result['url']}")
+                current_app.logger.info("onboarding_upload_complete request_id=%s document_type=%s", getattr(g, "request_id", ""), doc_type)
             else:
-                current_app.logger.error(f"Failed to upload {doc_type}: {upload_result['error']}")
+                current_app.logger.error("onboarding_upload_failed request_id=%s document_type=%s", getattr(g, "request_id", ""), doc_type)
                 raise Exception(f"Failed to upload {doc_type} to Cloudinary")
         except Exception as e:
-            current_app.logger.error(f"Error uploading {doc_type}: {str(e)}")
+            current_app.logger.error("onboarding_upload_failed request_id=%s document_type=%s exception_type=%s", getattr(g, "request_id", ""), doc_type, type(e).__name__)
             raise Exception(f"Document upload failed for {doc_type}")
     
     return document_urls

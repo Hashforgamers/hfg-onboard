@@ -222,3 +222,27 @@ def test_invalid_documents(app, filename, content):
     assert response.status_code == 400
     assert Vendor.query.count() == 0
     assert routes.redis_client.get('self_onboard:verify_token:proof')
+
+
+def test_real_app_large_request_json_and_cors(monkeypatch, tmp_path):
+    from app import create_app
+    from app.config import Config
+    monkeypatch.setattr(Config, 'SQLALCHEMY_DATABASE_URI', f'sqlite:///{tmp_path / "limits.db"}')
+    monkeypatch.setattr(Config, 'SQLALCHEMY_ENGINE_OPTIONS', {})
+    monkeypatch.setattr(Config, 'APP_ENV', 'development')
+    app = create_app()
+    client = app.test_client()
+    response = client.post('/api/onboard', data=b'x' * (35 * 1024 * 1024),
+                           content_type='multipart/form-data; boundary=test',
+                           headers={'Origin': 'https://onboard.hashforgamers.com'})
+    assert response.status_code == 413
+    assert '8 MB' in response.json['message']
+    assert response.headers['X-Request-Id']
+    assert 'X-Request-Id' in response.headers['Access-Control-Expose-Headers']
+    preflight = client.options('/api/onboard', headers={
+        'Origin': 'https://onboard.hashforgamers.com',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type',
+    })
+    assert preflight.status_code == 200
+    assert preflight.headers['Access-Control-Allow-Origin']

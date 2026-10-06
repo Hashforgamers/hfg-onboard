@@ -387,7 +387,7 @@ class CloudinaryGameImageService:
             import uuid
             public_id = f"{document_type}_{uuid.uuid4().hex}"
 
-            current_app.logger.info(f"Uploading document to Cloudinary: {folder_path}/{public_id}")
+            current_app.logger.info("Uploading onboarding document")
             
             # Upload document to Cloudinary
             upload_result = cloudinary.uploader.upload(
@@ -400,7 +400,7 @@ class CloudinaryGameImageService:
             )
 
             if 'secure_url' in upload_result and 'public_id' in upload_result:
-                current_app.logger.info(f"Document uploaded successfully: {upload_result['secure_url']}")
+                current_app.logger.info("Onboarding document uploaded")
                 return {
                     'success': True,
                     'url': upload_result['secure_url'],
@@ -409,7 +409,7 @@ class CloudinaryGameImageService:
                     'error': None
                 }
             else:
-                current_app.logger.error(f"Invalid Cloudinary response: {upload_result}")
+                current_app.logger.error("Invalid Cloudinary upload response")
                 return {
                     'success': False, 
                     'error': 'Invalid Cloudinary response', 
@@ -418,7 +418,7 @@ class CloudinaryGameImageService:
                 }
 
         except Exception as e:
-            current_app.logger.error(f"Cloudinary document upload error: {str(e)}")
+            current_app.logger.error("Cloudinary document upload failed: %s", type(e).__name__)
             return {
                 'success': False, 
                 'error': str(e), 
