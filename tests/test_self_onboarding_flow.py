@@ -44,7 +44,7 @@ class MemoryRedis:
 def app(monkeypatch, tmp_path):
     app = Flask(__name__)
     app.config.update(TESTING=True, SQLALCHEMY_DATABASE_URI=f'sqlite:///{tmp_path / "onboard.db"}', MAIL_SUPPRESS_SEND=True,
-                      MAIL_DEFAULT_SENDER='test@example.test')
+                      MAIL_DEFAULT_SENDER='test@example.test', MAX_CONTENT_LENGTH=34 * 1024 * 1024)
     db.init_app(app)
     mail.init_app(app)
     app.register_blueprint(routes.vendor_bp, url_prefix='/api')
@@ -133,7 +133,7 @@ print('Login and PIN passed')
 def test_document_failure_rolls_back_and_can_retry(app, monkeypatch):
     original = routes.CloudinaryGameImageService.upload_vendor_document
     monkeypatch.setattr(routes.CloudinaryGameImageService, 'upload_vendor_document', Mock(side_effect=RuntimeError('offline')))
-    assert submit(app).status_code == 500
+    assert submit(app).status_code == 502
     assert Vendor.query.count() == 0
     assert PasswordManager.query.count() == 0
     assert routes.redis_client.get('self_onboard:verify_token:proof') == 'owner@example.test'
@@ -166,3 +166,83 @@ def test_welcome_html_escapes_owner_data(app):
     vendor = Mock(id=1, cafe_name='<script>bad</script>', owner_name='<owner>')
     html = VendorService.build_welcome_email_html(vendor, 'secret', 'owner@example.test', '1234', activated=True)
     assert '<script>' not in html and '&lt;owner&gt;' in html
+
+
+def test_four_large_documents_bypass_proxy_limit(app):
+    form = {'json': json.dumps(payload())}
+    form.update({key: (io.BytesIO(b'%PDF-1.4\n' + b' ' * (8 * 1024 * 1024 - 9)), f'{key}.pdf')
+                 for key in routes.ALLOWED_VENDOR_DOCUMENT_TYPES})
+    response = app.test_client().post('/api/onboard', data=form)
+    assert response.status_code == 201, response.json
+
+
+def test_oversized_file_preserves_verification(app):
+    form = {'json': json.dumps(payload())}
+    form.update({key: (io.BytesIO(b'x' * (8 * 1024 * 1024 + 1)), f'{key}.pdf')
+                 for key in routes.ALLOWED_VENDOR_DOCUMENT_TYPES})
+    response = app.test_client().post('/api/onboard', data=form)
+    assert response.status_code == 400
+    assert 'Max 8 MB' in response.json['message']
+    assert Vendor.query.count() == 0
+    assert routes.redis_client.get('self_onboard:verify_token:proof')
+
+
+def test_partial_upload_cleanup_and_retry(app, monkeypatch):
+    destroy = Mock(return_value={'result': 'ok'})
+    monkeypatch.setattr('cloudinary.uploader.destroy', destroy)
+    uploader = Mock(side_effect=[{'success': True, 'url': 'https://example.test/doc',
+                                 'public_id': 'attempt-only', 'resource_type': 'raw'}, RuntimeError('offline')])
+    monkeypatch.setattr(routes.CloudinaryGameImageService, 'upload_vendor_document', uploader)
+    response = submit(app)
+    assert response.status_code == 502
+    assert response.json['request_id']
+    assert Vendor.query.count() == 0
+    destroy.assert_called_once_with('attempt-only', resource_type='raw')
+    assert routes.redis_client.get('self_onboard:verify_token:proof')
+
+
+def test_commit_failure_cleans_documents(app, monkeypatch):
+    destroy = Mock(return_value={'result': 'ok'})
+    monkeypatch.setattr('cloudinary.uploader.destroy', destroy)
+    original = db.session.commit
+    monkeypatch.setattr(db.session, 'commit', Mock(side_effect=RuntimeError('commit failed')))
+    response = submit(app)
+    assert response.status_code == 500
+    assert Vendor.query.count() == 0
+    assert destroy.call_count == 4
+    monkeypatch.setattr(db.session, 'commit', original)
+    assert submit(app).status_code == 201
+
+
+@pytest.mark.parametrize('filename,content', [('bad.exe', b'test'), ('empty.pdf', b'')])
+def test_invalid_documents(app, filename, content):
+    form = {'json': json.dumps(payload())}
+    form.update({key: (io.BytesIO(content), filename) for key in routes.ALLOWED_VENDOR_DOCUMENT_TYPES})
+    response = app.test_client().post('/api/onboard', data=form)
+    assert response.status_code == 400
+    assert Vendor.query.count() == 0
+    assert routes.redis_client.get('self_onboard:verify_token:proof')
+
+
+def test_real_app_large_request_json_and_cors(monkeypatch, tmp_path):
+    from app import create_app
+    from app.config import Config
+    monkeypatch.setattr(Config, 'SQLALCHEMY_DATABASE_URI', f'sqlite:///{tmp_path / "limits.db"}')
+    monkeypatch.setattr(Config, 'SQLALCHEMY_ENGINE_OPTIONS', {})
+    monkeypatch.setattr(Config, 'APP_ENV', 'development')
+    app = create_app()
+    client = app.test_client()
+    response = client.post('/api/onboard', data=b'x' * (35 * 1024 * 1024),
+                           content_type='multipart/form-data; boundary=test',
+                           headers={'Origin': 'https://onboard.hashforgamers.com'})
+    assert response.status_code == 413
+    assert '8 MB' in response.json['message']
+    assert response.headers['X-Request-Id']
+    assert 'X-Request-Id' in response.headers['Access-Control-Expose-Headers']
+    preflight = client.options('/api/onboard', headers={
+        'Origin': 'https://onboard.hashforgamers.com',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type',
+    })
+    assert preflight.status_code == 200
+    assert preflight.headers['Access-Control-Allow-Origin']

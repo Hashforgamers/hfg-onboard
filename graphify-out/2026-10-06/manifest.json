@@ -20,8 +20,8 @@
     "semantic_hash": "fb3038d3db2ac71ffc1a959e23c2afed"
   },
   "controllers/controllers.py": {
-    "mtime": 1791264326.7000358,
-    "ast_hash": "9887267286f5d7f6cc975d260507f4a1",
+    "mtime": 1791238643.4508152,
+    "ast_hash": "1d59dd405536078340ce1a6bc6eb2662",
     "semantic_hash": ""
   },
   "controllers/order_controller.py": {
@@ -250,8 +250,8 @@
     "semantic_hash": "d60f6d8acf4e3a1113bb4fe381080dc2"
   },
   "services/cloudinary_services.py": {
-    "mtime": 1791264326.7005782,
-    "ast_hash": "becf38b9d6d6cad9495317f15bc0eb2f",
+    "mtime": 1791238486.055842,
+    "ast_hash": "4157add26c1a18d5a167054ab0dec0c7",
     "semantic_hash": ""
   },
   "services/email_template.py": {
@@ -330,8 +330,8 @@
     "semantic_hash": ""
   },
   "tests/test_self_onboarding_flow.py": {
-    "mtime": 1791264347.1599584,
-    "ast_hash": "be07a6dd005c7dd85f85f2a7abe71c22",
+    "mtime": 1791238643.540106,
+    "ast_hash": "a7e8143c3485485b15927f71f1d83d18",
     "semantic_hash": ""
   },
   "tests/test_kiosk_proxy.py": {
@@ -417,11 +417,6 @@
   "tests/test_notification_preview_proxy.py": {
     "mtime": 1791210106.4005904,
     "ast_hash": "2c502a90c88f13b11a654254b07b27a1",
-    "semantic_hash": ""
-  },
-  "docs/self-onboarding-uploads.md": {
-    "mtime": 1791238671.849965,
-    "ast_hash": "29027acd77256a4de54e1b8f84866e3d",
     "semantic_hash": ""
   }
 }

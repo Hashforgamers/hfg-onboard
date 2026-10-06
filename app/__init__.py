@@ -57,7 +57,7 @@ def create_app():
         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         allow_headers=['Content-Type', 'Authorization', 'X-Admin-Key', 'X-Client-Source'],
         supports_credentials=False,
-        expose_headers=['Content-Type', 'Authorization'],
+        expose_headers=['Content-Type', 'Authorization', 'X-Request-Id'],
         max_age=3600
     )
     
@@ -130,8 +130,10 @@ def create_app():
         if isinstance(e, HTTPException):
             return {
                 'success': False,
-                'message': e.description,
+                'message': ('Documents are too large. Each document must be 8 MB or smaller.'
+                            if e.code == 413 else e.description),
                 'code': e.code,
+                'request_id': getattr(g, 'request_id', ''),
             }, e.code
         app.logger.error(f"❌ Unhandled exception: {str(e)}", exc_info=True)
         return {

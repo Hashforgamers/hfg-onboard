@@ -47,7 +47,7 @@ class Config:
 
     # File Upload Configuration
     UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB upload limit
+    MAX_CONTENT_LENGTH = 34 * 1024 * 1024  # Four 8 MB documents plus multipart overhead
     
     # Mail Configuration
     MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.hashforgamers.co.in")

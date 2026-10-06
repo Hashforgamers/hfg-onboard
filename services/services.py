@@ -7,7 +7,7 @@ import base64
 import json
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
-from flask import current_app
+from flask import current_app, g
 from models.vendor import Vendor
 from models.document import Document
 from models.contactInfo import ContactInfo
@@ -98,7 +98,6 @@ class VendorService:
     def onboard_vendor(data, files, *, commit=True):
         current_app.logger.debug("Onboard Vendor Started.")
         current_app.logger.debug("Preparing vendor account and inventory")
-        current_app.logger.debug(f"Received files: {files}")
     
         try:
            vendor_account = None
@@ -118,7 +117,6 @@ class VendorService:
                vendor_account = VendorAccount(email=vendor_account_email)
                db.session.add(vendor_account)
                db.session.flush()
-               current_app.logger.info(f"Created VendorAccount for {vendor_account_email} with ID: {vendor_account.id}")
            else:
                current_app.logger.info(f"Found existing VendorAccount with ID: {vendor_account.id}")
 
@@ -130,7 +128,7 @@ class VendorService:
            closing_parsed = VendorService.safe_strptime(timing_data.get("closing_time"), "%I:%M %p")
            if not opening_parsed or not closing_parsed:
                raise ValueError("Valid opening and closing times are required")
-           timing = Timing(opening_time=opening_parsed.strftime("%H:%M:%S"), closing_time=closing_parsed.strftime("%H:%M:%S"))
+           timing = Timing(opening_time=opening_parsed.time(), closing_time=closing_parsed.time())
            db.session.add(timing)
            db.session.flush()
 
@@ -151,7 +149,6 @@ class VendorService:
            if vendor_account:
               try:
                  test_account = vendor.account  # This should work if relationship is correct
-                 current_app.logger.info(f"Vendor account relationship verified: {test_account.email if test_account else 'None'}")
               except Exception as e:
                  current_app.logger.warning(f"Vendor account relationship issue: {e}")
 
@@ -247,8 +244,8 @@ class VendorService:
            opening_time = opening_time_parsed.time()
            closing_time = closing_time_parsed.time()
 
-           timing.opening_time = opening_time.isoformat()
-           timing.closing_time = closing_time.isoformat()
+           timing.opening_time = opening_time
+           timing.closing_time = closing_time
 
         # Step 7: Update Vendor with foreign keys
            db.session.flush()
@@ -403,6 +400,7 @@ class VendorService:
 
 
 
+           current_app.logger.info("onboarding_stage request_id=%s stage=slot_generation", getattr(g, "request_id", ""))
         # Preserve each day's hours and duration; build the union of reusable slots.
            schedule = data.get("day_schedule") or {
                day: {"open": opening_time_str, "close": closing_time_str,
@@ -503,7 +501,6 @@ class VendorService:
                current_app.logger.info(f"FINAL VERIFICATION:")
                current_app.logger.info(f"- VendorAccount exists: {final_account is not None}")
                current_app.logger.info(f"- Vendor account_id: {final_vendor.account_id}")
-               current_app.logger.info(f"- Relationship works: {final_vendor.account.email if final_vendor.account else 'NO RELATIONSHIP'}")
             
             
 
@@ -518,7 +515,6 @@ class VendorService:
 
         except Exception as e:
           db.session.rollback()
-          current_app.logger.error(f"Error onboarding vendor: {e}")
           raise
     
     @staticmethod
