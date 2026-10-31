@@ -533,6 +533,78 @@ def _generate_blocks(anchor_day, start_time, end_time, slot_duration):
     return blocks
 
 
+def _set_operating_slot_allowlist(vendor_id, target_dates, allowed, game_ids, blocks):
+    """Keep all inventory writers (including cancellation/self-healing) within saved hours.
+
+    Reservation records and their capacity counters survive schedule changes. A
+    database guard prevents another independently deployed service from reopening
+    retired inventory when it releases capacity or recreates a historical slot.
+    """
+    table = f'VENDOR_{int(vendor_id)}_SLOT'
+    db.session.execute(text("""CREATE TABLE IF NOT EXISTS vendor_operating_schedule_days (
+        vendor_id INTEGER NOT NULL, date DATE NOT NULL, PRIMARY KEY (vendor_id,date))"""))
+    db.session.execute(text("""CREATE TABLE IF NOT EXISTS vendor_operating_schedule_slots (
+        vendor_id INTEGER NOT NULL, date DATE NOT NULL, slot_id INTEGER NOT NULL,
+        PRIMARY KEY (vendor_id,date,slot_id))"""))
+    db.session.execute(text("""CREATE TABLE IF NOT EXISTS vendor_operating_schedule_games (
+        vendor_id INTEGER NOT NULL, date DATE NOT NULL, game_id INTEGER NOT NULL,
+        PRIMARY KEY (vendor_id,date,game_id))"""))
+    db.session.execute(text("""CREATE TABLE IF NOT EXISTS vendor_operating_schedule_windows (
+        vendor_id INTEGER NOT NULL, date DATE NOT NULL, start_time TIME NOT NULL, end_time TIME NOT NULL,
+        PRIMARY KEY (vendor_id,date,start_time,end_time))"""))
+    for suffix in ('games', 'windows'):
+        db.session.execute(text(f"""DELETE FROM vendor_operating_schedule_{suffix}
+            WHERE vendor_id=:vendor AND date IN :dates""").bindparams(bindparam('dates', expanding=True)),
+            {'vendor':vendor_id, 'dates':target_dates})
+    if game_ids:
+        db.session.execute(text("""INSERT INTO vendor_operating_schedule_games (vendor_id,date,game_id)
+            VALUES (:vendor,:day,:game)"""),
+            [{'vendor':vendor_id, 'day':day, 'game':game} for day in target_dates for game in game_ids])
+    if blocks:
+        db.session.execute(text("""INSERT INTO vendor_operating_schedule_windows (vendor_id,date,start_time,end_time)
+            VALUES (:vendor,:day,:start,:end)"""),
+            [{'vendor':vendor_id, 'day':day, 'start':st.isoformat(), 'end':et.isoformat()}
+             for day in target_dates for st, et in blocks])
+    db.session.execute(text("""DELETE FROM vendor_operating_schedule_slots
+        WHERE vendor_id=:vendor AND date IN :dates""").bindparams(bindparam('dates', expanding=True)),
+        {'vendor':vendor_id, 'dates':target_dates})
+    db.session.execute(text("""INSERT INTO vendor_operating_schedule_days (vendor_id,date)
+        VALUES (:vendor,:day) ON CONFLICT (vendor_id,date) DO NOTHING"""),
+        [{'vendor':vendor_id, 'day':day} for day in target_dates])
+    if allowed:
+        db.session.execute(text("""INSERT INTO vendor_operating_schedule_slots (vendor_id,date,slot_id)
+            VALUES (:vendor_id,:date,:slot_id) ON CONFLICT DO NOTHING"""), allowed)
+    denied = """EXISTS (SELECT 1 FROM vendor_operating_schedule_days d
+        WHERE d.vendor_id=NEW.vendor_id AND d.date=NEW.date)
+        AND NOT EXISTS (SELECT 1 FROM vendor_operating_schedule_slots a
+        WHERE a.vendor_id=NEW.vendor_id AND a.date=NEW.date AND a.slot_id=NEW.slot_id)
+        AND NOT EXISTS (SELECT 1 FROM slots s JOIN available_games g ON g.id=s.gaming_type_id
+            JOIN vendor_operating_schedule_windows w ON w.vendor_id=NEW.vendor_id AND w.date=NEW.date
+            WHERE s.id=NEW.slot_id AND g.vendor_id=NEW.vendor_id
+              AND substr(CAST(s.start_time AS TEXT),1,8)=substr(CAST(w.start_time AS TEXT),1,8)
+              AND substr(CAST(s.end_time AS TEXT),1,8)=substr(CAST(w.end_time AS TEXT),1,8)
+              AND NOT EXISTS (SELECT 1 FROM vendor_operating_schedule_games known
+                  WHERE known.vendor_id=NEW.vendor_id AND known.date=NEW.date AND known.game_id=g.id))"""
+    if db.engine.dialect.name == 'postgresql':
+        db.session.execute(text(f"""CREATE OR REPLACE FUNCTION enforce_operating_slot_schedule()
+            RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+                IF {denied} THEN NEW.is_available := FALSE; END IF;
+                RETURN NEW;
+            END $$"""))
+        # The inventory table is already locked by the caller.
+        db.session.execute(text(f'DROP TRIGGER IF EXISTS operating_slot_schedule ON {table}'))
+        db.session.execute(text(f"""CREATE TRIGGER operating_slot_schedule
+            BEFORE INSERT OR UPDATE ON {table} FOR EACH ROW
+            EXECUTE FUNCTION enforce_operating_slot_schedule()"""))
+    else:
+        # SQLite is used by the isolated integration tests.
+        for event in ('INSERT', 'UPDATE'):
+            db.session.execute(text(f"""CREATE TRIGGER IF NOT EXISTS operating_schedule_{vendor_id}_{event}
+                AFTER {event} ON {table} WHEN NEW.is_available AND ({denied}) BEGIN
+                UPDATE {table} SET is_available=FALSE WHERE vendor_id=NEW.vendor_id
+                    AND date=NEW.date AND slot_id=NEW.slot_id; END"""))
+
+
 def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled):
     updated_days = 0
     inserted_rows = 0
@@ -552,7 +624,7 @@ def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
             WHERE r.vendor_id=vs.vendor_id AND r.slot_id=vs.slot_id
               AND r.date=vs.date AND r.released_at IS NULL)"""
     existing_rows = db.session.execute(text(f"""
-        SELECT vs.slot_id, vs.date, vs.available_slot, s.start_time, s.end_time, ag.total_slot,
+        SELECT vs.slot_id, vs.date, vs.available_slot, s.start_time, s.end_time, s.gaming_type_id, ag.total_slot,
             EXISTS (
                 SELECT 1 FROM bookings b JOIN transactions t ON t.booking_id = b.id
                 WHERE b.slot_id = vs.slot_id AND date(t.booked_date) = vs.date
@@ -566,25 +638,14 @@ def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
         {'vendor_id': vendor_id, 'target_dates': target_dates}).mappings().all()
     def as_time(value):
         return value if isinstance(value, dtime) else dtime.fromisoformat(str(value))
-    for row in existing_rows:
-        retained = is_enabled and (as_time(row['start_time']), as_time(row['end_time'])) in blocks
-        if not retained and (row['has_booking'] or int(row['available_slot'] or 0) < int(row['total_slot'] or 0)):
-            raise ValueError(f"These hours conflict with existing bookings or held slots on {row['date']} ({row['start_time']}–{row['end_time']}, slot #{row['slot_id']}). Resolve them before changing this day.")
-
-    delete_dates_sql = text(f"""
-        DELETE FROM VENDOR_{vendor_id}_SLOT
-        WHERE vendor_id = :vendor_id AND date IN :target_dates
-    """).bindparams(bindparam('target_dates', expanding=True))
-    if not is_enabled:
-        db.session.execute(delete_dates_sql, {'vendor_id': vendor_id, 'target_dates': target_dates})
-        return {'updated_days': len(target_dates), 'inserted_rows': 0}
-    if not blocks:
+    protected = [row for row in existing_rows if row['has_booking']
+                 or int(row['available_slot'] or 0) < int(row['total_slot'] or 0)]
+    if is_enabled and not blocks:
         raise ValueError('The operating window must contain at least one complete slot.')
+    if not is_enabled:
+        blocks = []
 
     game_totals = {int(g.id): int(g.total_slot or 0) for g in games if int(g.total_slot or 0) > 0}
-    if not game_totals:
-        return {"updated_days": 0, "inserted_rows": 0}
-
     game_ids = list(game_totals.keys())
     existing_slots = (
         Slot.query
@@ -624,17 +685,22 @@ def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
         ON CONFLICT (vendor_id, date, slot_id) DO NOTHING
     """)
 
-    retained_ids = list(slot_id_map.values())
-    for row in existing_rows:
-        if row['slot_id'] not in retained_ids and (
-            row['has_booking'] or int(row['available_slot'] or 0) < int(row['total_slot'] or 0)
-        ):
-            raise ValueError('Duplicate slot templates include a booked or held slot; resolve the conflicting reservation before changing this day.')
-    db.session.execute(text(f"""
-        DELETE FROM VENDOR_{vendor_id}_SLOT
-        WHERE vendor_id = :vendor_id AND date IN :target_dates AND slot_id NOT IN :retained_ids
-    """).bindparams(bindparam('target_dates', expanding=True), bindparam('retained_ids', expanding=True)),
-        {'vendor_id': vendor_id, 'target_dates': target_dates, 'retained_ids': retained_ids})
+    # Prefer the identity already carrying a reservation over a duplicate template.
+    for row in protected:
+        key = (int(row['gaming_type_id']), as_time(row['start_time']), as_time(row['end_time']))
+        if key in slot_id_map:
+            slot_id_map[key] = int(row['slot_id'])
+
+    def overlaps(st, et, row):
+        # Compare circular clock intervals, including midnight-crossing slots.
+        def interval(left, right):
+            start = left.hour * 60 + left.minute
+            end = right.hour * 60 + right.minute
+            return start, end if end > start else end + 1440
+        left, right = interval(st, et)
+        old_left, old_right = interval(as_time(row['start_time']), as_time(row['end_time']))
+        return any(left < old_right + offset and old_left + offset < right
+                   for offset in (-1440, 0, 1440))
 
     batch = []
     for d in target_dates:
@@ -642,6 +708,12 @@ def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
             for st, et in blocks:
                 slot_id = slot_id_map.get((game_id, st, et))
                 if not slot_id:
+                    continue
+                # A new slot grid must not sell capacity overlapping a grandfathered
+                # reservation under a different slot ID. Other dates remain bookable.
+                if any(str(row['date']) == str(d) and int(row['gaming_type_id']) == game_id
+                       and int(row['slot_id']) != slot_id and overlaps(st, et, row)
+                       for row in protected):
                     continue
                 batch.append(
                     {
@@ -653,10 +725,28 @@ def _apply_slot_rows_for_day(vendor_id, games, target_dates, blocks, is_enabled)
                     }
                 )
 
+    _set_operating_slot_allowlist(vendor_id, target_dates, batch, [int(g.id) for g in games], blocks)
+    allowed_keys = {(str(row['date']), row['slot_id']) for row in batch}
+    protected_keys = {(str(row['date']), row['slot_id']) for row in protected}
+    for row in existing_rows:
+        key = (str(row['date']), row['slot_id'])
+        params = {'vendor':vendor_id, 'day':row['date'], 'slot':row['slot_id']}
+        if key in allowed_keys:
+            db.session.execute(text(f"""UPDATE VENDOR_{vendor_id}_SLOT
+                SET is_available=(available_slot > 0)
+                WHERE vendor_id=:vendor AND date=:day AND slot_id=:slot"""), params)
+        elif key in protected_keys:
+            db.session.execute(text(f"""UPDATE VENDOR_{vendor_id}_SLOT SET is_available=FALSE
+                WHERE vendor_id=:vendor AND date=:day AND slot_id=:slot"""), params)
+        else:
+            db.session.execute(text(f"""DELETE FROM VENDOR_{vendor_id}_SLOT
+                WHERE vendor_id=:vendor AND date=:day AND slot_id=:slot"""), params)
+
     if batch:
         inserted_rows = max(db.session.execute(insert_sql, batch).rowcount, 0)
 
-    return {"updated_days": len(target_dates), "inserted_rows": inserted_rows}
+    return {"updated_days": len(target_dates), "inserted_rows": inserted_rows,
+            "preserved_slots": len(protected_keys - allowed_keys)}
 
 
 def allowed_file(filename):
@@ -2381,7 +2471,8 @@ def update_slot(vendor_id):
             "window_start": start_anchor.isoformat(),
             "future_window_days": window_days,
             "updated_days": result["updated_days"],
-            "inserted_rows": result["inserted_rows"]
+            "inserted_rows": result["inserted_rows"],
+            "preserved_slots": result.get("preserved_slots", 0)
         }), 200
 
     except ValueError as e:
