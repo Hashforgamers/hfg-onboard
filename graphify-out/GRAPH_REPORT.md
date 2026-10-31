@@ -1,16 +1,16 @@
 # Graph Report - hfg-onboard  (2026-10-31)
 
 ## Corpus Check
-- 83 files · ~44,789 words
+- 83 files · ~44,815 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 670 nodes · 1581 edges · 46 communities (32 shown, 14 thin omitted)
+- 671 nodes · 1582 edges · 47 communities (33 shown, 14 thin omitted)
 - Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 85 edges (avg confidence: 0.54)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `57866819`
+- Built from commit: `9d327f22`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -23,18 +23,18 @@
 - route
 - controllers.py
 - test_self_onboarding_flow.py
-- ConsolePricingOffer
+- .to_dict
 - services.py
 - OTPService
 - replace_vendor_document
-- Image
+- _EmailText
 - .search_gaming_cafes
 - upload_photos
 - console_catalog
 - VendorService
 - Document
 - CatalogProxyTests
-- VendorGame
+- AvailableGame
 - .extend_vendor_slot_window
 - test_kiosk_releases.py
 - AGENTS.md
@@ -45,16 +45,17 @@
 - verify_document
 - get_vendor_dashboard
 - password_manager
-- OpeningDay
+- Vendor
 - cafe_requests
-- test_operating_hours.py
-- vendor.py
+- Flask
+- extensions.py
 - 20261005_notification_context.sql
 - _emit_unlock
-- extensions.py
+- PaymentMethod
 - operating-hours.md
-- PaymentVendorMap
+- datetime
 - allowed_file
+- HardwareSpecification
 - get_unverified_documents
 - 20261005_kiosk_releases.sql
 
@@ -62,7 +63,7 @@
 1. `SuperAdminService` - 80 edges
 2. `VendorService` - 69 edges
 3. `require_super_admin()` - 36 edges
-4. `Vendor` - 32 edges
+4. `Vendor` - 33 edges
 5. `build_hfg_email_html()` - 22 edges
 6. `onboard_vendor()` - 17 edges
 7. `GameService` - 17 edges
@@ -71,29 +72,29 @@
 10. `MemoryRedis` - 14 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `VendorService` --uses--> `AdditionalDetails`  [INFERRED]
+  services/services.py → models/additionalDetails.py
 - `VendorService` --uses--> `Amenity`  [INFERRED]
   services/services.py → models/amenity.py
 - `VendorService` --uses--> `AvailableGame`  [INFERRED]
   services/services.py → models/availableGame.py
+- `setup()` --calls--> `AvailableGame`  [INFERRED]
+  tests/test_operating_hours.py → models/availableGame.py
 - `VendorService` --uses--> `Booking`  [INFERRED]
   services/services.py → models/booking.py
-- `VendorService` --uses--> `Console`  [INFERRED]
-  services/services.py → models/console.py
-- `VendorService` --uses--> `ContactInfo`  [INFERRED]
-  services/services.py → models/contactInfo.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (46 total, 14 thin omitted)
+## Communities (47 total, 14 thin omitted)
 
 ### Community 0 - "vendor_games.py"
-Cohesion: 0.07
+Cohesion: 0.06
 Nodes (32): add_cover_image(), add_supported_game(), create_game(), create_games_batch(), delete_supported_game(), get_all_games(), health_check(), list_game_discovery_platforms() (+24 more)
 
 ### Community 1 - "order_controller.py"
-Cohesion: 0.08
-Nodes (34): add_product(), create_collaborator(), delete_collaborator(), delete_product(), list_collaborators(), list_products(), _notify_store_updated(), route (+26 more)
+Cohesion: 0.12
+Nodes (26): add_product(), create_collaborator(), delete_collaborator(), delete_product(), list_collaborators(), list_products(), _notify_store_updated(), route (+18 more)
 
 ### Community 2 - "SuperAdminService"
 Cohesion: 0.07
@@ -104,7 +105,7 @@ Cohesion: 0.17
 Nodes (13): cleanup_onboarding_documents(), _consume_self_onboard_verification_token(), onboard_vendor(), Validate the JSON data for required fields., Remove only assets created by this failed onboarding attempt., Save uploaded document metadata once; avoid duplicate inserts and loop commits., Safely parse date string, handling None and invalid values, safe_strptime() (+5 more)
 
 ### Community 4 - "super_admin_controller.py"
-Cohesion: 0.10
+Cohesion: 0.11
 Nodes (47): activate_kiosk_release(), change_subscription(), claim_early_onboard_promotion(), create_vendor_staff(), deboard_vendor_admin(), delete_subscription_model(), delete_vendor_staff(), get_daily_settlement_summary() (+39 more)
 
 ### Community 5 - "route"
@@ -116,16 +117,16 @@ Cohesion: 0.19
 Nodes (22): allowed_file(), _apply_branch_defaults(), _build_branch_defaults_from_vendor(), _get_branch_defaults_for_email(), get_branch_onboard_defaults(), _is_missing_payload_value(), _is_valid_email(), _normalize_cafe_name() (+14 more)
 
 ### Community 7 - "test_self_onboarding_flow.py"
-Cohesion: 0.06
-Nodes (32): Config, create_app(), _is_insecure_secret(), _validate_production_config(), Flask, Send standardized onboarding email with vendor credentials., Build welcome email content fragment (wrapped by shared HFG template)., Use the app's actual CORS configuration to test dashboard preflight. (+24 more)
+Cohesion: 0.10
+Nodes (23): Config, create_app(), _is_insecure_secret(), _validate_production_config(), Build welcome email content fragment (wrapped by shared HFG template)., app(), MemoryRedis, payload() (+15 more)
 
-### Community 8 - "ConsolePricingOffer"
-Cohesion: 0.28
-Nodes (5): ConsolePricingOffer, Time-based promotional pricing for console types (AvailableGames) Allows…, Check if this offer is active RIGHT NOW using IST. Returns True if current IST…, Calculate discount percentage, Convert to dictionary for API responses
+### Community 8 - ".to_dict"
+Cohesion: 0.33
+Nodes (3): Check if this offer is active RIGHT NOW using IST. Returns True if current IST…, Calculate discount percentage, Convert to dictionary for API responses
 
 ### Community 9 - "services.py"
-Cohesion: 0.12
-Nodes (10): Console, HardwareSpecification, MaintenanceStatus, Slot, VendorCredential, VendorDaySlotConfig, VendorPin, generate_credentials() (+2 more)
+Cohesion: 0.11
+Nodes (11): AdditionalDetails, Console, MaintenanceStatus, PriceAndCost, Slot, VendorCredential, VendorDaySlotConfig, VendorPin (+3 more)
 
 ### Community 10 - "OTPService"
 Cohesion: 0.14
@@ -135,9 +136,9 @@ Nodes (9): OTPService, Verify the provided OTP - FAST, Check if vendor is alread
 Cohesion: 0.13
 Nodes (14): _authorize_hours_owner(), cafe_requests(), delete_vendor_image(), delete_vendor_image_by_url(), Upload a missing (or replace existing) required onboarding document by…, Replace an existing vendor document file. Note: Replaced doc status becomes…, Deletes a vendor image from both Cloudinary and the database by image ID., Deletes a vendor image by URL from both Cloudinary and the database. (+6 more)
 
-### Community 12 - "Image"
-Cohesion: 0.25
-Nodes (4): Image, Save image metadata to the database. Args: vendor_id (int): ID of the vendor…, Upload a single photo to Google Drive and return the file link., Upload multiple photos to Google Drive and return their file links.
+### Community 12 - "_EmailText"
+Cohesion: 0.29
+Nodes (3): HTMLParser, _EmailText, Generate a useful plain-text alternative, retaining links and table values.
 
 ### Community 13 - ".search_gaming_cafes"
 Cohesion: 0.22
@@ -152,12 +153,12 @@ Cohesion: 0.60
 Nodes (5): console_catalog, games, game_console_catalog, game_discovery_events, game_popularity_rankings
 
 ### Community 16 - "VendorService"
-Cohesion: 0.10
-Nodes (11): deboard_vendor(), AdditionalDetails, BusinessRegistration, PriceAndCost, Timing, Creates a table for tracking console availability for a vendor., Creates a table for tracking vendor dashboard details., Creates a vendor-specific promo detail table. (+3 more)
+Cohesion: 0.09
+Nodes (13): deboard_vendor(), Image, VendorStatus, Save image metadata to the database. Args: vendor_id (int): ID of the vendor…, Upload a single photo to Google Drive and return the file link., Upload multiple photos to Google Drive and return their file links., Creates a table for tracking vendor dashboard details., Creates a vendor-specific promo detail table. (+5 more)
 
-### Community 19 - "VendorGame"
-Cohesion: 0.25
-Nodes (4): Serialize VendorGame — price is always dynamically computed, Dynamically compute price from parent AvailableGame. - If an active…, Returns full pricing context: base price, offer price, offer details. Useful…, VendorGame
+### Community 19 - "AvailableGame"
+Cohesion: 0.16
+Nodes (7): AvailableGame, ConsolePricingOffer, Time-based promotional pricing for console types (AvailableGames) Allows…, Serialize VendorGame — price is always dynamically computed, Dynamically compute price from parent AvailableGame. - If an active…, Returns full pricing context: base price, offer price, offer details. Useful…, VendorGame
 
 ### Community 20 - ".extend_vendor_slot_window"
 Cohesion: 0.11
@@ -175,21 +176,25 @@ Nodes (3): API endpoint to mark a document as verified and update vendor status 
 Cohesion: 0.50
 Nodes (3): get_vendor_dashboard(), API to retrieve all vendors with their statuses and relevant information for…, Retrieve all vendors with their statuses, timing info, and relevant information…
 
+### Community 32 - "Vendor"
+Cohesion: 0.23
+Nodes (6): Amenity, BusinessRegistration, OpeningDay, Timing, Vendor, Creates a table for tracking console availability for a vendor.
+
 ### Community 33 - "cafe_requests"
 Cohesion: 0.50
 Nodes (3): documents, cafe_requests, vendors
 
-### Community 34 - "test_operating_hours.py"
-Cohesion: 0.20
-Nodes (17): parametrize, Exercise the actual schedule handler/helpers with an isolated SQL database., save(), test_booking_is_preserved_even_if_capacity_was_stale(), test_cafe_without_games_can_save_configuration(), test_duplicate_template_cannot_delete_booked_slot_identity(), test_future_extension_uses_saved_weekday_grid_not_old_templates(), test_historical_slot_self_healing_cannot_reopen_removed_hours() (+9 more)
+### Community 34 - "Flask"
+Cohesion: 0.09
+Nodes (27): Flask, Use the app's actual CORS configuration to test dashboard preflight., test_operating_hours_preflight_accepts_dashboard_headers(), ProxyTests, Verify the public kiosk proxy preserves authentication and API envelopes., parametrize, test_upstream_errors_identify_required_fix(), fixture (+19 more)
 
-### Community 35 - "vendor.py"
-Cohesion: 0.14
-Nodes (12): datetime, declared_attr, Amenity, ContactInfo, DocumentSubmitted, PasswordManager, PhysicalAddress, Transaction (+4 more)
+### Community 35 - "extensions.py"
+Cohesion: 0.13
+Nodes (10): check_redis_health(), create_redis_pool(), Create a Redis connection pool to reuse connections This prevents repeated SSL…, Check Redis connection health, declared_attr, ContactInfo, DocumentSubmitted, PasswordManager (+2 more)
 
-### Community 38 - "extensions.py"
-Cohesion: 0.14
-Nodes (8): check_redis_health(), create_redis_pool(), Create a Redis connection pool to reuse connections This prevents repeated SSL…, Check Redis connection health, AvailableGame, PaymentMethod, fixture, setup()
+### Community 40 - "datetime"
+Cohesion: 0.17
+Nodes (8): datetime, PaymentVendorMap, VendorAccount, build_hfg_email_html(), email_text(), _extract_body(), Fetch vendor info and send a deboard warning email., Build deboard warning content fragment (wrapped by shared HFG template).
 
 ### Community 41 - "allowed_file"
 Cohesion: 0.50
@@ -207,12 +212,12 @@ Nodes (3): get_unverified_documents(), API endpoint to get all unverified docume
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `VendorService` connect `VendorService` to `vendor_games.py`, `order_controller.py`, `SuperAdminService`, `super_admin_controller.py`, `controllers.py`, `test_self_onboarding_flow.py`, `services.py`, `Image`, `.search_gaming_cafes`, `upload_photos`, `Document`, `VendorGame`, `.extend_vendor_slot_window`, `Booking`, `verify_document`, `get_vendor_dashboard`, `OpeningDay`, `vendor.py`, `extensions.py`, `PaymentVendorMap`, `get_unverified_documents`?**
+- **Why does `VendorService` connect `VendorService` to `vendor_games.py`, `SuperAdminService`, `super_admin_controller.py`, `controllers.py`, `test_self_onboarding_flow.py`, `services.py`, `.search_gaming_cafes`, `upload_photos`, `Document`, `AvailableGame`, `.extend_vendor_slot_window`, `Booking`, `verify_document`, `get_vendor_dashboard`, `Vendor`, `extensions.py`, `PaymentMethod`, `datetime`, `HardwareSpecification`, `get_unverified_documents`?**
   _High betweenness centrality (0.192) - this node is a cross-community bridge._
-- **Why does `SuperAdminService` connect `SuperAdminService` to `vendor.py`, `super_admin_controller.py`, `services.py`, `VendorService`, `Document`?**
+- **Why does `SuperAdminService` connect `SuperAdminService` to `Vendor`, `extensions.py`, `super_admin_controller.py`, `services.py`, `VendorService`, `Document`?**
   _High betweenness centrality (0.155) - this node is a cross-community bridge._
-- **Why does `Vendor` connect `vendor.py` to `OpeningDay`, `order_controller.py`, `SuperAdminService`, `vendor_games.py`, `extensions.py`, `controllers.py`, `test_self_onboarding_flow.py`, `services.py`, `OTPService`, `VendorService`?**
-  _High betweenness centrality (0.061) - this node is a cross-community bridge._
+- **Why does `Vendor` connect `Vendor` to `vendor_games.py`, `order_controller.py`, `SuperAdminService`, `extensions.py`, `Flask`, `controllers.py`, `test_self_onboarding_flow.py`, `datetime`, `services.py`, `OTPService`, `VendorService`, `AvailableGame`?**
+  _High betweenness centrality (0.064) - this node is a cross-community bridge._
 - **Are the 9 inferred relationships involving `SuperAdminService` (e.g. with `VendorService` and `ContactInfo`) actually correct?**
   _`SuperAdminService` has 9 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 30 inferred relationships involving `VendorService` (e.g. with `AdditionalDetails` and `Amenity`) actually correct?**
@@ -220,4 +225,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **What connects `Invoice`, `kiosk_releases`, `notification_campaign_settings` to the rest of the system?**
   _6 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `vendor_games.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.06502816180235535 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06498015873015874 - nodes in this community are weakly interconnected._
