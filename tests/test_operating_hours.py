@@ -41,7 +41,7 @@ def setup():
         is_available = db.Column(db.Boolean)
     source = Path(__file__).resolve().parents[1] / 'controllers/controllers.py'
     tree = ast.parse(source.read_text())
-    names = {'normalize_day_key', 'parse_time_flexible', '_generate_blocks', '_apply_slot_rows_for_day',
+    names = {'_set_operating_slot_allowlist', 'normalize_day_key', 'parse_time_flexible', '_generate_blocks', '_apply_slot_rows_for_day',
              '_authorize_hours_owner', 'update_slot'}
     nodes = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name in names]
     for node in nodes:
@@ -100,19 +100,48 @@ def test_save_reload_closed_reopen_and_far_future(setup):
     assert e.db.session.execute(text('SELECT COUNT(*) FROM vendor_1_slot')).scalar() == 2
 
 
-def test_capacity_is_preserved_and_conflicts_roll_back(setup):
+@pytest.mark.parametrize('changes', [dict(is_enabled=False),dict(start_time='10:00'),dict(slot_duration=30)])
+def test_hours_change_preserves_held_capacity_without_blocking_save(setup, changes):
     e = setup
     assert save(e).status_code == 200
     e.db.session.execute(text('UPDATE vendor_1_slot SET available_slot=2 WHERE slot_id=1'))
     e.db.session.commit()
     assert save(e).status_code == 200
     assert e.db.session.execute(text('SELECT available_slot FROM vendor_1_slot WHERE slot_id=1')).scalar() == 2
-    for changes in [dict(is_enabled=False),dict(start_time='10:00'),dict(slot_duration=30)]:
-        result = save(e, **changes)
-        assert result.status_code == 409, result.json
-        assert e.db.session.execute(text('SELECT is_open FROM opening_days')).scalar() == 1
-        assert e.db.session.execute(text('SELECT opening_time FROM vendor_day_slot_config')).scalar() == '09:00 AM'
-    assert e.db.session.execute(text('SELECT COUNT(*) FROM vendor_1_slot')).scalar() == 2
+    result = save(e, **changes)
+    assert result.status_code == 200, result.json
+    row = e.db.session.execute(text('SELECT available_slot,is_available FROM vendor_1_slot WHERE slot_id=1')).one()
+    assert row.available_slot == 2
+    assert not row.is_available
+    # Another service releasing capacity cannot reopen a retired slot.
+    e.db.session.execute(text('UPDATE vendor_1_slot SET available_slot=available_slot+1,is_available=TRUE WHERE slot_id=1'))
+    e.db.session.commit()
+    row = e.db.session.execute(text('SELECT available_slot,is_available FROM vendor_1_slot WHERE slot_id=1')).one()
+    assert row.available_slot == 3
+    assert not row.is_available
+    if changes.get('slot_duration') == 30:
+        rows = e.db.session.execute(text('SELECT s.start_time FROM vendor_1_slot v JOIN slots s ON s.id=v.slot_id WHERE v.is_available=TRUE')).all()
+        assert len(rows) == 2  # 10:00 and 10:30; no overlapping 09:00/09:30 inventory.
+
+
+def test_retired_slot_can_be_reopened_without_resetting_reserved_capacity(setup):
+    e = setup
+    assert save(e).status_code == 200
+    e.db.session.execute(text('UPDATE vendor_1_slot SET available_slot=2 WHERE slot_id=1'))
+    e.db.session.commit()
+    assert save(e, is_enabled=False).status_code == 200
+    assert save(e).status_code == 200
+    row=e.db.session.execute(text('SELECT available_slot,is_available FROM vendor_1_slot WHERE slot_id=1')).one()
+    assert row.available_slot == 2 and row.is_available
+
+
+def test_historical_slot_self_healing_cannot_reopen_removed_hours(setup):
+    e=setup
+    assert save(e).status_code == 200
+    assert save(e, is_enabled=False).status_code == 200
+    e.db.session.execute(text("INSERT INTO vendor_1_slot VALUES(1,1,'2026-10-05',3,TRUE)"))
+    e.db.session.commit()
+    assert not e.db.session.execute(text('SELECT is_available FROM vendor_1_slot')).scalar()
 
 
 @pytest.mark.parametrize('changes,count', [(dict(start_time='22:00',end_time='02:00'),4),(dict(is_24_hours=True),24)])
@@ -147,14 +176,16 @@ def test_cafe_without_games_can_save_configuration(setup):
     assert e.db.session.execute(text('SELECT COUNT(*) FROM vendor_day_slot_config')).scalar() == 1
 
 
-def test_booking_conflict_detected_even_if_capacity_was_stale(setup):
+def test_booking_is_preserved_even_if_capacity_was_stale(setup):
     e = setup
     assert save(e).status_code == 200
     e.db.session.execute(text("INSERT INTO bookings VALUES (1,1,'confirmed')"))
     e.db.session.execute(text("INSERT INTO transactions VALUES (1,'2026-10-05')"))
     e.db.session.commit()
-    assert save(e, is_enabled=False).status_code == 409
-    assert e.db.session.execute(text('SELECT COUNT(*) FROM vendor_1_slot')).scalar() == 2
+    assert save(e, is_enabled=False).status_code == 200
+    assert e.db.session.execute(text('SELECT COUNT(*) FROM bookings')).scalar() == 1
+    assert e.db.session.execute(text('SELECT COUNT(*) FROM vendor_1_slot')).scalar() == 1
+    assert not e.db.session.execute(text('SELECT is_available FROM vendor_1_slot')).scalar()
 
 
 def test_future_extension_uses_saved_weekday_grid_not_old_templates(setup, monkeypatch):
@@ -217,8 +248,10 @@ def test_schedule_change_preserves_qr_hold_even_with_stale_counter(setup):
     e.db.session.execute(text("INSERT INTO cafe_slot_reservations VALUES (1,:slot,'2026-10-05',NULL)"), {'slot':slot_id})
     e.db.session.commit()
     response=save(e,is_enabled=False)
-    assert response.status_code == 409
-    assert e.db.session.execute(text('SELECT count(*) FROM vendor_1_slot')).scalar() == 2
+    assert response.status_code == 200
+    assert e.db.session.execute(text('SELECT COUNT(*) FROM cafe_slot_reservations WHERE released_at IS NULL')).scalar() == 1
+    assert not e.db.session.execute(text('SELECT is_available FROM vendor_1_slot')).scalar()
+    assert e.db.session.execute(text('SELECT count(*) FROM vendor_1_slot')).scalar() == 1
 
 
 def test_duplicate_template_cannot_delete_booked_slot_identity(setup):
@@ -233,8 +266,9 @@ def test_duplicate_template_cannot_delete_booked_slot_identity(setup):
         e.db.session.execute(text("INSERT INTO transactions VALUES(:id,'2026-10-05')"),{'id':booking})
     e.db.session.commit()
     response=save(e)
-    assert response.status_code == 409
-    assert 'Duplicate slot templates' in response.json['message']
+    assert response.status_code == 200
+    assert e.db.session.execute(text('SELECT COUNT(*) FROM bookings')).scalar() == 2
+    assert e.db.session.execute(text('SELECT COUNT(*) FROM vendor_1_slot WHERE is_available=FALSE')).scalar() == 2
     assert e.db.session.execute(text('SELECT count(*) FROM vendor_1_slot')).scalar() == 3
 
 
@@ -254,3 +288,27 @@ def test_legacy_cron_refuses_overlapping_templates_without_config(setup):
     with pytest.raises(ValueError,match='Historical slot templates overlap'):
         scope['extend_vendor_slot_window'](1,date(2026,10,5),date(2026,10,12))
     assert e.db.session.execute(text('SELECT count(*) FROM vendor_1_slot')).scalar()==0
+
+
+def test_new_game_inventory_obeys_saved_hours_without_requiring_another_save(setup):
+    e=setup
+    assert save(e).status_code == 200
+    e.db.session.add(e.scope['AvailableGame'](id=2,vendor_id=1,total_slot=2))
+    inside=e.Slot(gaming_type_id=2,start_time=time(9),end_time=time(10),available_slot=2,is_available=True)
+    outside=e.Slot(gaming_type_id=2,start_time=time(11),end_time=time(12),available_slot=2,is_available=True)
+    e.db.session.add_all([inside,outside]);e.db.session.flush()
+    for slot in (inside,outside):
+        e.db.session.execute(text("INSERT INTO vendor_1_slot VALUES(1,:slot,'2026-10-05',2,TRUE)"), {'slot':slot.id})
+    e.db.session.commit()
+    assert e.db.session.execute(text('SELECT is_available FROM vendor_1_slot WHERE slot_id=:slot'), {'slot':inside.id}).scalar()
+    assert not e.db.session.execute(text('SELECT is_available FROM vendor_1_slot WHERE slot_id=:slot'), {'slot':outside.id}).scalar()
+
+
+def test_new_grid_does_not_block_unreserved_future_dates(setup):
+    e=setup
+    assert save(e,window_days=14).status_code == 200
+    e.db.session.execute(text("UPDATE vendor_1_slot SET available_slot=2 WHERE slot_id=1 AND date='2026-10-05'"))
+    e.db.session.commit()
+    assert save(e,slot_duration=30,window_days=14).status_code == 200
+    assert e.db.session.execute(text("SELECT COUNT(*) FROM vendor_1_slot WHERE date='2026-10-12' AND is_available=TRUE")).scalar() == 4
+    assert e.db.session.execute(text("SELECT COUNT(*) FROM vendor_1_slot WHERE date='2026-10-05' AND is_available=TRUE")).scalar() == 2
