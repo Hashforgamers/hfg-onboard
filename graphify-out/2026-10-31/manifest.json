@@ -20,8 +20,8 @@
     "semantic_hash": "fb3038d3db2ac71ffc1a959e23c2afed"
   },
   "controllers/controllers.py": {
-    "mtime": 1791264326.7000358,
-    "ast_hash": "9887267286f5d7f6cc975d260507f4a1",
+    "mtime": 1793435769.6446905,
+    "ast_hash": "27079789568e3ea932e22d7eaa0116ec",
     "semantic_hash": ""
   },
   "controllers/order_controller.py": {
@@ -350,8 +350,8 @@
     "semantic_hash": ""
   },
   "tests/test_operating_hours.py": {
-    "mtime": 1791142056.6200762,
-    "ast_hash": "074a64130b935edd4bf77c1858012d82",
+    "mtime": 1793435741.5498095,
+    "ast_hash": "1984950faf49e55f6a70d708c8d5c178",
     "semantic_hash": ""
   },
   "tests/test_subscription_catalog_proxy.py": {
@@ -360,8 +360,8 @@
     "semantic_hash": ""
   },
   "docs/operating-hours.md": {
-    "mtime": 1790707202.2736578,
-    "ast_hash": "1ec40a8402119b487239b1f5b2b0b05a",
+    "mtime": 1793435769.6463447,
+    "ast_hash": "0012cbf1c48c2495f13eb22930b7ee83",
     "semantic_hash": ""
   },
   "tests/test_dashboard_cors.py": {

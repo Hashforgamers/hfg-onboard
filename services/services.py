@@ -1124,6 +1124,7 @@ class VendorService:
             query = db.session.query(
                 Vendor.id.label('vendor_id'),
                 Vendor.cafe_name,
+                Vendor.display_name,
                 Vendor.owner_name,
                 latest_status.c.status,
                 Vendor.created_at,
@@ -1165,6 +1166,7 @@ class VendorService:
             results = query.group_by(
                 Vendor.id,
                 Vendor.cafe_name,
+                Vendor.display_name,
                 Vendor.owner_name,
                 latest_status.c.status,
                 Vendor.created_at,
@@ -1298,7 +1300,8 @@ class VendorService:
 
                 vendors_data.append({
                     "vendor_id": result.vendor_id,
-                    "cafe_name": result.cafe_name,
+                    "cafe_name": result.display_name or result.cafe_name,
+                    "display_name": result.display_name,
                     "owner_name": result.owner_name,
                     "status": result.status,
                     "created_at": result.created_at.isoformat() if result.created_at else None,
@@ -1430,7 +1433,7 @@ class VendorService:
             "sort": requested_sort,
             "cursor": cursor_data,
         }
-        cache_key = f"cafe_search:v1:{json.dumps(cache_payload, sort_keys=True, separators=(',', ':'))}"
+        cache_key = f"cafe_search:v2:{json.dumps(cache_payload, sort_keys=True, separators=(',', ':'))}"
         try:
             cached = redis_client.get(cache_key)
             if cached:
@@ -1613,7 +1616,8 @@ class VendorService:
             )
             SELECT
                 v.id AS vendor_id,
-                v.cafe_name,
+                COALESCE(NULLIF(v.display_name, ''), v.cafe_name) AS cafe_name,
+                v.display_name,
                 ls.status,
                 ci.phone,
                 pa.addressLine1,
@@ -1674,6 +1678,7 @@ class VendorService:
             cafes.append({
                 "vendor_id": row["vendor_id"],
                 "cafe_name": row["cafe_name"],
+                "display_name": row["display_name"],
                 "status": row["status"],
                 "phone": row["phone"],
                 "address": {
