@@ -272,7 +272,7 @@ class GameService:
                 FROM game_discovery_events
                 WHERE created_at >= NOW() - INTERVAL '7 days'
                   AND game_id IS NOT NULL
-                  AND (:city IS NULL OR LOWER(COALESCE(city, '')) = :city)
+                  AND (CAST(:city AS TEXT) IS NULL OR LOWER(COALESCE(city, '')) = :city)
                 GROUP BY game_id, console_catalog_id
             )
             SELECT
