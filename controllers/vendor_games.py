@@ -280,7 +280,7 @@ def list_vendors_for_game(game_id):
 
 @vendor_games_bp.route('/games', methods=['POST'])
 def create_game():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     try:
          # Log the received cover_image_url for debugging
         cover_image_url = data.get('cover_image_url')
@@ -300,6 +300,7 @@ def create_game():
             trailer_url=data.get('trailer_url'),
             multiplayer=data.get('multiplayer'),
             esrb_rating=data.get('esrb_rating'),
+            console_catalog_ids=data.get('console_catalog_ids'),
         )
         return jsonify({"message": "Game created", "game": game.to_dict()}), 201
     except Exception as e:

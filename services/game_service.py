@@ -6,6 +6,9 @@ from flask import current_app
 from sqlalchemy import text
 import json
 import os
+import re
+import uuid
+from urllib.parse import urlparse
 
 class GameService:
     DISCOVERY_CACHE_TTL_SECONDS = int(os.getenv("GAME_DISCOVERY_CACHE_TTL_SECONDS", "300"))
@@ -400,60 +403,66 @@ class GameService:
 
     @staticmethod
     def create_game(
-        name,
-        description=None,
-        release_date=None,
-        developer=None,
-        publisher=None,
-        genre=None,
-        cover_image_url=None,
-        screenshots=None,
-        average_rating=0.0,
-        trailer_url=None,
-        multiplayer=False,
-        esrb_rating=None,
+        name, description=None, release_date=None, developer=None, publisher=None,
+        genre=None, cover_image_url=None, screenshots=None, average_rating=0.0,
+        trailer_url=None, multiplayer=False, esrb_rating=None, console_catalog_ids=None,
     ):
-        if not name:
-            raise ValueError("Game name is required.")
-
-        # Convert release_date from string to date if necessary
+        name = str(name or "").strip()
+        if not name or len(name) > 255:
+            raise ValueError("Game name is required and must be at most 255 characters.")
+        image_url = str(cover_image_url or "").strip() or None
+        if image_url:
+            parsed = urlparse(image_url)
+            if parsed.scheme not in {"https", "http"} or not parsed.netloc or len(image_url) > 500:
+                raise ValueError("Cover image must be an HTTP(S) URL of at most 500 characters.")
         release_date_obj = None
         if release_date:
             try:
-                # Expecting ISO format: 'YYYY-MM-DD' or similar
                 release_date_obj = datetime.strptime(release_date, "%Y-%m-%d").date()
-            except ValueError:
+            except (ValueError, TypeError):
                 raise ValueError("release_date must be in 'YYYY-MM-DD' format.")
-
-        # Validate screenshots is JSON-serializable or None
-        if screenshots and not isinstance(screenshots, (list, dict)):
-            raise ValueError("screenshots must be a JSON serializable list or dict.")
-
-        # Create Game object
-        game = Game(
-            name=name,
-            description=description,
-            release_date=release_date_obj,
-            developer=developer,
-            publisher=publisher,
-            genre=genre,
-            cover_image_url=cover_image_url,
-            screenshots=screenshots,
-            average_rating=average_rating,
-            trailer_url=trailer_url,
-            multiplayer=multiplayer,
-            esrb_rating=esrb_rating,
-        )
-
+        ids = console_catalog_ids or []
+        if not isinstance(ids, list) or any(type(value) is not int or value <= 0 for value in ids):
+            raise ValueError("Choose valid catalog platforms.")
+        ids = list(dict.fromkeys(ids))
         try:
+            platforms = []
+            for catalog_id in ids:
+                row = db.session.execute(text(
+                    "SELECT id, display_name FROM console_catalog WHERE id = :id AND is_active = true"
+                ), {"id": catalog_id}).mappings().first()
+                if not row:
+                    raise ValueError("A selected platform is no longer available.")
+                platforms.append(row)
+            game = Game(
+                name=name,
+                slug=(re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:210] or "game") + "-" + uuid.uuid4().hex[:12],
+                description=description, release_date=release_date_obj, genre=genre,
+                image_url=image_url,
+                platform=platforms[0]["display_name"][:50] if platforms else None,
+                average_rating=average_rating or 0.0, trailer_url=trailer_url,
+                multiplayer=bool(multiplayer), esrb_rating=esrb_rating,
+            )
             db.session.add(game)
+            db.session.flush()
+            for platform in platforms:
+                db.session.execute(text("""
+                    INSERT INTO game_console_catalog (game_id, console_catalog_id, source_platform)
+                    VALUES (:game_id, :catalog_id, :platform)
+                """), {"game_id": game.id, "catalog_id": platform["id"], "platform": platform["display_name"]})
             db.session.commit()
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            raise Exception(f"Failed to create game: {str(e)}")
-
+            raise
+        # New games and platform counts must be visible immediately after saving.
+        try:
+            for pattern in ("games:popular:*", "games:search:*", "games:platforms:*"):
+                for key in redis_client.scan_iter(match=pattern, count=100):
+                    redis_client.delete(key)
+        except Exception:
+            current_app.logger.warning("Unable to invalidate game discovery cache")
         return game
-    
+
     # new game service with cloudinary
 
     @staticmethod
