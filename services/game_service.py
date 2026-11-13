@@ -175,7 +175,7 @@ class GameService:
             "offset": offset,
         }
         if normalized_query:
-            where.append("(LOWER(g.name) LIKE CONCAT('%', :q, '%') OR LOWER(COALESCE(g.slug, '')) LIKE CONCAT('%', :q, '%'))")
+            where.append("(LOWER(g.name) LIKE CONCAT('%', CAST(:q AS TEXT), '%') OR LOWER(COALESCE(g.slug, '')) LIKE CONCAT('%', CAST(:q AS TEXT), '%'))")
         if catalog_id is not None:
             where.append("cc.id = :console_catalog_id")
         elif normalized_console_slug:
