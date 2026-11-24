@@ -8,6 +8,7 @@ import json
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 from flask import current_app, g
+from services.seo_ping import ping_vendors
 from models.vendor import Vendor
 from models.document import Document
 from models.contactInfo import ContactInfo
@@ -898,6 +899,7 @@ class VendorService:
                     vendor_status.status = 'active'
                     vendor_status.updated_at = datetime.utcnow()
                     db.session.commit()
+                    ping_vendors([vendor_id])
                     current_app.logger.info(f"Vendor {vendor_id} status updated to active.")
                 else:
                     return {"status": "error", "message": "Vendor status record not found"}, 404
@@ -935,6 +937,7 @@ class VendorService:
             db.session.commit()
 
             # Check if all documents for each vendor are verified
+            activated_vendor_ids = []
             for vendor_id in vendor_ids:
                 unverified_docs = Document.query.filter_by(vendor_id=vendor_id, status='unverified').count()
                 
@@ -949,7 +952,9 @@ class VendorService:
                         vendor_status = VendorStatus(vendor_id=vendor_id, status='active')
                         db.session.add(vendor_status)
                     db.session.commit()
+                    activated_vendor_ids.append(vendor_id)
 
+            ping_vendors(activated_vendor_ids)
             return {'message': 'Documents verified and vendor status updated where applicable'}, 200
 
         except Exception as e:

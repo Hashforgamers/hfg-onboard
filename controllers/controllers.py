@@ -10,6 +10,7 @@ import secrets
 import math
 import string
 from services.services import VendorService
+from services.seo_ping import ping_vendors
 from werkzeug.utils import secure_filename
 import json
 from flask_mail import Message
@@ -1199,6 +1200,7 @@ def onboard_vendor():
         stage = "commit"
         current_app.logger.info("onboarding_stage request_id=%s stage=%s", g.request_id, stage)
         db.session.commit()
+        ping_vendors([vendor_id])
     except Exception as exc:
         db.session.rollback()
         if token_consumed:
@@ -1909,6 +1911,7 @@ def upload_vendor_image(vendor_id):
     )
     db.session.add(new_image)
     db.session.commit()
+    ping_vendors([vendor_id])
     
     db.session.refresh(vendor)
     
@@ -2069,6 +2072,7 @@ def delete_vendor_image(vendor_id, image_id):
             db.session.delete(image)
             db.session.commit()
             database_deleted = True
+            ping_vendors([vendor_id])
         except Exception as db_error:
             db.session.rollback()
             return jsonify({
@@ -2155,6 +2159,7 @@ def delete_vendor_image_by_url(vendor_id):
     # Delete from database
     db.session.delete(image)
     db.session.commit()
+    ping_vendors([vendor_id])
     
     # Refresh vendor to get updated images list
     db.session.refresh(vendor)
