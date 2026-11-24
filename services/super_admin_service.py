@@ -16,6 +16,7 @@ from werkzeug.security import generate_password_hash
 
 from db.extensions import db, mail
 from services.email_template import build_hfg_email_html
+from services.seo_ping import ping_vendors
 from models.contactInfo import ContactInfo
 from models.document import Document
 from models.passwordManager import PasswordManager
@@ -1324,6 +1325,7 @@ class SuperAdminService:
             status_row = VendorStatus(vendor_id=vendor_id, status=new_status, updated_at=datetime.utcnow())
             db.session.add(status_row)
             db.session.commit()
+            ping_vendors([vendor_id])
 
             return True, f"Vendor status updated to '{new_status}' by {changed_by}"
         except Exception as exc:
