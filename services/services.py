@@ -1251,10 +1251,16 @@ class VendorService:
                 Image.path,
                 Image.public_id,
                 Image.url
-            ).filter(Image.vendor_id.in_(vendor_ids)).all()
+            ).filter(Image.vendor_id.in_(vendor_ids)).order_by(Image.vendor_id, Image.id).all()
 
             images_map = {}
+            seen_public_ids = set()
             for img in images:
+                # Several legacy rows point at one shared Cloudinary file; show it once.
+                key = (img.vendor_id, img.public_id or img.url)
+                if key in seen_public_ids:
+                    continue
+                seen_public_ids.add(key)
                 images_map.setdefault(img.vendor_id, []).append({
                     "image_id": img.image_id,
                     "url": img.url,
