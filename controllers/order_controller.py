@@ -50,6 +50,7 @@ def vendor_all_products():
             'collaborator_id': str(c.collaborator_id),
             'collaborator_brand': c.brand_name,
             'image_url': p.image_url,
+            'description': p.description,
         })
     return jsonify(res), 200
 
@@ -126,33 +127,50 @@ def place_order():
 
 @order_bp.route('/vendors/<int:vendor_id>/orders', methods=['GET'])
 def list_vendor_orders(vendor_id):
+    """Marketplace orders a cafe placed with collaborators, newest first."""
     orders = Order.query.filter_by(cafe_id=vendor_id).order_by(Order.order_date.desc()).all()
+    if not orders:
+        return jsonify([]), 200
+
+    order_ids = [o.order_id for o in orders]
+    collaborator_ids = {o.collaborator_id for o in orders if o.collaborator_id}
+    collaborators = {
+        c.collaborator_id: c
+        for c in Collaborator.query.filter(Collaborator.collaborator_id.in_(collaborator_ids)).all()
+    } if collaborator_ids else {}
+    items = OrderItem.query.filter(OrderItem.order_id.in_(order_ids)).all()
+    product_ids = {i.product_id for i in items if i.product_id}
+    products = {
+        p.product_id: p
+        for p in Product.query.filter(Product.product_id.in_(product_ids)).all()
+    } if product_ids else {}
+
+    items_by_order = {}
+    for item in items:
+        product = products.get(item.product_id)
+        items_by_order.setdefault(item.order_id, []).append({
+            "product_id": str(item.product_id) if item.product_id else None,
+            "product_name": product.name if product else "Removed product",
+            "image_url": product.image_url if product else None,
+            "quantity": item.quantity,
+            "unit_price": float(item.unit_price or 0),
+            "subtotal": float(item.subtotal or 0),
+        })
 
     result = []
     for order in orders:
-        collaborator = Collaborator.query.get(order.collaborator_id)
-        items = OrderItem.query.filter_by(order_id=order.order_id).all()
-        
-        item_list = []
-        for item in items:
-            product = Product.query.get(item.product_id)
-            item_list.append({
-                "product_id": str(product.product_id),
-                "product_name": product.name,
-                "quantity": item.quantity,
-                "unit_price": float(item.unit_price),
-                "subtotal": float(item.subtotal)
-            })
-
+        collaborator = collaborators.get(order.collaborator_id)
         result.append({
             "order_id": str(order.order_id),
-            "collaborator_id": str(order.collaborator_id),
+            "collaborator_id": str(order.collaborator_id) if order.collaborator_id else None,
             "collaborator_name": collaborator.name if collaborator else "Unknown",
-            "order_date": order.order_date.isoformat(),
+            "collaborator_brand": collaborator.brand_name if collaborator else None,
+            "order_date": order.order_date.isoformat() if order.order_date else None,
+            "updated_at": order.updated_at.isoformat() if order.updated_at else None,
             "status": order.status,
-            "total_amount": float(order.total_amount),
-            "commission_amount": float(order.commission_amount),
-            "items": item_list
+            "total_amount": float(order.total_amount or 0),
+            "commission_amount": float(order.commission_amount or 0),
+            "items": items_by_order.get(order.order_id, []),
         })
 
     return jsonify(result), 200
