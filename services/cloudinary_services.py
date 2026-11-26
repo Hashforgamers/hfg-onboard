@@ -52,6 +52,35 @@ class CloudinaryGameImageService:
             return False
     
     @staticmethod
+    def upload_vendor_gallery_image(image_file, vendor_id):
+        """
+        Upload a cafe gallery photo. Every upload gets its own unique public_id so a
+        new photo never overwrites an earlier one (the old cover-image helper reused
+        one public_id per cafe name with overwrite=True).
+        """
+        import uuid
+        try:
+            if not image_file or image_file.filename == '':
+                return {'success': False, 'error': 'No image file provided', 'url': None, 'public_id': None}
+            if not CloudinaryGameImageService.configure_cloudinary():
+                return {'success': False, 'error': 'Cloudinary not configured', 'url': None, 'public_id': None}
+            result = cloudinary.uploader.upload(
+                image_file,
+                folder=f"cafe_gallery/vendor_{int(vendor_id)}",
+                public_id=uuid.uuid4().hex,
+                resource_type="image",
+                overwrite=False,
+                quality="auto:good",
+                transformation=[{'width': 1920, 'height': 1920, 'crop': 'limit'}],
+            )
+            if 'secure_url' in result and 'public_id' in result:
+                return {'success': True, 'url': result['secure_url'], 'public_id': result['public_id'], 'error': None}
+            return {'success': False, 'error': 'Invalid response from Cloudinary', 'url': None, 'public_id': None}
+        except Exception as e:
+            current_app.logger.error(f"Gallery upload failed for vendor {vendor_id}: {e}")
+            return {'success': False, 'error': str(e), 'url': None, 'public_id': None}
+
+    @staticmethod
     def upload_game_cover_image(cover_image_file, game_name):
         """
         Upload game cover image to Cloudinary 'poc' folder
