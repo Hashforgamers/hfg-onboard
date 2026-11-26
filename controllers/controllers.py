@@ -1898,7 +1898,7 @@ def upload_vendor_image(vendor_id):
         return jsonify({'success': False, 'message': 'Vendor not found'}), 404
 
     # Upload to Cloudinary
-    upload_result = CloudinaryGameImageService.upload_game_cover_image(image_file, vendor.cafe_name)
+    upload_result = CloudinaryGameImageService.upload_vendor_gallery_image(image_file, vendor_id)
     if not upload_result['success']:
         return jsonify({'success': False, 'message': 'Cloudinary upload failed', 'error': upload_result['error']}), 500
 
@@ -1907,7 +1907,8 @@ def upload_vendor_image(vendor_id):
         url=upload_result['url'],
         public_id=upload_result['public_id'],
         vendor_id=vendor_id,
-        
+        path=upload_result['url'],
+        image_id=upload_result['public_id'],
     )
     db.session.add(new_image)
     db.session.commit()
@@ -2058,7 +2059,11 @@ def delete_vendor_image(vendor_id, image_id):
         
         # Try to delete from Cloudinary first
         try:
-            delete_result = CloudinaryGameImageService.delete_image(image.public_id)
+            # Legacy rows can share one Cloudinary file; only destroy it when no other row uses it.
+            if Image.query.filter(Image.public_id == image.public_id, Image.id != image.id).count() > 0:
+                delete_result = {'success': True}
+            else:
+                delete_result = CloudinaryGameImageService.delete_image(image.public_id)
             if delete_result['success']:
                 cloudinary_deleted = True
             else:
@@ -2148,7 +2153,11 @@ def delete_vendor_image_by_url(vendor_id):
         return jsonify({'success': False, 'message': 'Image not found or does not belong to this vendor'}), 404
     
     # Delete from Cloudinary
-    delete_result = CloudinaryGameImageService.delete_image(image.public_id)
+    # Legacy rows can share one Cloudinary file; only destroy it when no other row uses it.
+    if Image.query.filter(Image.public_id == image.public_id, Image.id != image.id).count() > 0:
+        delete_result = {'success': True}
+    else:
+        delete_result = CloudinaryGameImageService.delete_image(image.public_id)
     if not delete_result['success']:
         return jsonify({
             'success': False, 
